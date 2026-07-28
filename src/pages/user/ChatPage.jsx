@@ -38,7 +38,7 @@ export function ChatPage({ targetUsername, onNavigate }) {
           }}
         >
           <h3 className="card-heading" style={{ fontSize: '17px', paddingBottom: '4px' }}>
-            Conversations ({conversations.length})
+            Conversations {conversations.length > 0 ? `(${conversations.length})` : ''}
           </h3>
           <ConversationList
             conversations={conversations}

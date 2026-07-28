@@ -14,7 +14,6 @@ export const mockAuthService = {
   getCurrentUser() {
     const data = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
     if (data) return JSON.parse(data);
-    // Default logged in user: @quietchapter
     const users = this.getUsers();
     const defaultUser = users[0] || MOCK_USERS[0];
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(defaultUser));
@@ -30,7 +29,7 @@ export const mockAuthService = {
     const id = identifier.trim().toLowerCase();
 
     // Match by @username, email, or mobile number
-    const user = users.find(u => {
+    let user = users.find(u => {
       const byUsername = u.username.toLowerCase() === id ||
                          u.username.toLowerCase() === `@${id}`;
       const byEmail = u.email && u.email.toLowerCase() === id;
@@ -38,8 +37,23 @@ export const mockAuthService = {
       return byUsername || byEmail || byMobile;
     });
 
+    // Auto-create mock account if logging in with new credentials in offline mode
     if (!user) {
-      throw new Error('No account found with that username, email, or mobile number.');
+      const parts = identifier.split('@')[0] || 'user';
+      const cleanName = parts.charAt(0).toUpperCase() + parts.slice(1);
+      user = {
+        id: `user_${Date.now()}`,
+        username: `@${parts.toLowerCase()}`,
+        fullName: cleanName,
+        email: identifier.includes('@') ? identifier : `${parts}@example.com`,
+        mobileNumber: '9876543210',
+        avatarInitials: cleanName.slice(0, 2).toUpperCase(),
+        bio: 'Anonymous author on Man Ki Aavaj',
+        status: 'ACTIVE',
+        joinedDate: new Date().toISOString(),
+      };
+      users.push(user);
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
     }
 
     if (user.status === 'BANNED' || user.status === 'TEMPORARILY_SUSPENDED') {
@@ -50,21 +64,20 @@ export const mockAuthService = {
     return user;
   },
 
-
   register(userData) {
     const users = this.getUsers();
     const newId = `user_${Date.now()}`;
 
-    // Auto-generate a temp anonymous handle if no username provided yet
-    // User picks their real handle during onboarding
-    const tempHandle = `@anon${Math.floor(1000 + Math.random() * 9000)}`;
+    const tempHandle = userData.username
+      ? (userData.username.startsWith('@') ? userData.username : `@${userData.username}`)
+      : `@anon${Math.floor(1000 + Math.random() * 9000)}`;
 
     const newUser = {
       id: newId,
-      username: userData.username
-        ? (userData.username.startsWith('@') ? userData.username : `@${userData.username}`)
-        : tempHandle,
+      username: tempHandle,
       fullName: userData.fullName || 'Private Name',
+      email: userData.email,
+      mobileNumber: userData.mobileNumber || userData.mobile,
       avatarInitials: (userData.fullName || 'AN')
         .split(' ')
         .map(w => w[0])
@@ -76,7 +89,6 @@ export const mockAuthService = {
       interests: userData.interests || ['Life'],
       status: 'ACTIVE',
       joinedDate: new Date().toISOString(),
-      needsUsernameSetup: !userData.username, // flag for onboarding
     };
 
     users.push(newUser);
@@ -93,7 +105,7 @@ export const mockAuthService = {
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
       
       const current = this.getCurrentUser();
-      if (current.id === userId) {
+      if (current?.id === userId) {
         this.setCurrentUser(users[index]);
       }
       return users[index];

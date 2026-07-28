@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import {
   Eye, EyeOff, CheckCircle2,
-  Mic2, ArrowLeft, Check,
+  Mic2, ArrowLeft, Check, UserCheck
 } from 'lucide-react';
 
 /* ─── Palette ──────────────────────────────────────────── */
@@ -47,8 +47,7 @@ function Label({ children, required }) {
 }
 
 /* ─── Verify row: input + button or verified badge ─────── */
-function VerifyRow({ label, type = 'text', value, onChange, placeholder,
-  verified, onVerify, disabled }) {
+function VerifyRow({ label, type = 'text', value, onChange, placeholder, verified, onVerify }) {
   const [focused, setFocused] = useState(false);
   const [otp, setOtp] = useState('');
   const [showOtp, setShowOtp] = useState(false);
@@ -56,15 +55,19 @@ function VerifyRow({ label, type = 'text', value, onChange, placeholder,
   const [otpFocused, setOtpFocused] = useState(false);
 
   const triggerVerify = () => {
-    if (!value.trim()) { return; }
+    if (!value.trim()) return;
     setShowOtp(true);
     setOtp('');
     setOtpErr('');
   };
 
   const confirmOtp = () => {
-    if (otp.length === 6) { setShowOtp(false); onVerify(); }
-    else setOtpErr('Enter all 6 digits');
+    if (otp.length === 6) {
+      setShowOtp(false);
+      onVerify();
+    } else {
+      setOtpErr('Enter all 6 digits');
+    }
   };
 
   if (verified) {
@@ -165,7 +168,7 @@ function VerifyRow({ label, type = 'text', value, onChange, placeholder,
 }
 
 /* ═══════════════════════════════════════════════════════════
-   MAIN PAGE
+   REGISTER PAGE
 ═══════════════════════════════════════════════════════════ */
 export function RegisterPage({ onNavigate }) {
   const { register } = useAuth();
@@ -186,21 +189,45 @@ export function RegisterPage({ onNavigate }) {
   const [acceptGuidelines, setAcceptGuidelines] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const [fieldErrors, setFieldErrors] = useState({});
+
   const canSubmit = fullName.trim() && mobile && email && password
     && confirm18 && acceptTerms && acceptGuidelines && !submitting;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setFieldErrors({});
+
+    // Validate mobile number: must start with 6-9 and be 10 digits
+    if (!/^[6-9]\d{9}$/.test(mobile.trim())) {
+      setFieldErrors(p => ({ ...p, mobile: 'Mobile number must be 10 digits starting with 6-9' }));
+      addToast('Invalid mobile number format (must start with 6-9)', 'error');
+      return;
+    }
+
+    // Validate password: must be 8-30 chars
+    if (password.length < 8 || password.length > 30) {
+      setFieldErrors(p => ({ ...p, password: 'Password must be between 8 and 30 characters' }));
+      addToast('Password must be between 8 and 30 characters', 'error');
+      return;
+    }
+
     if (!canSubmit) {
       addToast('Please fill all fields and confirm agreements.', 'error');
       return;
     }
+
     setSubmitting(true);
     try {
-      await register({ fullName, mobile, email, password });
-      onNavigate('/onboarding');
+      await register({ fullName: fullName.trim(), mobileNumber: mobile.trim(), email: email.trim(), password });
+      addToast('Registration successful! Please log in.', 'success');
+      onNavigate('/login');
     } catch (err) {
-      addToast(err.message || 'Registration failed.', 'error');
+      const errMsg = err?.message || (err?.errors ? Object.values(err.errors).join(', ') : 'Registration failed.');
+      addToast(errMsg, 'error');
+      if (err?.errors && typeof err.errors === 'object') {
+        setFieldErrors(err.errors);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -253,6 +280,7 @@ export function RegisterPage({ onNavigate }) {
           fontSize: 13, fontWeight: 500, color: C.hurricane,
           background: 'transparent', cursor: 'pointer',
           transition: 'color 0.15s',
+          border: 'none',
         }}
         onMouseEnter={e => e.currentTarget.style.color = C.eclipse}
         onMouseLeave={e => e.currentTarget.style.color = C.hurricane}
@@ -330,8 +358,6 @@ export function RegisterPage({ onNavigate }) {
             />
           </div>
 
-
-
           {/* Mobile & Email — 2 columns */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <VerifyRow
@@ -373,7 +399,7 @@ export function RegisterPage({ onNavigate }) {
                 onClick={() => setShowPw(p => !p)}
                 style={{
                   position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                  background: 'none', cursor: 'pointer', color: C.zorba,
+                  background: 'none', border: 'none', cursor: 'pointer', color: C.zorba,
                   display: 'flex', alignItems: 'center',
                 }}
               >
@@ -427,7 +453,7 @@ export function RegisterPage({ onNavigate }) {
             <button
               type="button"
               onClick={() => onNavigate('/login')}
-              style={{ color: C.plum, fontWeight: 700, textDecoration: 'underline', background: 'none', cursor: 'pointer', fontSize: 12.5 }}
+              style={{ color: C.plum, fontWeight: 700, textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5 }}
             >
               Login
             </button>

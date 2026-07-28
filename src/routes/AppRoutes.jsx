@@ -11,8 +11,10 @@ import { ContactPage } from '../pages/public/ContactPage.jsx';
 import { LoginPage } from '../pages/auth/LoginPage.jsx';
 import { RegisterPage } from '../pages/auth/RegisterPage.jsx';
 import { ForgotPasswordPage } from '../pages/auth/ForgotPasswordPage.jsx';
+import { ProfileSetupWizardPage } from '../pages/auth/ProfileSetupWizardPage.jsx';
 import { OnboardingPage } from '../pages/onboarding/OnboardingPage.jsx';
 
+import { DashboardPage } from '../pages/user/DashboardPage.jsx';
 import { HomePage } from '../pages/user/HomePage.jsx';
 import { ExplorePage } from '../pages/user/ExplorePage.jsx';
 import { CreatePostPage } from '../pages/user/CreatePostPage.jsx';
@@ -71,7 +73,7 @@ export function AppRoutes() {
     return <ContactPage onNavigate={navigate} />;
   }
 
-  // 3. Auth Routes: /login, /register, /forgot-password, /onboarding
+  // 3. Auth Routes: /login, /register, /forgot-password, /onboarding, /setup-profile
   if (currentPath === '/login') {
     return <LoginPage onNavigate={navigate} />;
   }
@@ -83,6 +85,9 @@ export function AppRoutes() {
   }
   if (currentPath === '/onboarding') {
     return <OnboardingPage onNavigate={navigate} />;
+  }
+  if (currentPath === '/setup-profile' || currentPath === '/profile-setup') {
+    return <ProfileSetupWizardPage onNavigate={navigate} />;
   }
 
   // 4. Admin Routes
@@ -108,6 +113,9 @@ export function AppRoutes() {
     return <LoginPage onNavigate={navigate} />;
   }
 
+  if (currentPath === '/dashboard') {
+    return <DashboardPage onNavigate={navigate} />;
+  }
   if (currentPath === '/home') {
     return <HomePage onNavigate={navigate} />;
   }
@@ -137,8 +145,13 @@ export function AppRoutes() {
   if (currentPath === '/my-reports') {
     return <MyReportsPage onNavigate={navigate} />;
   }
-  if (currentPath === '/profile' || currentPath.startsWith('/profile/')) {
-    const handle = currentPath.startsWith('/profile/') ? currentPath.split('/profile/')[1] : null;
+  if (currentPath === '/profile' || currentPath === '/profile/me' || currentPath.startsWith('/profile/')) {
+    let handle = null;
+    if (currentPath === '/profile/me') {
+      handle = null; // represents self
+    } else if (currentPath.startsWith('/profile/')) {
+      handle = currentPath.split('/profile/')[1];
+    }
     return <ProfilePage username={handle} onNavigate={navigate} />;
   }
   if (currentPath === '/edit-profile') {
@@ -154,6 +167,6 @@ export function AppRoutes() {
     return <AccountSettingsPage onNavigate={navigate} />;
   }
 
-  // Fallback for logged-in users to Home Feed
-  return <HomePage onNavigate={navigate} />;
+  // Fallback for logged-in users to Dashboard
+  return <DashboardPage onNavigate={navigate} />;
 }

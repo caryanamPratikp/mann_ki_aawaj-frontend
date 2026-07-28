@@ -18,11 +18,13 @@ export function LeftSidebar({ activeRoute, onNavigate }) {
   ];
 
   return (
-    <aside className="sidebar-left flex-col justify-between" style={{ height: 'calc(100vh - 88px)', position: 'sticky', top: '80px' }}>
-      <div className="mka-card flex-col gap-xs" style={{ padding: '12px' }}>
-        <div style={{ padding: '8px 12px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--hurricane)', fontWeight: 600 }}>
+    <aside className="sidebar-left flex-col gap-md">
+      {/* Top Menu Card */}
+      <div className="mka-card flex-col gap-xs" style={{ padding: '16px', borderRadius: 'var(--radius-lg)' }}>
+        <div style={{ padding: '4px 10px 8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--hurricane)', fontWeight: 700 }}>
           Personal Space
         </div>
+
         {menuItems.map((item, idx) => {
           const Icon = item.icon;
           const isActive = activeRoute === item.route;
@@ -56,8 +58,9 @@ export function LeftSidebar({ activeRoute, onNavigate }) {
         })}
       </div>
 
+      {/* Separate Rounded Logout Card */}
       {currentUser && (
-        <div className="mka-card" style={{ padding: '12px' }}>
+        <div className="mka-card" style={{ padding: '12px 16px', borderRadius: 'var(--radius-lg)' }}>
           <button
             onClick={() => {
               logout();
@@ -66,12 +69,16 @@ export function LeftSidebar({ activeRoute, onNavigate }) {
             className="flex-row items-center gap-md"
             style={{
               width: '100%',
-              padding: '10px 14px',
+              padding: '8px 10px',
               borderRadius: 'var(--radius-md)',
               fontSize: '14px',
+              fontWeight: 500,
               color: 'var(--error)',
               textAlign: 'left',
+              transition: 'background var(--transition-fast)',
             }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(196, 111, 118, 0.12)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
           >
             <LogOut size={18} />
             <span>{t('logout')}</span>

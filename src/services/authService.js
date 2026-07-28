@@ -1,100 +1,100 @@
-import { apiRequest } from './apiService.js';
+import { apiClient } from './apiClient.js';
+import { apiProfileService } from './apiProfileService.js';
 import { mockAuthService } from './mockAuthService.js';
 
 export const authService = {
-  // Login with API (POST /api/auth/login), with fallback to mockAuthService if server fails/offline
-  async login(identifier, password) {
+  // POST /api/auth/login
+  async login(email, password) {
     try {
-      const res = await apiRequest('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email: identifier, password }),
-      });
+      const response = await apiClient.post('/api/auth/login', { email, password });
+      const res = response.data;
 
       if (res && res.success && res.data?.token) {
         localStorage.setItem('auth_token', res.data.token);
+        localStorage.setItem('auth_user', JSON.stringify(res.data));
+        
+        // Check if profile exists via GET /api/profile/me
+        let hasProfile = false;
+        try {
+          const profileRes = await apiProfileService.getMyProfile();
+          if (profileRes && profileRes.success && profileRes.data) {
+            hasProfile = true;
+            localStorage.setItem('user_profile', JSON.stringify(profileRes.data));
+          }
+        } catch (profileErr) {
+          // If 404, user needs profile setup
+          if (profileErr.status === 404 || profileErr.response?.status === 404) {
+            hasProfile = false;
+          }
+        }
+
         const user = {
           id: res.data.id,
           fullName: res.data.fullName,
           email: res.data.email,
           mobileNumber: res.data.mobileNumber,
           role: res.data.role,
-          username: `@${res.data.fullName.toLowerCase().replace(/\s+/g, '')}`,
           token: res.data.token,
+          hasProfile,
         };
         mockAuthService.setCurrentUser(user);
-        return user;
+        return { user, hasProfile };
       }
       throw new Error(res?.message || 'Login failed');
     } catch (err) {
-      // Fallback to mock service if network error or server 500 error occurs
-      if (err.isNetworkError || err.status === 500 || err.message?.includes('Failed to fetch')) {
-        console.warn('Backend service offline/500 error (http://localhost:8081). Falling back to mockAuthService.');
-        return mockAuthService.login(identifier, password);
+      if (err.response?.data) {
+        throw err.response.data;
+      }
+      if (err.isNetworkError || err.message?.includes('Failed to fetch') || !err.response) {
+        console.warn('Backend server offline (http://localhost:8080). Falling back to mock auth.');
+        const mockUser = mockAuthService.login(email, password);
+        return { user: mockUser, hasProfile: true };
       }
       throw err;
     }
   },
 
-  // Register with API (POST /api/auth/register), with fallback to mockAuthService if server fails/offline
+  // POST /api/auth/register
   async register(userData) {
     try {
       const payload = {
         fullName: userData.fullName,
         email: userData.email,
-        mobileNumber: userData.mobile || userData.mobileNumber,
+        mobileNumber: userData.mobileNumber || userData.mobile,
         password: userData.password,
       };
 
-      const res = await apiRequest('/api/auth/register', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
+      const response = await apiClient.post('/api/auth/register', payload);
+      const res = response.data;
 
-      if (res && res.success && res.data?.token) {
-        localStorage.setItem('auth_token', res.data.token);
-        const user = {
-          id: res.data.id,
-          fullName: res.data.fullName,
-          email: res.data.email,
-          mobileNumber: res.data.mobileNumber,
-          role: res.data.role,
-          username: userData.username || `@${res.data.fullName.toLowerCase().replace(/\s+/g, '')}`,
-          token: res.data.token,
-        };
-        mockAuthService.setCurrentUser(user);
-        return user;
+      if (res && res.success) {
+        // Registration does not return a token. Return success message.
+        return res;
       }
       throw new Error(res?.message || 'Registration failed');
     } catch (err) {
-      if (err.isNetworkError || err.status === 500 || err.message?.includes('Failed to fetch')) {
-        console.warn('Backend service offline/500 error (http://localhost:8081). Falling back to mockAuthService.');
-        return mockAuthService.register(userData);
+      if (err.response?.data) {
+        throw err.response.data;
+      }
+      if (err.isNetworkError || err.message?.includes('Failed to fetch') || !err.response) {
+        throw new Error('Cannot reach the backend at http://localhost:8080. Start the Spring Boot server and try again.');
       }
       throw err;
     }
   },
 
-  // Test protected endpoint
-  async testAuth() {
-    return apiRequest('/api/test');
-  },
-
-  // Test protected user endpoint
-  async testUserAccess() {
-    return apiRequest('/api/user/test');
-  },
-
-  // Test protected admin endpoint
-  async testAdminAccess() {
-    return apiRequest('/api/admin/test');
-  },
-
   getCurrentUser() {
+    const userStr = localStorage.getItem('auth_user');
+    if (userStr) {
+      try { return JSON.parse(userStr); } catch (e) { /* fallback */ }
+    }
     return mockAuthService.getCurrentUser();
   },
 
   logout() {
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    localStorage.removeItem('user_profile');
     mockAuthService.logout();
   },
 };

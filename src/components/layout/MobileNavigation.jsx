@@ -80,7 +80,10 @@ export function MobileNavigation({ activeRoute, onNavigate }) {
       </button>
 
       <button
-        onClick={() => onNavigate(currentUser ? `/profile/${currentUser.username.replace('@', '')}` : '/login')}
+        onClick={() => {
+          const handle = currentUser?.username ? currentUser.username.replace('@', '') : 'me';
+          onNavigate(currentUser ? `/profile/${handle}` : '/login');
+        }}
         className="flex-col items-center gap-xs"
         style={{
           color: activeRoute?.startsWith('/profile') ? 'var(--deep-plum)' : 'var(--hurricane)',

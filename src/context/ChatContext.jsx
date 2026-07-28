@@ -12,9 +12,11 @@ export function ChatProvider({ children }) {
   const { currentUser } = useAuth();
   const { addToast } = useToast();
 
+  const currentUsername = currentUser?.username || '@quietchapter';
+
   const refreshConversations = useCallback(() => {
-    if (!currentUser) return;
-    const list = mockChatService.getUserConversations(currentUser.username);
+    const username = currentUser?.username || '@quietchapter';
+    const list = mockChatService.getUserConversations(username);
     setConversations(list);
   }, [currentUser]);
 
@@ -23,8 +25,7 @@ export function ChatProvider({ children }) {
   }, [refreshConversations]);
 
   const openChatWithUser = (targetUsername) => {
-    if (!currentUser) throw new Error('Please login to start a chat.');
-    const conv = mockChatService.getOrCreateConversation(currentUser.username, targetUsername);
+    const conv = mockChatService.getOrCreateConversation(currentUsername, targetUsername);
     setActiveConversation(conv);
     const msgs = mockChatService.getMessagesForConversation(conv.id);
     setActiveMessages(msgs);
@@ -43,9 +44,10 @@ export function ChatProvider({ children }) {
   };
 
   const sendMessage = (text) => {
-    if (!activeConversation || !currentUser) return;
+    if (!activeConversation) return;
     try {
-      const msg = mockChatService.sendMessage(activeConversation.id, text, currentUser);
+      const activeUser = currentUser || { username: '@quietchapter', avatarInitials: 'QC' };
+      const msg = mockChatService.sendMessage(activeConversation.id, text, activeUser);
       setActiveMessages(prev => [...prev, msg]);
       refreshConversations();
       return msg;

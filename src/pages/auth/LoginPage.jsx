@@ -1,157 +1,136 @@
 import React, { useState } from 'react';
 import { AuthLayout } from '../../components/layout/AuthLayout.jsx';
-import { Button } from '../../components/common/Button.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { LogIn, User, Mail, Phone } from 'lucide-react';
+import { useToast } from '../../context/ToastContext.jsx';
+import { loginSchema } from '../../utils/validationSchemas.js';
+import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
 
 export function LoginPage({ onNavigate }) {
   const { login } = useAuth();
-  const [identifier, setIdentifier] = useState('');
+  const { addToast } = useToast();
+
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
-  const [idFocused, setIdFocused] = useState(false);
-  const [pwFocused, setPwFocused] = useState(false);
-
-  // Detect what the user is typing to show the right hint icon
-  const getIdentifierType = () => {
-    if (!identifier) return null;
-    if (identifier.startsWith('@')) return 'username';
-    if (/^\d/.test(identifier)) return 'mobile';
-    if (identifier.includes('@') && !identifier.startsWith('@')) return 'email';
-    return null;
-  };
-
-  const idType = getIdentifierType();
-
-  const IdentifierIcon = idType === 'email' ? Mail : idType === 'mobile' ? Phone : User;
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!identifier.trim() || !password) return;
+    setErrors({});
+
+    // Zod validation
+    const result = loginSchema.safeParse({ email: email.trim(), password });
+    if (!result.success) {
+      const errMap = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) errMap[err.path[0]] = err.message;
+      });
+      setErrors(errMap);
+      return;
+    }
+
     setSubmitting(true);
     try {
-      // Pass identifier — mockAuthService will match username, email or mobile
-      await login(identifier.trim(), password);
-      onNavigate('/home');
+      const res = await login(email.trim(), password);
+      // Check if user has completed profile setup (GET /api/profile/me)
+      if (res && res.hasProfile === false) {
+        addToast('Please complete your profile setup.', 'info');
+        onNavigate('/setup-profile');
+      } else {
+        onNavigate('/dashboard');
+      }
     } catch (err) {
       console.error(err);
+      if (err?.errors && typeof err.errors === 'object') {
+        setErrors(err.errors);
+      } else {
+        addToast(err?.message || 'Invalid email or password.', 'error');
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
-  const inputBase = {
-    width: '100%',
-    padding: '13px 14px 13px 42px',
-    borderRadius: '10px',
-    fontSize: '15px',
-    color: 'var(--eclipse)',
-    background: 'var(--pure-white)',
-    outline: 'none',
-    boxSizing: 'border-box',
-    fontFamily: 'inherit',
-    transition: 'border-color 0.2s, box-shadow 0.2s',
-  };
-
   return (
     <AuthLayout onNavigate={onNavigate}>
-      <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
         {/* Header */}
-        <div style={{ marginBottom: '4px' }}>
-          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '26px', fontWeight: 700, color: 'var(--eclipse)', marginBottom: '6px' }}>
+        <div>
+          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '24px', fontWeight: 700, color: 'var(--eclipse)', marginBottom: '4px' }}>
             Welcome Back
           </h2>
-          <p style={{ fontSize: '14px', color: 'var(--hurricane)', lineHeight: 1.5 }}>
-            Log in with your <strong>username</strong>, <strong>mobile number</strong>, or <strong>email address</strong>.
+          <p style={{ fontSize: '13px', color: 'var(--hurricane)', lineHeight: 1.5, margin: 0 }}>
+            Sign in to your account using your email and password.
           </p>
         </div>
 
-        {/* Identifier field */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--eclipse)' }}>
-            Username / Mobile / Email
+        {/* Email Field */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+          <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--eclipse)' }}>
+            Email Address *
           </label>
           <div style={{ position: 'relative' }}>
-            {/* Left icon */}
-            <div style={{
-              position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)',
-              color: idFocused ? 'var(--deep-plum)' : 'var(--hurricane)',
-              display: 'flex', alignItems: 'center', pointerEvents: 'none',
-              transition: 'color 0.2s',
-            }}>
-              <IdentifierIcon size={16} />
+            <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--hurricane)', pointerEvents: 'none', display: 'flex' }}>
+              <Mail size={16} />
             </div>
             <input
-              type="text"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              onFocus={() => setIdFocused(true)}
-              onBlur={() => setIdFocused(false)}
-              placeholder="@handle  •  +91 9876543210  •  you@email.com"
+              type="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: null })); }}
+              placeholder="aman@example.com"
               required
               style={{
-                ...inputBase,
-                border: idFocused
-                  ? '2px solid var(--deep-plum)'
-                  : '2px solid var(--border-light)',
-                boxShadow: idFocused ? '0 0 0 3px rgba(111,64,95,0.10)' : 'none',
+                width: '100%',
+                padding: '11px 12px 11px 38px',
+                borderRadius: '8px',
+                border: errors.email ? '2px solid var(--error)' : '1.5px solid var(--border-light)',
+                fontSize: '14px',
+                color: 'var(--eclipse)',
+                outline: 'none',
+                boxSizing: 'border-box',
               }}
             />
           </div>
-          {/* Tiny type hint */}
-          {idType && (
-            <span style={{ fontSize: '11px', color: 'var(--deep-plum)', fontWeight: 600, marginTop: '-2px' }}>
-              {idType === 'username' && '→ Signing in by username'}
-              {idType === 'email' && '→ Signing in by email'}
-              {idType === 'mobile' && '→ Signing in by mobile number'}
+          {errors.email && (
+            <span style={{ fontSize: '12px', color: 'var(--error)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <AlertCircle size={13} /> {errors.email}
             </span>
           )}
         </div>
 
-        {/* Password field */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--eclipse)' }}>
-            Password
+        {/* Password Field */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+          <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--eclipse)' }}>
+            Password *
           </label>
           <div style={{ position: 'relative' }}>
-            <div style={{
-              position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)',
-              color: pwFocused ? 'var(--deep-plum)' : 'var(--hurricane)',
-              display: 'flex', alignItems: 'center', pointerEvents: 'none',
-              fontSize: '16px', letterSpacing: '2px',
-              transition: 'color 0.2s',
-            }}>
-              •••
+            <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--hurricane)', pointerEvents: 'none', display: 'flex' }}>
+              <Lock size={16} />
             </div>
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onFocus={() => setPwFocused(true)}
-              onBlur={() => setPwFocused(false)}
-              placeholder="Enter your password"
+              onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: null })); }}
+              placeholder="••••••••"
               required
               style={{
-                ...inputBase,
-                border: pwFocused
-                  ? '2px solid var(--deep-plum)'
-                  : '2px solid var(--border-light)',
-                boxShadow: pwFocused ? '0 0 0 3px rgba(111,64,95,0.10)' : 'none',
+                width: '100%',
+                padding: '11px 12px 11px 38px',
+                borderRadius: '8px',
+                border: errors.password ? '2px solid var(--error)' : '1.5px solid var(--border-light)',
+                fontSize: '14px',
+                color: 'var(--eclipse)',
+                outline: 'none',
+                boxSizing: 'border-box',
               }}
             />
           </div>
-        </div>
-
-        {/* Forgot password */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-10px' }}>
-          <button
-            type="button"
-            onClick={() => onNavigate('/forgot-password')}
-            style={{ fontSize: '13px', color: 'var(--deep-plum)', fontWeight: 500 }}
-          >
-            Forgot Password?
-          </button>
+          {errors.password && (
+            <span style={{ fontSize: '12px', color: 'var(--error)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <AlertCircle size={13} /> {errors.password}
+            </span>
+          )}
         </div>
 
         {/* Submit */}
@@ -160,36 +139,34 @@ export function LoginPage({ onNavigate }) {
           disabled={submitting}
           style={{
             width: '100%',
-            padding: '14px',
-            borderRadius: '10px',
-            background: submitting ? 'var(--hurricane)' : 'var(--eclipse)',
+            padding: '13px',
+            borderRadius: '8px',
+            background: submitting ? 'var(--zorba)' : 'var(--eclipse)',
             color: 'var(--pure-white)',
-            fontSize: '15px',
+            fontSize: '14.5px',
             fontWeight: 700,
             cursor: submitting ? 'not-allowed' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '8px',
-            transition: 'background 0.2s, transform 0.15s',
-            letterSpacing: '0.01em',
+            border: 'none',
+            marginTop: '4px',
           }}
-          onMouseEnter={e => { if (!submitting) e.currentTarget.style.transform = 'translateY(-1px)'; }}
-          onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
         >
-          <LogIn size={17} />
-          {submitting ? 'Logging in...' : 'Login'}
+          <LogIn size={16} />
+          {submitting ? 'Logging in...' : 'Sign In'}
         </button>
 
-        {/* Register link */}
-        <p style={{ textAlign: 'center', fontSize: '13px', color: 'var(--hurricane)', marginTop: '-4px' }}>
-          Don't have an account yet?{' '}
+        {/* Register Link */}
+        <p style={{ textAlign: 'center', fontSize: '13px', color: 'var(--hurricane)', margin: 0 }}>
+          Don't have an account?{' '}
           <button
             type="button"
             onClick={() => onNavigate('/register')}
-            style={{ color: 'var(--deep-plum)', fontWeight: 700, textDecoration: 'underline' }}
+            style={{ color: 'var(--deep-plum)', fontWeight: 700, textDecoration: 'underline', background: 'none', cursor: 'pointer' }}
           >
-            Register anonymous handle
+            Register here
           </button>
         </p>
 

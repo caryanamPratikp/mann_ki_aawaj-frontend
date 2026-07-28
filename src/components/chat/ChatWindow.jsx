@@ -187,57 +187,128 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
         </div>
       )}
 
-      {/* WhatsApp Input Composer Bar */}
-      <form onSubmit={handleSend} className="flex-col gap-xs" style={{ padding: '12px 16px', borderTop: '1px solid var(--border-light)', background: 'var(--pure-white)' }}>
-        <ModerationIndicator text={inputText} />
-
-        <div className="flex-row items-center gap-sm">
-          <button type="button" onClick={() => setShowEmojis(!showEmojis)} style={{ color: 'var(--hurricane)', padding: '6px' }}>
-            <Smile size={20} />
-          </button>
-
-          <button type="button" style={{ color: 'var(--hurricane)', padding: '6px' }}>
-            <Paperclip size={18} />
-          </button>
-
-          <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder={`Type a message...`}
-            disabled={submitting}
-            style={{
-              flex: 1,
-              padding: '10px 16px',
-              borderRadius: 'var(--radius-pill)',
-              border: isBlocked ? '1px solid var(--error)' : '1px solid var(--border-light)',
-              background: 'var(--soft-white)',
-              fontSize: '14px',
-              outline: 'none',
-            }}
-          />
-
-          <button
-            type="submit"
-            disabled={!inputText.trim() || isBlocked || submitting}
-            style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '50%',
-              backgroundColor: !inputText.trim() || isBlocked ? 'var(--zorba)' : 'var(--deep-plum)',
-              color: 'var(--pure-white)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: !inputText.trim() || isBlocked ? 'default' : 'pointer',
-              border: 'none',
-              transition: 'background var(--transition-fast)',
-            }}
-          >
-            <Send size={18} />
-          </button>
+      {/* Instagram Accept/Decline Banner if Pending */}
+      {conversation.requestStatus === 'PENDING' && conversation.requestSender?.toLowerCase() !== currentUserUsername?.toLowerCase() ? (
+        <div
+          style={{
+            padding: '16px 20px',
+            background: 'var(--soft-white)',
+            borderTop: '1px solid var(--border-light)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+            alignItems: 'center',
+            textAlign: 'center',
+          }}
+        >
+          <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--deep-plum)' }}>
+            📩 {otherUsername} wants to send you a message.
+          </span>
+          <span style={{ fontSize: '12px', color: 'var(--hurricane)' }}>
+            Do you want to accept this request and start talking anonymously?
+          </span>
+          <div style={{ display: 'flex', gap: '10px', width: '100%', maxWidth: '320px', marginTop: '4px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                const convs = mockChatService.getConversations();
+                const idx = convs.findIndex(c => c.id === conversation.id);
+                if (idx !== -1) {
+                  convs[idx].requestStatus = 'ACCEPTED';
+                  localStorage.setItem('mka_chat_conversations', JSON.stringify(convs));
+                  window.location.reload();
+                }
+              }}
+              style={{
+                flex: 1,
+                padding: '9px 14px',
+                borderRadius: 'var(--radius-pill)',
+                background: 'var(--deep-plum)',
+                color: '#ffffff',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Accept Request
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const convs = mockChatService.getConversations();
+                const filtered = convs.filter(c => c.id !== conversation.id);
+                localStorage.setItem('mka_chat_conversations', JSON.stringify(filtered));
+                window.location.reload();
+              }}
+              style={{
+                padding: '9px 16px',
+                borderRadius: 'var(--radius-pill)',
+                background: '#ffffff',
+                color: 'var(--hurricane)',
+                border: '1px solid var(--border-light)',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Decline
+            </button>
+          </div>
         </div>
-      </form>
+      ) : (
+        /* WhatsApp Input Composer Bar */
+        <form onSubmit={handleSend} className="flex-col gap-xs" style={{ padding: '12px 16px', borderTop: '1px solid var(--border-light)', background: 'var(--pure-white)' }}>
+          <ModerationIndicator text={inputText} />
+
+          <div className="flex-row items-center gap-sm">
+            <button type="button" onClick={() => setShowEmojis(!showEmojis)} style={{ color: 'var(--hurricane)', padding: '6px' }}>
+              <Smile size={20} />
+            </button>
+
+            <button type="button" style={{ color: 'var(--hurricane)', padding: '6px' }}>
+              <Paperclip size={18} />
+            </button>
+
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder={`Type a message...`}
+              disabled={submitting}
+              style={{
+                flex: 1,
+                padding: '10px 16px',
+                borderRadius: 'var(--radius-pill)',
+                border: isBlocked ? '1px solid var(--error)' : '1px solid var(--border-light)',
+                background: 'var(--soft-white)',
+                fontSize: '14px',
+                outline: 'none',
+              }}
+            />
+
+            <button
+              type="submit"
+              disabled={!inputText.trim() || isBlocked || submitting}
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                backgroundColor: !inputText.trim() || isBlocked ? 'var(--zorba)' : 'var(--deep-plum)',
+                color: 'var(--pure-white)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: !inputText.trim() || isBlocked ? 'default' : 'pointer',
+                border: 'none',
+                transition: 'background var(--transition-fast)',
+              }}
+            >
+              <Send size={18} />
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

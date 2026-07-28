@@ -26,17 +26,21 @@ export function TopNavbar({ activeRoute, onNavigate }) {
       <header
         style={{
           position: 'sticky',
-          top: 0,
+          top: '12px',
           zIndex: 900,
+          margin: '12px auto 0',
+          width: 'calc(100% - 32px)',
+          maxWidth: '1280px',
           background: 'var(--pure-white)',
-          borderBottom: '1px solid var(--border-light)',
-          boxShadow: 'var(--shadow-subtle)',
-          padding: '0 16px',
+          borderRadius: 'var(--radius-xl)',
+          border: '1px solid var(--border-light)',
+          boxShadow: 'var(--shadow-soft)',
+          padding: '0 20px',
         }}
       >
         <div
           className="flex-row items-center justify-between"
-          style={{ maxWidth: '1280px', margin: '0 auto', height: '64px' }}
+          style={{ height: '60px' }}
         >
           {/* Logo & Brand */}
           <div className="flex-row items-center gap-md">
@@ -215,9 +219,16 @@ export function TopNavbar({ activeRoute, onNavigate }) {
             </Tooltip>
 
             {currentUser ? (
-              <Tooltip text={`Profile (${currentUser.username})`} position="bottom">
-                <button onClick={() => onNavigate(`/profile/${currentUser.username.replace('@', '')}`)}>
-                  <InitialAvatar username={currentUser.username} initials={currentUser.avatarInitials} size={34} />
+              <Tooltip text={`Profile (${currentUser.username || 'User'})`} position="bottom">
+                <button
+                  type="button"
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                  onClick={() => {
+                    const handle = currentUser?.username ? currentUser.username.replace('@', '') : 'me';
+                    onNavigate(`/profile/${handle}`);
+                  }}
+                >
+                  <InitialAvatar username={currentUser.username || '@user'} initials={currentUser.avatarInitials} size={34} />
                 </button>
               </Tooltip>
             ) : (

@@ -1,7 +1,7 @@
 import React from 'react';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { Shield, Lock, Bell, User, BookOpen, ChevronRight, HelpCircle } from 'lucide-react';
+import { Shield, Lock, User, ChevronRight } from 'lucide-react';
 
 export function SettingsPage({ onNavigate }) {
   const { currentUser } = useAuth();
