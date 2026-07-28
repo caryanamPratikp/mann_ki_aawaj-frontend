@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,400&display=swap');
+
+h1, h2, h3, h4, .font-heading {
+  font-family: var(--font-serif);
+  color: var(--eclipse);
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.hero-heading {
+  font-size: clamp(38px, 6vw, 64px);
+  letter-spacing: -0.02em;
+}
+
+.section-heading {
+  font-size: clamp(28px, 4vw, 42px);
+  letter-spacing: -0.01em;
+}
+
+.page-heading {
+  font-size: clamp(24px, 3vw, 34px);
+}
+
+.card-heading {
+  font-size: 20px;
+  font-family: var(--font-serif);
+}
+
+.body-text {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--eclipse);
+}
+
+.secondary-text {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--hurricane);
+}
+
+.caption-text {
+  font-size: 12px;
+  color: var(--hurricane);
+}
+
+.bold {
+  font-weight: 600;
+}

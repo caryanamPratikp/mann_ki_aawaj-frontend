@@ -1,0 +1,21 @@
+/* Mobile & Responsive Rules */
+@media (max-width: 900px) {
+  .sidebar-left {
+    display: none;
+  }
+
+  .main-wrapper {
+    padding: 16px 12px;
+    padding-bottom: 76px; /* Leave space for bottom navigation */
+  }
+
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+@media (min-width: 901px) {
+  .mobile-only {
+    display: none !important;
+  }
+}

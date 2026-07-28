@@ -1,0 +1,22 @@
+@import './variables.css';
+@import './reset.css';
+@import './typography.css';
+@import './layout.css';
+@import './utilities.css';
+@import './responsive.css';
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--swiss-coffee);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--zorba);
+  border-radius: var(--radius-pill);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--hurricane);
+}

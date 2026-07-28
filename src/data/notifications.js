@@ -1,0 +1,46 @@
+export const MOCK_NOTIFICATIONS = [
+  {
+    id: 'notif_001',
+    userId: 'user_001',
+    type: 'COMMENT', // COMMENT, REPLY, REACTION, APPROVAL, EDIT_NEEDED, REMOVED, REPORT_REVIEWED
+    actorUsername: '@hiddenpage',
+    actorInitials: 'HP',
+    message: '@hiddenpage commented on your post "Learning to celebrate quiet victories"',
+    targetPostId: 'post_001',
+    isRead: false,
+    createdAt: '2026-07-27T10:45:00Z',
+  },
+  {
+    id: 'notif_002',
+    userId: 'user_001',
+    type: 'REPLY',
+    actorUsername: '@openjournal',
+    actorInitials: 'OJ',
+    message: '@openjournal replied to your comment on "Learning to celebrate quiet victories"',
+    targetPostId: 'post_001',
+    isRead: false,
+    createdAt: '2026-07-27T11:35:00Z',
+  },
+  {
+    id: 'notif_003',
+    userId: 'user_001',
+    type: 'REACTION',
+    actorUsername: '@thoughtwindow',
+    actorInitials: 'TW',
+    message: '@thoughtwindow reacted "Well Said" to your post',
+    targetPostId: 'post_001',
+    isRead: true,
+    createdAt: '2026-07-27T11:00:00Z',
+  },
+  {
+    id: 'notif_004',
+    userId: 'user_001',
+    type: 'APPROVAL',
+    actorUsername: 'System Moderator',
+    actorInitials: 'SM',
+    message: 'Your recent thought passed moderator review and is now live.',
+    targetPostId: 'post_001',
+    isRead: true,
+    createdAt: '2026-07-27T10:16:00Z',
+  }
+];
