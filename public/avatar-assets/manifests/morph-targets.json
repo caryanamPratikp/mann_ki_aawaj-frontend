@@ -1,0 +1,12 @@
+{
+  "BlinkLeft": { "type": "eye_lid", "bone": "Head", "min": 0.0, "max": 1.0 },
+  "BlinkRight": { "type": "eye_lid", "bone": "Head", "min": 0.0, "max": 1.0 },
+  "Smile": { "type": "lip_corner", "bone": "Head", "min": 0.0, "max": 1.0 },
+  "MouthOpen": { "type": "jaw", "bone": "Head", "min": 0.0, "max": 1.0 },
+  "BrowsUp": { "type": "eyebrow", "bone": "Head", "min": 0.0, "max": 1.0 },
+  "BrowsDown": { "type": "eyebrow", "bone": "Head", "min": 0.0, "max": 1.0 },
+  "JawOpen": { "type": "jaw", "bone": "Hips", "min": 0.0, "max": 1.0 },
+  "EyeSquint": { "type": "eye_lid", "bone": "Head", "min": 0.0, "max": 1.0 },
+  "CheekRaise": { "type": "cheek", "bone": "Head", "min": 0.0, "max": 1.0 },
+  "NoseWrinkle": { "type": "nose", "bone": "Head", "min": 0.0, "max": 1.0 }
+}

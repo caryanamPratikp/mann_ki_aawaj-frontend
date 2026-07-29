@@ -1,0 +1,100 @@
+{
+  "version": "1.0.0",
+  "pipeline": "GLB 2.0 Modular Humanoid Architecture",
+  "baseCharacter": "/avatar-assets/characters/base/v1/base-neutral-01.glb",
+  "morphTargets": [
+    "BlinkLeft",
+    "BlinkRight",
+    "Smile",
+    "MouthOpen",
+    "BrowsUp",
+    "BrowsDown",
+    "JawOpen",
+    "EyeSquint",
+    "CheekRaise",
+    "NoseWrinkle"
+  ],
+  "bones": [
+    "Root",
+    "Hips",
+    "Spine",
+    "Chest",
+    "Neck",
+    "Head",
+    "LeftShoulder",
+    "LeftArm",
+    "LeftForeArm",
+    "LeftHand",
+    "RightShoulder",
+    "RightArm",
+    "RightForeArm",
+    "RightHand",
+    "LeftUpLeg",
+    "LeftLeg",
+    "LeftFoot",
+    "RightUpLeg",
+    "RightLeg",
+    "RightFoot"
+  ],
+  "attachmentSockets": {
+    "hair": "Head",
+    "glasses": "Head",
+    "hats": "Head",
+    "beards": "Head",
+    "necklaces": "Neck",
+    "watches": "LeftHand",
+    "tops": "Spine",
+    "bottoms": "Hips",
+    "shoes": "LeftFoot"
+  },
+  "categories": {
+    "hair": {
+      "male": [
+        { "id": "buzz", "name": "Buzz Cut", "path": "/avatar-assets/hair/male/hair-male-buzz.glb" },
+        { "id": "fade", "name": "Sleek Fade", "path": "/avatar-assets/hair/male/hair-male-fade.glb" },
+        { "id": "crew", "name": "Crew Cut", "path": "/avatar-assets/hair/male/hair-male-crew.glb" },
+        { "id": "curly_top", "name": "Textured Curly", "path": "/avatar-assets/hair/male/hair-male-curly.glb" },
+        { "id": "undercut", "name": "Modern Undercut", "path": "/avatar-assets/hair/male/hair-male-undercut.glb" }
+      ],
+      "female": [
+        { "id": "long_straight", "name": "Long Straight", "path": "/avatar-assets/hair/female/hair-female-longstraight.glb" },
+        { "id": "long_wavy_dark", "name": "Long Wavy", "path": "/avatar-assets/hair/female/hair-female-longwavy.glb" },
+        { "id": "shoulder_bob", "name": "Shoulder Bob", "path": "/avatar-assets/hair/female/hair-female-shoulderbob.glb" },
+        { "id": "wavy_waves", "name": "Flowing Waves", "path": "/avatar-assets/hair/female/hair-female-wavy.glb" },
+        { "id": "ponytail", "name": "High Ponytail", "path": "/avatar-assets/hair/female/hair-female-ponytail.glb" },
+        { "id": "top_bun", "name": "Top Knot Bun", "path": "/avatar-assets/hair/female/hair-female-bun.glb" },
+        { "id": "bob_cut", "name": "Classic Bob", "path": "/avatar-assets/hair/female/hair-female-bob.glb" }
+      ]
+    },
+    "glasses": [
+      { "id": "none", "name": "None", "path": null },
+      { "id": "round", "name": "Round Classic", "path": "/avatar-assets/glasses/glasses-round.glb" },
+      { "id": "square", "name": "Square Modern", "path": "/avatar-assets/glasses/glasses-square.glb" },
+      { "id": "aviator", "name": "Aviator Shades", "path": "/avatar-assets/glasses/glasses-aviator.glb" }
+    ],
+    "tops": [
+      { "id": "hoodie", "name": "Streetwear Hoodie", "path": "/avatar-assets/clothes/tops/top-hoodie-oversized.glb" },
+      { "id": "tshirt", "name": "Casual T-Shirt", "path": "/avatar-assets/clothes/tops/top-tee-basic.glb" },
+      { "id": "jacket", "name": "Denim Jacket", "path": "/avatar-assets/clothes/tops/top-jacket-denim.glb" },
+      { "id": "yellow_fur_jacket", "name": "Yellow Fur Jacket", "path": "/avatar-assets/clothes/tops/top-jacket-yellowfur.glb" },
+      { "id": "white_casual_top", "name": "White Casual Top", "path": "/avatar-assets/clothes/tops/top-casual-white.glb" },
+      { "id": "blue_puffer", "name": "Blue Puffer Jacket", "path": "/avatar-assets/clothes/tops/top-jacket-bluepuffer.glb" },
+      { "id": "purple_kurta", "name": "Purple Embroidered Kurta", "path": "/avatar-assets/clothes/tops/top-kurta-purple.glb" },
+      { "id": "black_cardigan", "name": "Black Cardigan Coat", "path": "/avatar-assets/clothes/tops/top-cardigan-black.glb" }
+    ],
+    "bottoms": [
+      { "id": "jeans", "name": "Classic Jeans", "path": "/avatar-assets/clothes/bottoms/bottom-jeans-classic.glb" },
+      { "id": "joggers", "name": "Urban Joggers", "path": "/avatar-assets/clothes/bottoms/bottom-joggers-urban.glb" }
+    ],
+    "shoes": [
+      { "id": "sneakers", "name": "Chunky Sneakers", "path": "/avatar-assets/clothes/shoes/shoes-sneakers-chunky.glb" }
+    ],
+    "accessories": [
+      { "id": "striped_beanie", "name": "Striped Beanie", "path": "/avatar-assets/accessories/acc-beanie-striped.glb" },
+      { "id": "santa_hat", "name": "Santa Hat", "path": "/avatar-assets/accessories/acc-hat-santa.glb" },
+      { "id": "nose_ring", "name": "Nose Ring", "path": "/avatar-assets/accessories/acc-nosering.glb" },
+      { "id": "silver_earrings", "name": "Silver Earrings", "path": "/avatar-assets/accessories/acc-earrings-silver.glb" },
+      { "id": "sunglasses_dark", "name": "Dark Sunglasses", "path": "/avatar-assets/accessories/acc-sunglasses-dark.glb" }
+    ]
+  }
+}

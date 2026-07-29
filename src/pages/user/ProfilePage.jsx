@@ -24,7 +24,7 @@ const AVATAR_COLORS = [
 ];
 
 import { InstagramChatPopup } from '../../components/chat/InstagramChatPopup.jsx';
-import { AvatarCreatorModal } from '../../components/profile/AvatarCreatorModal.jsx';
+import { AvatarStudioModal } from '../../components/avatar/AvatarStudioModal.jsx';
 
 export function ProfilePage({ username, onNavigate }) {
   const { currentUser, logout } = useAuth();
@@ -424,8 +424,8 @@ export function ProfilePage({ username, onNavigate }) {
           </div>
         </div>
       </Modal>
-      {/* ── INSTAGRAM / WHATSAPP AVATAR CREATOR MODAL ── */}
-      <AvatarCreatorModal
+      {/* ── AVATAR STUDIO MODAL ── */}
+      <AvatarStudioModal
         isOpen={isAvatarModalOpen}
         onClose={() => setIsAvatarModalOpen(false)}
       />
