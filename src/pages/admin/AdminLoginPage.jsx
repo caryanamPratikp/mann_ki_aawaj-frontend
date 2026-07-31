@@ -7,13 +7,13 @@ import { Shield } from 'lucide-react';
 
 export function AdminLoginPage({ onNavigate }) {
   const { adminLogin } = useAuth();
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      adminLogin(username, password);
+      await adminLogin(username, password);
       onNavigate('/admin/dashboard');
     } catch (err) {
       console.error(err);
@@ -48,10 +48,10 @@ export function AdminLoginPage({ onNavigate }) {
         </div>
 
         <Input
-          label="Admin Username"
+          label="Admin Email"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          placeholder="admin"
+          placeholder="admin@example.com"
           required
         />
 

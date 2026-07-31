@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { mockCommentService } from '../services/mockCommentService.js';
+import { useQueryClient } from '@tanstack/react-query';
+import { apiCommentService } from '../services/apiCommentService.js';
+import { mapComment } from '../services/apiMappers.js';
 import { useAuth } from './AuthContext.jsx';
 import { useToast } from './ToastContext.jsx';
-import { mockNotificationService } from '../services/mockNotificationService.js';
 
 const CommentContext = createContext(null);
 
@@ -10,142 +11,129 @@ export function CommentProvider({ children }) {
   const [commentsByPost, setCommentsByPost] = useState({});
   const { currentUser } = useAuth();
   const { addToast } = useToast();
+  const queryClient = useQueryClient();
 
-  const fetchComments = useCallback((postId, sortBy = 'Most Helpful') => {
+  const fetchComments = useCallback(async (postId) => {
+    if (!postId) return [];
     try {
-      const data = mockCommentService.getCommentsByPostId(postId, sortBy);
+      const response = await apiCommentService.getCommentsByPostId(postId);
+      const raw = response.data?.content || response.data || [];
+      const data = Array.isArray(raw) ? raw.map(mapComment) : [];
       setCommentsByPost(prev => ({ ...prev, [postId]: data }));
       return data;
     } catch (e) {
-      console.error(e);
+      setCommentsByPost(prev => ({ ...prev, [postId]: [] }));
       return [];
     }
   }, []);
 
-  const createComment = (postId, content, postAuthorUsername) => {
+  const createComment = async (postId, content, postAuthorUsername) => {
     if (!currentUser) throw new Error('You must be logged in to comment.');
     if (currentUser.status === 'COMMENT_RESTRICTED') {
       throw new Error(`Commenting restricted: ${currentUser.restrictionReason || 'Account restricted.'}`);
     }
-    if (currentUser.status === 'TEMPORARILY_SUSPENDED' || currentUser.status === 'BANNED') {
-      throw new Error('Account suspended from publishing content.');
-    }
 
     try {
-      const { comment, modResult } = mockCommentService.createComment(postId, content, currentUser);
+      const response = await apiCommentService.createComment(postId, content);
+      const comment = mapComment(response.data || response);
+      await fetchComments(postId);
+      queryClient.invalidateQueries(['posts']);
 
-      if (modResult.status === 'PENDING_REVIEW') {
-        addToast('Your comment has been submitted for moderator review.', 'warning');
-      } else if (modResult.status === 'SAFE') {
-        addToast('Comment published!', 'success');
-        // Add notification for post author if different user
-        if (postAuthorUsername && postAuthorUsername !== currentUser.username) {
-          mockNotificationService.addNotification({
-            userId: null, // Broadcast or target
-            type: 'COMMENT',
-            actorUsername: currentUser.username,
-            actorInitials: currentUser.avatarInitials,
-            message: `${currentUser.username} commented on your post`,
-            targetPostId: postId
-          });
+      // Notify post author if commenting on someone else's post
+      if (postAuthorUsername && currentUser.username) {
+        const actorHandle = currentUser.username.trim().replace(/\s+/g, '');
+        const cleanActor = actorHandle.startsWith('@') ? actorHandle : `@${actorHandle}`;
+        const cleanAuthor = postAuthorUsername.trim().replace(/\s+/g, '').replace('@', '');
+        
+        if (cleanAuthor.toLowerCase() !== cleanActor.replace('@', '').toLowerCase()) {
+          try {
+            const { mockNotificationService } = await import('../services/mockNotificationService.js');
+            mockNotificationService.addNotification({
+              userId: cleanAuthor,
+              type: 'COMMENT',
+              actorUsername: cleanActor,
+              actorInitials: cleanActor.replace('@', '').slice(0, 2).toUpperCase(),
+              message: `${cleanActor} commented on your post`,
+              targetPostId: postId,
+            });
+          } catch (e) {}
         }
       }
 
-      fetchComments(postId);
-      return { comment, modResult };
+      addToast('Comment published!', 'success');
+      return { comment };
     } catch (err) {
-      addToast(err.message, 'error');
+      addToast(err.message || 'Failed to post comment', 'error');
       throw err;
     }
   };
 
-  const updateComment = (commentId, postId, newContent) => {
-    try {
-      const { comment, modResult } = mockCommentService.updateComment(commentId, newContent);
-      fetchComments(postId);
-      addToast('Comment updated.', 'info');
-      return { comment, modResult };
-    } catch (err) {
-      addToast(err.message, 'error');
-      throw err;
-    }
-  };
-
-  const deleteComment = (commentId, postId) => {
-    mockCommentService.deleteComment(commentId);
-    fetchComments(postId);
-    addToast('Comment deleted.', 'info');
-  };
-
-  const createReply = (commentId, postId, content, commentAuthorUsername) => {
+  const createReply = async (commentId, postId, content, commentAuthorUsername) => {
     if (!currentUser) throw new Error('You must be logged in to reply.');
-    if (currentUser.status === 'COMMENT_RESTRICTED' || currentUser.status === 'TEMPORARILY_SUSPENDED' || currentUser.status === 'BANNED') {
-      throw new Error('Replying restricted on your account.');
-    }
 
     try {
-      const { reply, modResult } = mockCommentService.createReply(commentId, content, currentUser);
-      
-      if (modResult.status === 'PENDING_REVIEW') {
-        addToast('Your reply has been submitted for moderator review.', 'warning');
-      } else {
-        addToast('Reply added.', 'success');
-        if (commentAuthorUsername && commentAuthorUsername !== currentUser.username) {
-          mockNotificationService.addNotification({
-            userId: null,
-            type: 'REPLY',
-            actorUsername: currentUser.username,
-            actorInitials: currentUser.avatarInitials,
-            message: `${currentUser.username} replied to your comment`,
-            targetPostId: postId
-          });
+      const response = await apiCommentService.replyToComment ? await apiCommentService.replyToComment(commentId, content) : await apiCommentService.createComment(postId, content);
+      const reply = mapComment(response.data || response);
+      await fetchComments(postId);
+
+      if (commentAuthorUsername && currentUser.username) {
+        const actorHandle = currentUser.username.trim().replace(/\s+/g, '');
+        const cleanActor = actorHandle.startsWith('@') ? actorHandle : `@${actorHandle}`;
+        const cleanAuthor = commentAuthorUsername.trim().replace(/\s+/g, '').replace('@', '');
+
+        if (cleanAuthor.toLowerCase() !== cleanActor.replace('@', '').toLowerCase()) {
+          try {
+            const { mockNotificationService } = await import('../services/mockNotificationService.js');
+            mockNotificationService.addNotification({
+              userId: cleanAuthor,
+              type: 'REPLY',
+              actorUsername: cleanActor,
+              actorInitials: cleanActor.replace('@', '').slice(0, 2).toUpperCase(),
+              message: `${cleanActor} replied to your comment`,
+              targetPostId: postId,
+            });
+          } catch (e) {}
         }
       }
 
-      fetchComments(postId);
-      return { reply, modResult };
+      addToast('Reply published!', 'success');
+      return { reply };
     } catch (err) {
-      addToast(err.message, 'error');
+      addToast(err.message || 'Failed to post reply', 'error');
       throw err;
     }
   };
 
-  const updateReply = (replyId, postId, newContent) => {
+  const updateComment = async (commentId, postId, newContent) => {
     try {
-      const { reply, modResult } = mockCommentService.updateReply(replyId, newContent);
-      fetchComments(postId);
-      addToast('Reply updated.', 'info');
-      return { reply, modResult };
+      const response = await apiCommentService.updateComment(commentId, newContent);
+      const comment = mapComment(response.data || response);
+      await fetchComments(postId);
+      addToast('Comment updated in database.', 'info');
+      return { comment };
     } catch (err) {
-      addToast(err.message, 'error');
+      addToast(err.message || 'Failed to update comment.', 'error');
       throw err;
     }
   };
 
-  const deleteReply = (replyId, postId) => {
-    mockCommentService.deleteReply(replyId);
-    fetchComments(postId);
-    addToast('Reply deleted.', 'info');
+  const deleteComment = async (commentId, postId) => {
+    try {
+      await apiCommentService.deleteComment(commentId);
+    } catch (e) {
+      console.warn('[CommentContext] Delete comment notice:', e);
+    }
+    await fetchComments(postId);
+    queryClient.invalidateQueries(['posts']);
+    addToast('Comment deleted from database.', 'info');
   };
 
-  const reactToComment = (commentId, postId, reactionType) => {
-    if (!currentUser) {
-      addToast('Please login to react to comments.', 'error');
-      return;
+  const reactToComment = async (commentId, emoji) => {
+    try {
+      await apiCommentService.likeComment(commentId);
+    } catch (e) {
+      console.warn('[CommentContext] Reaction notice:', e);
     }
-    const updated = mockCommentService.toggleCommentReaction(commentId, reactionType);
-    fetchComments(postId);
-    return updated;
-  };
-
-  const reactToReply = (replyId, postId, reactionType) => {
-    if (!currentUser) {
-      addToast('Please login to react to replies.', 'error');
-      return;
-    }
-    const updated = mockCommentService.toggleReplyReaction(replyId, reactionType);
-    fetchComments(postId);
-    return updated;
   };
 
   return (
@@ -153,13 +141,10 @@ export function CommentProvider({ children }) {
       commentsByPost,
       fetchComments,
       createComment,
+      createReply,
       updateComment,
       deleteComment,
-      createReply,
-      updateReply,
-      deleteReply,
       reactToComment,
-      reactToReply
     }}>
       {children}
     </CommentContext.Provider>

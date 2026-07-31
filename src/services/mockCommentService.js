@@ -23,7 +23,8 @@ export const mockCommentService = {
   },
 
   getCommentsByPostId(postId, sortBy = 'Most Helpful') {
-    const allComments = this.getComments().filter(c => c.postId === postId && c.status !== 'REMOVED');
+    let allComments = this.getComments().filter(c => c.postId === postId && c.status !== 'REMOVED');
+
     const allReplies = this.getReplies().filter(r => r.status !== 'REMOVED');
 
     // Attach replies to comments

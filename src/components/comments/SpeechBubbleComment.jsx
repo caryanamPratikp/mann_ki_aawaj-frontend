@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { InitialAvatar } from '../profile/InitialAvatar.jsx';
+import { AvatarThumbnail } from '../avatar/AvatarThumbnail.jsx';
 import { formatDate } from '../../utils/formatDate.js';
-import { Heart, CornerDownLeft, Send } from 'lucide-react';
+import { Heart, CornerDownLeft, Send, Pin } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const EMOJI_REACTIONS = ['😀', '❤️', '👍', '🔥', '💯', '🤝'];
@@ -10,6 +10,9 @@ export function SpeechBubbleComment({
   comment,
   onReact,
   onQuickReply,
+  isPinned,
+  onPinToggle,
+  onNavigate,
 }) {
   const { currentUser } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
@@ -52,8 +55,8 @@ export function SpeechBubbleComment({
         position: 'relative',
         padding: '10px 12px',
         borderRadius: '12px',
-        background: '#ffffff',
-        border: `1.5px solid ${isHovered ? '#6F405F' : '#D4CECC'}`,
+        background: isPinned ? 'rgba(111,64,95,0.03)' : '#ffffff',
+        border: `1.5px solid ${isPinned ? '#6F405F' : (isHovered ? '#6F405F' : '#D4CECC')}`,
         display: 'flex',
         flexDirection: 'column',
         gap: '6px',
@@ -107,7 +110,14 @@ export function SpeechBubbleComment({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              setShowReplyBox(prev => !prev);
+              setShowReplyBox((prev) => {
+                const next = !prev;
+                if (next) {
+                  const tag = comment.username ? (comment.username.startsWith('@') ? comment.username : `@${comment.username}`) : '';
+                  setReplyText(tag ? `${tag} ` : '');
+                }
+                return next;
+              });
             }}
             style={{
               background: 'none',
@@ -127,16 +137,79 @@ export function SpeechBubbleComment({
           >
             <CornerDownLeft size={11} /> Quick Reply
           </button>
+
+          <div style={{ width: '1px', height: '14px', background: '#9F9794', margin: '0 2px' }} />
+
+          {onPinToggle && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPinToggle();
+              }}
+              style={{
+                background: isPinned ? 'rgba(111,64,95,0.10)' : 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: 700,
+                color: '#6F405F',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '3px',
+                padding: '2px 6px',
+                borderRadius: '10px',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(111,64,95,0.10)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = isPinned ? 'rgba(111,64,95,0.10)' : 'none'}
+              title={isPinned ? 'Unpin Discussion' : 'Pin Discussion'}
+            >
+              <Pin size={11} style={{ fill: isPinned ? '#6F405F' : 'none' }} /> {isPinned ? 'Unpin' : 'Pin'}
+            </button>
+          )}
         </div>
       )}
 
       {/* ── HEADER: Avatar, Username, Time (Left) & Like Reaction (Right) ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <InitialAvatar username={comment.username} initials={comment.avatarInitials} size={22} />
-          <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#6F405F' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onNavigate && comment.username) onNavigate(`/profile/${comment.username.replace('@', '')}`);
+            }}
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}
+            title={`View ${comment.username}'s profile`}
+          >
+            <AvatarThumbnail
+              username={comment.username}
+              initials={comment.avatarInitials}
+              config={comment.avatarConfig}
+              size={28}
+            />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onNavigate && comment.username) onNavigate(`/profile/${comment.username.replace('@', '')}`);
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: 700,
+              color: '#6F405F',
+              textAlign: 'left',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+            onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+          >
             {comment.username}
-          </span>
+          </button>
           <span style={{ fontSize: '11px', color: '#8C8385' }}>
             • {formatDate(comment.createdAt)}
           </span>

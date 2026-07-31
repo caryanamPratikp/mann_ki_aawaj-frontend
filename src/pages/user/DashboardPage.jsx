@@ -53,7 +53,7 @@ export function DashboardPage({ onNavigate }) {
                 </span>
               </div>
               <h1 className="card-heading" style={{ fontSize: '24px', margin: 0 }}>
-                Welcome to your Dashboard, {currentUser?.fullName || 'User'}
+                Welcome to your Dashboard, {currentUser?.username || 'User'}
               </h1>
               <p className="secondary-text" style={{ fontSize: '14px', marginTop: '4px', margin: 0 }}>
                 Manage your authenticated session and protected API access.
@@ -76,16 +76,20 @@ export function DashboardPage({ onNavigate }) {
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
               <div className="flex-row items-center justify-between" style={{ padding: '8px 12px', background: 'var(--soft-white)', borderRadius: '8px' }}>
-                <span className="caption-text" style={{ fontSize: '12px' }}>Full Name</span>
-                <span className="bold" style={{ fontSize: '13.5px', color: 'var(--eclipse)' }}>{currentUser?.fullName || 'N/A'}</span>
+                <span className="caption-text" style={{ fontSize: '12px' }}>Anonymous Handle</span>
+                <span className="bold" style={{ fontSize: '13.5px', color: 'var(--eclipse)' }}>{currentUser?.username || '@anonymous'}</span>
               </div>
               <div className="flex-row items-center justify-between" style={{ padding: '8px 12px', background: 'var(--soft-white)', borderRadius: '8px' }}>
                 <span className="caption-text" style={{ fontSize: '12px' }}>Email</span>
-                <span className="bold" style={{ fontSize: '13.5px', color: 'var(--eclipse)' }}>{currentUser?.email || 'N/A'}</span>
+                <span className="bold" style={{ fontSize: '13.5px', color: 'var(--eclipse)' }}>
+                  {currentUser?.email ? `${currentUser.email.slice(0, 2)}***@${currentUser.email.split('@')[1] || 'domain.com'}` : '••••••••@••••.com'}
+                </span>
               </div>
               <div className="flex-row items-center justify-between" style={{ padding: '8px 12px', background: 'var(--soft-white)', borderRadius: '8px' }}>
                 <span className="caption-text" style={{ fontSize: '12px' }}>Mobile Number</span>
-                <span className="bold" style={{ fontSize: '13.5px', color: 'var(--eclipse)' }}>{currentUser?.mobileNumber || currentUser?.mobile || 'N/A'}</span>
+                <span className="bold" style={{ fontSize: '13.5px', color: 'var(--eclipse)' }}>
+                  +91 ••••• ••{currentUser?.mobileNumber ? currentUser.mobileNumber.slice(-3) : '407'}
+                </span>
               </div>
             </div>
           </div>

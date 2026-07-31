@@ -19,14 +19,16 @@ export const BASE_CHARACTER_ASSETS = {
 };
 
 export function resolveAvatarAsset(config = {}) {
-  const asset = BASE_CHARACTER_ASSETS[config.baseCharacterId || 'base-neutral-01'];
-  if (!asset || asset.rigVersion !== (config.rigVersion || AVATAR_RIG_VERSION)) return null;
+  const safeConfig = (config && typeof config === 'object') ? config : {};
+  const asset = BASE_CHARACTER_ASSETS[safeConfig.baseCharacterId || 'base-neutral-01'];
+  if (!asset || asset.rigVersion !== (safeConfig.rigVersion || AVATAR_RIG_VERSION)) return null;
   return asset;
 }
 
 /** Maps legacy studio fields to named facial morph targets in the v1 rig. */
 export function recipeToMorphTargets(config = {}) {
-  const faceShape = config.faceShape || 'oval';
+  const safeConfig = (config && typeof config === 'object') ? config : {};
+  const faceShape = safeConfig.faceShape || 'oval';
   const facePreset = {
     oval: { faceOval: 1 },
     round: { faceRound: 1 },
@@ -38,13 +40,13 @@ export function recipeToMorphTargets(config = {}) {
   const mouthPreset = {
     soft_smile: 'mouthSmile', wide_grin: 'mouthSmile', subtle_smirk: 'mouthSmile',
     neutral_calm: 'mouthNeutral', playful_pout: 'mouthPucker', laughing_open: 'jawOpen',
-  }[config.lipStyle] || 'mouthSmile';
+  }[safeConfig.lipStyle] || 'mouthSmile';
 
   return {
     ...facePreset,
-    faceWidth: Number(config.faceWidth ?? 1) - 1,
-    jawWidth: Number(config.jawWidth ?? 1) - 1,
-    cheekFullness: Number(config.cheekFullness ?? 1) - 1,
-    [mouthPreset]: Number(config.smileIntensity ?? 0.6),
+    faceWidth: Number(safeConfig.faceWidth ?? 1) - 1,
+    jawWidth: Number(safeConfig.jawWidth ?? 1) - 1,
+    cheekFullness: Number(safeConfig.cheekFullness ?? 1) - 1,
+    [mouthPreset]: Number(safeConfig.smileIntensity ?? 0.6),
   };
 }

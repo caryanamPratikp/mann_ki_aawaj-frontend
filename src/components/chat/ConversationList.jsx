@@ -11,11 +11,23 @@ const normalizeUser = (u) => {
   return trimmed.startsWith('@') ? trimmed.toLowerCase() : `@${trimmed.toLowerCase()}`;
 };
 
+const getOtherUsername = (conv, cleanSelf) => {
+  if (!conv) return 'User';
+  if (conv.otherParticipantUsername) return conv.otherParticipantUsername;
+  if (conv.participant2Username) return conv.participant2Username;
+  if (Array.isArray(conv.participants)) {
+    const found = conv.participants.find(p => normalizeUser(p) !== cleanSelf);
+    if (found) return found;
+    if (conv.participants[0]) return conv.participants[0];
+  }
+  return 'User';
+};
+
 export function ConversationList({ conversations = [], activeConvId, onSelectConversation, currentUserUsername }) {
   const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState('chats'); // 'chats' | 'requests'
 
-  const cleanSelf = normalizeUser(currentUserUsername || '@quietchapter');
+  const cleanSelf = currentUserUsername ? normalizeUser(currentUserUsername) : '';
 
   // Incoming requests (sent by someone else to currentUser)
   const incomingRequests = conversations.filter(c => {
@@ -69,10 +81,13 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
             borderBottom: activeTab === 'chats' ? '2px solid var(--deep-plum)' : '2px solid transparent',
             background: 'none',
             cursor: 'pointer',
-            textAlign: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
           }}
         >
-          Primary {primaryChats.length > 0 ? `(${primaryChats.length})` : ''}
+          <span>Messages</span>
         </button>
 
         <button
@@ -90,19 +105,17 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
             borderBottom: activeTab === 'requests' ? '2px solid var(--deep-plum)' : '2px solid transparent',
             background: 'none',
             cursor: 'pointer',
-            textAlign: 'center',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '4px',
+            gap: '6px',
           }}
         >
-          Requests
-          {/* ONLY SHOW BADGE COUNT IF GREATER THAN ZERO */}
+          <span>Requests</span>
           {incomingRequests.length > 0 && (
             <span
               style={{
-                fontSize: '10.5px',
+                fontSize: '10px',
                 fontWeight: 700,
                 background: 'var(--deep-plum)',
                 color: '#ffffff',
@@ -126,10 +139,10 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
             </div>
           ) : (
             primaryChats.map((conv) => {
-              const otherUsername = conv.participants.find(p => normalizeUser(p) !== cleanSelf) || conv.participants[0];
+              const otherUsername = getOtherUsername(conv, cleanSelf);
               const isActive = conv.id === activeConvId;
               const isSentPending = conv.requestStatus === 'PENDING' && normalizeUser(conv.requestSender) === cleanSelf;
-              const status = mockChatService.getUserRealtimeStatus(otherUsername);
+              const status = (mockChatService.getUserRealtimeStatus && mockChatService.getUserRealtimeStatus(otherUsername)) || { isOnline: true, statusText: 'Active now' };
 
               return (
                 <button
@@ -149,13 +162,13 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
                 >
                   <div style={{ position: 'relative', flexShrink: 0 }}>
                     <InitialAvatar username={otherUsername} size={38} />
-                    <span
+                    <div
                       style={{
                         position: 'absolute',
-                        bottom: '1px',
-                        right: '1px',
-                        width: '9px',
-                        height: '9px',
+                        bottom: '0',
+                        right: '0',
+                        width: '10px',
+                        height: '10px',
                         borderRadius: '50%',
                         backgroundColor: status.isOnline ? 'var(--success)' : 'var(--hurricane)',
                         border: '2px solid var(--pure-white)',
@@ -208,7 +221,7 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
             </div>
           ) : (
             incomingRequests.map((conv) => {
-              const otherUsername = conv.participants.find(p => normalizeUser(p) !== cleanSelf) || conv.participants[0];
+              const otherUsername = getOtherUsername(conv, cleanSelf);
               const isActive = conv.id === activeConvId;
 
               return (

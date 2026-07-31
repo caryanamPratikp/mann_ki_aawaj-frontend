@@ -86,9 +86,24 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate })
           </button>
           <div className="flex-col">
             <div className="flex-row items-center gap-xs">
-              <span className="bold" style={{ fontSize: '14px', color: 'var(--eclipse)' }}>
+              <button
+                type="button"
+                onClick={() => onNavigate(`/profile/${comment.username.replace('@', '')}`)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  color: 'var(--eclipse)',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+              >
                 {comment.username}
-              </span>
+              </button>
               {comment.isEdited && <span className="caption-text">(edited)</span>}
             </div>
             <span className="caption-text">{formatDate(comment.createdAt)}</span>
@@ -180,6 +195,7 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate })
         <ReplyComposer
           commentId={comment.id}
           postId={postId}
+          targetUsername={comment.username}
           onSubmit={handleAddReply}
           onCancel={() => setShowReplyComposer(false)}
         />

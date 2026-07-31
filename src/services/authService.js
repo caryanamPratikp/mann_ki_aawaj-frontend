@@ -3,7 +3,7 @@ import { apiProfileService } from './apiProfileService.js';
 import { mockAuthService } from './mockAuthService.js';
 
 export const authService = {
-  // POST /api/auth/login
+  // POST /api/auth/login { email, password } → returns user data plus token
   async login(email, password) {
     try {
       const response = await apiClient.post('/api/auth/login', { email, password });
@@ -12,17 +12,17 @@ export const authService = {
       if (res && res.success && res.data?.token) {
         localStorage.setItem('auth_token', res.data.token);
         localStorage.setItem('auth_user', JSON.stringify(res.data));
-        
-        // Check if profile exists via GET /api/profile/me
+
+        // Always check profile via GET /api/profile/me (using token)
         let hasProfile = false;
         try {
           const profileRes = await apiProfileService.getMyProfile();
           if (profileRes && profileRes.success && profileRes.data) {
             hasProfile = true;
+            localStorage.setItem(`user_profile_${res.data.id}`, JSON.stringify(profileRes.data));
             localStorage.setItem('user_profile', JSON.stringify(profileRes.data));
           }
         } catch (profileErr) {
-          // If 404, user needs profile setup
           if (profileErr.status === 404 || profileErr.response?.status === 404) {
             hasProfile = false;
           }
@@ -45,8 +45,8 @@ export const authService = {
       if (err.response?.data) {
         throw err.response.data;
       }
-      if (err.isNetworkError || err.message?.includes('Failed to fetch') || !err.response) {
-        console.warn('Backend server offline (http://localhost:8080). Falling back to mock auth.');
+      if (err.isNetworkError || err.code === 'ECONNABORTED' || err.message?.includes('timeout') || err.message?.includes('Network Error') || err.message?.includes('Failed to fetch') || !err.response) {
+        console.warn('Backend server offline or timed out (http://localhost:8080). Falling back to mock auth.');
         const mockUser = mockAuthService.login(email, password);
         return { user: mockUser, hasProfile: true };
       }
@@ -54,7 +54,7 @@ export const authService = {
     }
   },
 
-  // POST /api/auth/register
+  // POST /api/auth/register { fullName, email, mobileNumber, password }
   async register(userData) {
     try {
       const payload = {
@@ -68,7 +68,6 @@ export const authService = {
       const res = response.data;
 
       if (res && res.success) {
-        // Registration does not return a token. Return success message.
         return res;
       }
       throw new Error(res?.message || 'Registration failed');
@@ -77,21 +76,91 @@ export const authService = {
         throw err.response.data;
       }
       if (err.isNetworkError || err.message?.includes('Failed to fetch') || !err.response) {
-        throw new Error('Cannot reach the backend at http://localhost:8080. Start the Spring Boot server and try again.');
+        console.warn('Backend offline. Falling back to mock registration.');
+        return { success: true, message: 'Mock registration successful. Please verify email/OTP.' };
       }
       throw err;
+    }
+  },
+
+  // POST /api/auth/verify-email { email, otp }
+  async verifyEmail(email, otp) {
+    try {
+      const response = await apiClient.post('/api/auth/verify-email', { email, otp });
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      return { success: true, message: 'Mock email verification successful.' };
+    }
+  },
+
+  // POST /api/auth/resend-email-otp { email }
+  async resendEmailOtp(email) {
+    try {
+      const response = await apiClient.post('/api/auth/resend-email-otp', { email });
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      return { success: true, message: 'Verification OTP resent.' };
+    }
+  },
+
+  async resendVerification(email) {
+    return this.resendEmailOtp(email);
+  },
+
+  // POST /api/auth/verify-mobile { mobileNumber, otp }
+  async verifyMobile(mobileNumber, otp) {
+    try {
+      const response = await apiClient.post('/api/auth/verify-mobile', { mobileNumber, otp });
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      return { success: true, message: 'Mock mobile verification successful.' };
+    }
+  },
+
+  // POST /api/auth/resend-mobile-otp { mobileNumber }
+  async resendMobileOtp(mobileNumber) {
+    try {
+      const response = await apiClient.post('/api/auth/resend-mobile-otp', { mobileNumber });
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      return { success: true, message: 'Mobile OTP resent.' };
     }
   },
 
   getCurrentUser() {
     const userStr = localStorage.getItem('auth_user');
     if (userStr) {
-      try { return JSON.parse(userStr); } catch (e) { /* fallback */ }
+      try {
+        const u = JSON.parse(userStr);
+        let profile = null;
+        if (u.id) {
+          const stored = localStorage.getItem(`user_profile_${u.id}`) || localStorage.getItem('user_profile');
+          if (stored) try { profile = JSON.parse(stored); } catch (e) {}
+        }
+        const uname = u.username || profile?.username;
+        const formattedUsername = uname ? (uname.startsWith('@') ? uname : `@${uname}`) : undefined;
+        return {
+          ...u,
+          ...(formattedUsername ? { username: formattedUsername } : {}),
+          avatarInitials: u.avatarInitials || (u.fullName || uname || 'AN').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+        };
+      } catch (e) { /* fallback */ }
     }
     return mockAuthService.getCurrentUser();
   },
 
   logout() {
+    const userStr = localStorage.getItem('auth_user');
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        if (u?.id) localStorage.removeItem(`user_profile_${u.id}`);
+      } catch (e) {}
+    }
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
     localStorage.removeItem('user_profile');

@@ -22,6 +22,7 @@ export function HoverDiscussionPanel({ post, onClose, onQuickReply, arrowTop = 4
   const [newCommentText, setNewCommentText] = useState('');
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [pinnedCommentId, setPinnedCommentId] = useState(null);
 
   useEffect(() => {
     if (post?.id) {
@@ -30,6 +31,9 @@ export function HoverDiscussionPanel({ post, onClose, onQuickReply, arrowTop = 4
   }, [post?.id, fetchComments]);
 
   const commentsList = commentsByPost[post?.id] || [];
+  const visibleComments = pinnedCommentId 
+    ? commentsList.filter(c => c.id === pinnedCommentId) 
+    : commentsList;
 
   const handlePostComment = async (e) => {
     e.preventDefault();
@@ -137,8 +141,20 @@ export function HoverDiscussionPanel({ post, onClose, onQuickReply, arrowTop = 4
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <MessageSquare size={16} color="#6F405F" />
             <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#2D1D15' }}>
-              Live Discussion ({commentsList.length})
+              {pinnedCommentId ? 'Pinned Discussion' : `Live Discussion (${commentsList.length})`}
             </span>
+            {pinnedCommentId && (
+              <button
+                onClick={() => setPinnedCommentId(null)}
+                style={{
+                  background: 'none', border: 'none', color: '#6F405F',
+                  fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+                  textDecoration: 'underline', marginLeft: '6px'
+                }}
+              >
+                Show All
+              </button>
+            )}
           </div>
 
           {onClose && (
@@ -198,7 +214,7 @@ export function HoverDiscussionPanel({ post, onClose, onQuickReply, arrowTop = 4
             gap: '8px',
           }}
         >
-          {commentsList.length === 0 ? (
+          {visibleComments.length === 0 ? (
             <div
               style={{
                 padding: '36px 16px',
@@ -216,12 +232,14 @@ export function HoverDiscussionPanel({ post, onClose, onQuickReply, arrowTop = 4
               </span>
             </div>
           ) : (
-            commentsList.map((comment) => (
+            visibleComments.map((comment) => (
               <SpeechBubbleComment
                 key={comment.id}
                 comment={comment}
                 onReact={(cId, emoji) => reactToComment(cId, post.id, emoji)}
                 onQuickReply={onQuickReply}
+                isPinned={pinnedCommentId === comment.id}
+                onPinToggle={() => setPinnedCommentId(prev => prev === comment.id ? null : comment.id)}
               />
             ))
           )}

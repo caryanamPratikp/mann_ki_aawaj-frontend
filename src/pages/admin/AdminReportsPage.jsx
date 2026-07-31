@@ -3,7 +3,6 @@ import { AdminLayout } from '../../components/layout/AdminLayout.jsx';
 import { AdminReportTable } from '../../components/admin/AdminReportTable.jsx';
 import { AdminActionModal } from '../../components/admin/AdminActionModal.jsx';
 import { useReports } from '../../context/ReportContext.jsx';
-import { mockReportService } from '../../services/mockReportService.js';
 
 export function AdminReportsPage({ onNavigate }) {
   const { adminQueue, performAdminAction, refreshReports } = useReports();
@@ -12,7 +11,12 @@ export function AdminReportsPage({ onNavigate }) {
 
   const filters = ['All', 'Posts', 'Comments', 'Replies', 'Images', 'Profiles', 'High Risk'];
 
-  const reportsList = mockReportService.getAdminReportsQueue(filterType);
+  const reportsList = adminQueue.filter((report) => {
+    if (filterType === 'All') return true;
+    if (filterType === 'Posts') return report.contentType === 'POST';
+    if (filterType === 'Comments') return report.contentType === 'COMMENT';
+    return true;
+  });
 
   const handleExecuteAction = async (reportId, actionType, actionReason, adminNotes) => {
     await performAdminAction(reportId, actionType, actionReason, adminNotes);

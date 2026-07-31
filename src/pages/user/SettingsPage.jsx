@@ -23,7 +23,7 @@ export function SettingsPage({ onNavigate }) {
       title: 'Safety & Moderation',
       description: 'Blocked users list, reports tracking, guidelines.',
       icon: Shield,
-      route: '/my-reports',
+      route: '/settings/safety',
     },
   ];
 

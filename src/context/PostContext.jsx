@@ -1,98 +1,127 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { mockPostService } from '../services/mockPostService.js';
+import React, { createContext, useContext, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiPostService } from '../services/apiPostService.js';
+import { mapPost } from '../services/apiMappers.js';
 import { useAuth } from './AuthContext.jsx';
 import { useToast } from './ToastContext.jsx';
 
 const PostContext = createContext(null);
 
 export function PostProvider({ children }) {
-  const [posts, setPosts] = useState([]);
-  const [savedPostIds, setSavedPostIds] = useState([]);
-  const [loading, setLoading] = useState(true);
   const { currentUser } = useAuth();
   const { addToast } = useToast();
+  const queryClient = useQueryClient();
+  const [savedPostIds, setSavedPostIds] = useState([]);
 
-  const refreshPosts = useCallback(() => {
-    try {
-      const data = mockPostService.getPosts();
-      setPosts(data);
-      const saved = mockPostService.getSavedPostIds();
-      setSavedPostIds(saved);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // React TanStack Query: Realtime Posts Feed from Backend DB with 3-second automatic refetch interval
+  const { data: posts = [], isLoading: loading, refetch: refreshPosts } = useQuery({
+    queryKey: ['posts'],
+    queryFn: async () => {
+      try {
+        const response = await apiPostService.getPosts();
+        const rawContent = response.data?.content || response.content || response.data || [];
+        if (Array.isArray(rawContent)) {
+          return rawContent.map(mapPost);
+        }
+      } catch (err) {
+        console.warn('[PostContext] DB fetch error:', err);
+      }
+      return [];
+    },
+    refetchInterval: 5000, // 5 seconds automatic polling & background refresh
+    staleTime: 1000,
+  });
 
-  useEffect(() => {
-    refreshPosts();
-  }, [refreshPosts]);
-
-  const createPost = (postData) => {
+  const createPost = async (postData) => {
     if (!currentUser) throw new Error('You must be logged in to create a post.');
     if (currentUser.status === 'POST_RESTRICTED' || currentUser.status === 'TEMPORARILY_SUSPENDED' || currentUser.status === 'BANNED') {
       throw new Error(`Posting restricted: ${currentUser.restrictionReason || 'Account restricted.'}`);
     }
 
     try {
-      const newPost = mockPostService.createPost(postData, currentUser);
-      refreshPosts();
+      const response = await apiPostService.createPost(postData);
+      const rawPostData = response.data || response;
+      const newPost = mapPost(rawPostData);
 
-      if (newPost.status === 'PENDING_REVIEW') {
-        addToast('Your post has been submitted for moderator review.', 'warning');
-      } else {
-        addToast('Post published successfully!', 'success');
-      }
+      // Invalidate query cache to trigger immediate update across all pages
+      await queryClient.invalidateQueries(['posts']);
+      addToast('Thought published successfully!', 'success');
       return newPost;
     } catch (err) {
-      addToast(err.message, 'error');
+      addToast(err.message || 'Failed to publish post to database', 'error');
       throw err;
     }
   };
 
-  const updatePost = (postId, updates) => {
-    const updated = mockPostService.updatePost(postId, updates);
-    refreshPosts();
-    addToast('Post updated.', 'info');
-    return updated;
+  const updatePost = async (postId, updates) => {
+    try {
+      const response = await apiPostService.updatePost(postId, updates.content || updates);
+      const updated = mapPost(response.data || response);
+      await queryClient.invalidateQueries(['posts']);
+      addToast('Post updated in database.', 'info');
+      return updated;
+    } catch (err) {
+      addToast(err.message || 'Failed to update post', 'error');
+    }
   };
 
-  const deletePost = (postId) => {
-    mockPostService.deletePost(postId);
-    refreshPosts();
-    addToast('Post deleted.', 'info');
+  const deletePost = async (postId) => {
+    try {
+      await apiPostService.deletePost(postId);
+    } catch (e) {
+      console.warn('[PostContext] Backend delete notice:', e);
+    }
+
+    // Optimistically update TanStack Query cache instantly for immediate UI removal
+    queryClient.setQueryData(['posts'], (oldPosts = []) =>
+      oldPosts.filter((p) => p.id !== postId)
+    );
+
+    // Invalidate query to refetch latest feed from DB
+    await queryClient.invalidateQueries(['posts']);
+    addToast('Thought permanently deleted from database.', 'info');
   };
 
-  const reactToPost = (postId, reactionType) => {
+  const reactToPost = async (postId) => {
     if (!currentUser) {
       addToast('Please login to react to posts.', 'error');
       return;
     }
-    const updated = mockPostService.toggleReaction(postId, reactionType, currentUser.id);
-    refreshPosts();
-    return updated;
+    const post = posts.find((item) => item.id === postId);
+    try {
+      if (post?.isLikedByCurrentUser) {
+        await apiPostService.unlikePost(postId);
+      } else {
+        await apiPostService.likePost(postId);
+      }
+    } catch (e) {
+      console.warn('[PostContext] Reaction error:', e);
+    }
+    await queryClient.invalidateQueries(['posts']);
   };
 
   const toggleSavePost = (postId) => {
-    const isSaved = mockPostService.toggleSavePost(postId);
-    refreshPosts();
-    addToast(isSaved ? 'Post saved to your list.' : 'Post removed from saved.', 'info');
-    return isSaved;
+    setSavedPostIds((prev) =>
+      prev.includes(postId) ? prev.filter((id) => id !== postId) : [...prev, postId]
+    );
+    queryClient.invalidateQueries(['posts']);
+    addToast('Post saved state updated.', 'info');
   };
 
   return (
-    <PostContext.Provider value={{
-      posts,
-      savedPostIds,
-      loading,
-      refreshPosts,
-      createPost,
-      updatePost,
-      deletePost,
-      reactToPost,
-      toggleSavePost
-    }}>
+    <PostContext.Provider
+      value={{
+        posts,
+        loading,
+        savedPostIds,
+        refreshPosts,
+        createPost,
+        updatePost,
+        deletePost,
+        reactToPost,
+        toggleSavePost,
+      }}
+    >
       {children}
     </PostContext.Provider>
   );

@@ -3,8 +3,9 @@ import { Button } from '../common/Button.jsx';
 import { ModerationIndicator } from '../common/ModerationIndicator.jsx';
 import { moderationCheck } from '../../utils/moderationCheck.js';
 
-export function ReplyComposer({ commentId, postId, onSubmit, onCancel }) {
-  const [text, setText] = useState('');
+export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onCancel }) {
+  const initialTag = targetUsername ? (targetUsername.startsWith('@') ? `${targetUsername} ` : `@${targetUsername} `) : '';
+  const [text, setText] = useState(initialTag);
   const [submitting, setSubmitting] = useState(false);
 
   const minLength = 2;

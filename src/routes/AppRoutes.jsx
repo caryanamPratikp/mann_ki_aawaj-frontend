@@ -28,6 +28,8 @@ import { EditProfilePage } from '../pages/user/EditProfilePage.jsx';
 import { SettingsPage } from '../pages/user/SettingsPage.jsx';
 import { PrivacySettingsPage } from '../pages/user/PrivacySettingsPage.jsx';
 import { AccountSettingsPage } from '../pages/user/AccountSettingsPage.jsx';
+import { SafetyModerationPage } from '../pages/user/SafetyModerationPage.jsx';
+import { HelpSupportPage } from '../pages/user/HelpSupportPage.jsx';
 import { ChatPage } from '../pages/user/ChatPage.jsx';
 
 import { AdminLoginPage } from '../pages/admin/AdminLoginPage.jsx';
@@ -54,57 +56,60 @@ export function AppRoutes() {
     window.scrollTo(0, 0);
   };
 
+  // Clean path normalization (strip trailing slashes, query params, hash)
+  const normalizedPath = (currentPath ? currentPath.split('?')[0].split('#')[0].replace(/\/+$/, '') : '') || '/';
+
   // 1. Root Landing Page: ALWAYS renders LandingPage regardless of auth status
-  if (currentPath === '/' || currentPath === '') {
+  if (normalizedPath === '/' || normalizedPath === '/index.html') {
     return <LandingPage onNavigate={navigate} />;
   }
 
   // 2. Public Informational Routes
-  if (currentPath === '/about') {
+  if (normalizedPath === '/about') {
     return <AboutPage onNavigate={navigate} />;
   }
-  if (currentPath === '/privacy-policy') {
+  if (normalizedPath === '/privacy-policy') {
     return <PrivacyPolicyPage onNavigate={navigate} />;
   }
-  if (currentPath === '/community-guidelines') {
+  if (normalizedPath === '/community-guidelines') {
     return <CommunityGuidelinesPage onNavigate={navigate} />;
   }
-  if (currentPath === '/contact') {
+  if (normalizedPath === '/contact') {
     return <ContactPage onNavigate={navigate} />;
   }
 
   // 3. Auth Routes: /login, /register, /forgot-password, /onboarding, /setup-profile
-  if (currentPath === '/login') {
+  if (normalizedPath === '/login') {
     return <LoginPage onNavigate={navigate} />;
   }
-  if (currentPath === '/register') {
+  if (normalizedPath === '/register') {
     return <RegisterPage onNavigate={navigate} />;
   }
-  if (currentPath === '/forgot-password') {
+  if (normalizedPath === '/forgot-password') {
     return <ForgotPasswordPage onNavigate={navigate} />;
   }
-  if (currentPath === '/onboarding') {
+  if (normalizedPath === '/onboarding') {
     return <OnboardingPage onNavigate={navigate} />;
   }
-  if (currentPath === '/setup-profile' || currentPath === '/profile-setup') {
+  if (normalizedPath === '/setup-profile' || normalizedPath === '/profile-setup') {
     return <ProfileSetupWizardPage onNavigate={navigate} />;
   }
 
   // 4. Admin Routes
-  if (currentPath === '/admin/login') {
+  if (normalizedPath === '/admin/login') {
     return <AdminLoginPage onNavigate={navigate} />;
   }
-  if (currentPath === '/admin/dashboard') {
+  if (normalizedPath === '/admin/dashboard') {
     return <AdminDashboardPage onNavigate={navigate} />;
   }
-  if (currentPath === '/admin/reports') {
+  if (normalizedPath === '/admin/reports') {
     return <AdminReportsPage onNavigate={navigate} />;
   }
-  if (currentPath.startsWith('/admin/reports/')) {
-    const reportId = currentPath.split('/admin/reports/')[1];
+  if (normalizedPath.startsWith('/admin/reports/')) {
+    const reportId = normalizedPath.split('/admin/reports/')[1];
     return <AdminReportDetailsPage reportId={reportId} onNavigate={navigate} />;
   }
-  if (currentPath === '/admin/content-review') {
+  if (normalizedPath === '/admin/content-review') {
     return <AdminContentReviewPage onNavigate={navigate} />;
   }
 
@@ -113,60 +118,66 @@ export function AppRoutes() {
     return <LoginPage onNavigate={navigate} />;
   }
 
-  if (currentPath === '/dashboard') {
+  if (normalizedPath === '/dashboard') {
     return <DashboardPage onNavigate={navigate} />;
   }
-  if (currentPath === '/home') {
+  if (normalizedPath === '/home') {
     return <HomePage onNavigate={navigate} />;
   }
-  if (currentPath.startsWith('/explore')) {
+  if (normalizedPath.startsWith('/explore')) {
     return <ExplorePage onNavigate={navigate} />;
   }
-  if (currentPath === '/create-post') {
+  if (normalizedPath === '/create-post') {
     return <CreatePostPage onNavigate={navigate} />;
   }
-  if (currentPath.startsWith('/post/')) {
-    const postId = currentPath.split('/post/')[1];
+  if (normalizedPath.startsWith('/post/')) {
+    const postId = normalizedPath.split('/post/')[1];
     return <PostDetailsPage postId={postId} onNavigate={navigate} />;
   }
-  if (currentPath.startsWith('/chat')) {
-    const usernameParam = currentPath.startsWith('/chat/') ? currentPath.split('/chat/')[1] : null;
+  if (normalizedPath.startsWith('/chat')) {
+    const usernameParam = normalizedPath.startsWith('/chat/') ? normalizedPath.split('/chat/')[1] : null;
     return <ChatPage targetUsername={usernameParam} onNavigate={navigate} />;
   }
-  if (currentPath === '/notifications') {
+  if (normalizedPath === '/notifications') {
     return <NotificationsPage onNavigate={navigate} />;
   }
-  if (currentPath === '/saved') {
+  if (normalizedPath === '/saved') {
     return <SavedPostsPage onNavigate={navigate} />;
   }
-  if (currentPath === '/my-posts') {
+  if (normalizedPath === '/my-posts') {
     return <MyPostsPage onNavigate={navigate} />;
   }
-  if (currentPath === '/my-reports') {
+  if (normalizedPath === '/my-reports') {
     return <MyReportsPage onNavigate={navigate} />;
   }
-  if (currentPath === '/profile' || currentPath === '/profile/me' || currentPath.startsWith('/profile/')) {
+  if (normalizedPath === '/profile' || normalizedPath === '/profile/me' || normalizedPath.startsWith('/profile/')) {
     let handle = null;
-    if (currentPath === '/profile/me') {
+    if (normalizedPath === '/profile/me') {
       handle = null; // represents self
-    } else if (currentPath.startsWith('/profile/')) {
-      handle = currentPath.split('/profile/')[1];
+    } else if (normalizedPath.startsWith('/profile/')) {
+      handle = normalizedPath.split('/profile/')[1];
     }
     return <ProfilePage username={handle} onNavigate={navigate} />;
   }
-  if (currentPath === '/edit-profile') {
+  if (normalizedPath === '/edit-profile') {
     return <EditProfilePage onNavigate={navigate} />;
   }
-  if (currentPath === '/settings') {
+  if (normalizedPath === '/settings') {
     return <SettingsPage onNavigate={navigate} />;
   }
-  if (currentPath === '/settings/privacy') {
+  if (normalizedPath === '/settings/privacy') {
     return <PrivacySettingsPage onNavigate={navigate} />;
   }
-  if (currentPath === '/settings/account') {
+  if (normalizedPath === '/settings/account') {
     return <AccountSettingsPage onNavigate={navigate} />;
   }
+  if (normalizedPath === '/settings/safety') {
+    return <SafetyModerationPage onNavigate={navigate} />;
+  }
+  if (normalizedPath === '/help') {
+    return <HelpSupportPage onNavigate={navigate} />;
+  }
 
-  // Fallback for logged-in users to Dashboard
-  return <DashboardPage onNavigate={navigate} />;
+  // Fallback for unhandled routes: render LandingPage if not logged in, otherwise HomePage
+  return currentUser ? <HomePage onNavigate={navigate} /> : <LandingPage onNavigate={navigate} />;
 }

@@ -62,9 +62,24 @@ export function ReplyCard({ reply, postId, commentId, onNavigate }) {
           >
             <InitialAvatar username={reply.username} initials={reply.avatarInitials} size={28} />
           </button>
-          <span className="bold" style={{ fontSize: '13px', color: 'var(--eclipse)' }}>
+          <button
+            type="button"
+            onClick={() => onNavigate(`/profile/${reply.username.replace('@', '')}`)}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: 700,
+              color: 'var(--eclipse)',
+              textAlign: 'left',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+            onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+          >
             {reply.username}
-          </span>
+          </button>
           <span className="caption-text">• {formatDate(reply.createdAt)}</span>
           {reply.isEdited && <span className="caption-text">(edited)</span>}
         </div>

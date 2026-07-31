@@ -3,12 +3,10 @@ import { AdminLayout } from '../../components/layout/AdminLayout.jsx';
 import { AdminReportDetails } from '../../components/admin/AdminReportDetails.jsx';
 import { AdminActionModal } from '../../components/admin/AdminActionModal.jsx';
 import { useReports } from '../../context/ReportContext.jsx';
-import { mockReportService } from '../../services/mockReportService.js';
 
 export function AdminReportDetailsPage({ reportId, onNavigate }) {
-  const { performAdminAction, refreshReports } = useReports();
-  const reports = mockReportService.getReports();
-  const report = reports.find((r) => r.id === reportId);
+  const { performAdminAction, refreshReports, adminQueue } = useReports();
+  const report = adminQueue.find((r) => String(r.id) === String(reportId));
 
   const [actionModalOpen, setActionModalOpen] = useState(false);
 

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
+import { authService } from '../../services/authService.js';
+import { Modal } from '../../components/common/Modal.jsx';
 import {
   Eye, EyeOff, CheckCircle2,
-  Mic2, ArrowLeft, Check, UserCheck
+  Mic2, ArrowLeft, Check, KeyRound, Mail
 } from 'lucide-react';
 
 /* ─── Palette ──────────────────────────────────────────── */
@@ -46,140 +48,16 @@ function Label({ children, required }) {
   );
 }
 
-/* ─── Verify row: input + button or verified badge ─────── */
-function VerifyRow({ label, type = 'text', value, onChange, placeholder, verified, onVerify }) {
-  const [focused, setFocused] = useState(false);
-  const [otp, setOtp] = useState('');
-  const [showOtp, setShowOtp] = useState(false);
-  const [otpErr, setOtpErr] = useState('');
-  const [otpFocused, setOtpFocused] = useState(false);
-
-  const triggerVerify = () => {
-    if (!value.trim()) return;
-    setShowOtp(true);
-    setOtp('');
-    setOtpErr('');
-  };
-
-  const confirmOtp = () => {
-    if (otp.length === 6) {
-      setShowOtp(false);
-      onVerify();
-    } else {
-      setOtpErr('Enter all 6 digits');
-    }
-  };
-
-  if (verified) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <Label>{label}</Label>
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '8px 12px', borderRadius: 8,
-          border: `1.5px solid ${C.success}`, background: 'rgba(46,125,82,0.06)',
-        }}>
-          <span style={{ fontSize: 13, color: C.success, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
-            <CheckCircle2 size={13} /> {value}
-          </span>
-          <button type="button" onClick={() => onChange('')}
-            style={{ fontSize: 11, color: C.hurricane, textDecoration: 'underline', background: 'none', cursor: 'pointer' }}>
-            Change
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <Label required>{label}</Label>
-      <div style={{ display: 'flex', gap: 7 }}>
-        <input
-          type={type}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          required
-          style={{ ...inp(focused), flex: 1, minWidth: 0 }}
-        />
-        <button
-          type="button"
-          onClick={triggerVerify}
-          style={{
-            flexShrink: 0, padding: '9px 14px', borderRadius: 8,
-            background: C.eclipse, color: '#fff',
-            fontSize: 12, fontWeight: 700, cursor: 'pointer',
-            whiteSpace: 'nowrap', transition: 'background 0.15s',
-          }}
-          onMouseEnter={e => e.currentTarget.style.background = '#1a100a'}
-          onMouseLeave={e => e.currentTarget.style.background = C.eclipse}
-        >
-          Verify
-        </button>
-      </div>
-
-      {/* Inline OTP */}
-      {showOtp && (
-        <div style={{
-          display: 'flex', flexDirection: 'column', gap: 6,
-          padding: '10px 12px', borderRadius: 8,
-          background: 'rgba(45,29,21,0.04)',
-          border: `1px dashed ${C.zorba}`,
-        }}>
-          <span style={{ fontSize: 11, color: C.hurricane }}>
-            Enter 6-digit OTP sent to <strong style={{ color: C.eclipse }}>{value}</strong>
-          </span>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              value={otp}
-              onChange={e => { setOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setOtpErr(''); }}
-              onFocus={() => setOtpFocused(true)}
-              onBlur={() => setOtpFocused(false)}
-              placeholder="••••••"
-              style={{
-                flex: 1, ...inp(otpFocused, !!otpErr),
-                letterSpacing: '0.25em', fontWeight: 700, textAlign: 'center',
-              }}
-              autoFocus
-            />
-            <button
-              type="button"
-              onClick={confirmOtp}
-              style={{
-                padding: '9px 14px', borderRadius: 8,
-                background: C.plum, color: '#fff',
-                fontSize: 12, fontWeight: 700, cursor: 'pointer',
-              }}
-            >
-              Confirm
-            </button>
-          </div>
-          {otpErr && <span style={{ fontSize: 11, color: C.error }}>{otpErr}</span>}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ═══════════════════════════════════════════════════════════
    REGISTER PAGE
 ═══════════════════════════════════════════════════════════ */
 export function RegisterPage({ onNavigate }) {
-  const { register } = useAuth();
+  const { register, login } = useAuth();
   const { addToast } = useToast();
 
   const [fullName, setFullName] = useState('');
   const [mobile, setMobile] = useState('');
-  const [mobileVerified, setMobileVerified] = useState(false);
   const [email, setEmail] = useState('');
-  const [emailVerified, setEmailVerified] = useState(false);
-
   const [password, setPassword] = useState('');
   const [pwFocused, setPwFocused] = useState(false);
   const [showPw, setShowPw] = useState(false);
@@ -191,21 +69,29 @@ export function RegisterPage({ onNavigate }) {
 
   const [fieldErrors, setFieldErrors] = useState({});
 
+  // Email Verification Modal State
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpErr, setOtpErr] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
+
   const canSubmit = fullName.trim() && mobile && email && password
     && confirm18 && acceptTerms && acceptGuidelines && !submitting;
 
+  // Step 1: Submit Registration Form (POST /api/auth/register)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFieldErrors({});
 
-    // Validate mobile number: must start with 6-9 and be 10 digits
+    // Validate mobile number: 10 digits
     if (!/^[6-9]\d{9}$/.test(mobile.trim())) {
       setFieldErrors(p => ({ ...p, mobile: 'Mobile number must be 10 digits starting with 6-9' }));
       addToast('Invalid mobile number format (must start with 6-9)', 'error');
       return;
     }
 
-    // Validate password: must be 8-30 chars
+    // Validate password: 8-30 chars
     if (password.length < 8 || password.length > 30) {
       setFieldErrors(p => ({ ...p, password: 'Password must be between 8 and 30 characters' }));
       addToast('Password must be between 8 and 30 characters', 'error');
@@ -219,9 +105,20 @@ export function RegisterPage({ onNavigate }) {
 
     setSubmitting(true);
     try {
-      await register({ fullName: fullName.trim(), mobileNumber: mobile.trim(), email: email.trim(), password });
-      addToast('Registration successful! Please log in.', 'success');
-      onNavigate('/login');
+      // 1. Call POST /api/auth/register
+      await register({
+        fullName: fullName.trim(),
+        mobileNumber: mobile.trim(),
+        email: email.trim(),
+        password,
+      });
+
+      addToast('Account created! Opening email OTP verification...', 'info');
+      
+      // 2. Open OTP verification modal step
+      setIsVerifyModalOpen(true);
+      setOtp('');
+      setOtpErr('');
     } catch (err) {
       const errMsg = err?.message || (err?.errors ? Object.values(err.errors).join(', ') : 'Registration failed.');
       addToast(errMsg, 'error');
@@ -230,6 +127,54 @@ export function RegisterPage({ onNavigate }) {
       }
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Step 2: Confirm Email OTP (POST /api/auth/verify-email)
+  const handleConfirmOtp = async (e) => {
+    e.preventDefault();
+    if (otp.length !== 6) {
+      setOtpErr('Please enter the 6-digit OTP code.');
+      return;
+    }
+
+    setVerifying(true);
+    setOtpErr('');
+    try {
+      // 1. Call POST /api/auth/verify-email { email, otp }
+      await authService.verifyEmail(email.trim(), otp);
+      addToast('Email verified successfully! Logging you in...', 'success');
+
+      // 2. Complete verification by calling login
+      try {
+        await login(email.trim(), password);
+        onNavigate('/profile-setup');
+      } catch (loginErr) {
+        addToast('Verification complete. Please log in.', 'success');
+        onNavigate('/login');
+      }
+    } catch (err) {
+      console.error(err);
+      const msg = err?.message || 'Invalid or expired OTP. Please check and try again.';
+      setOtpErr(msg);
+      addToast(msg, 'error');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  // Resend Email OTP (POST /api/auth/resend-verification)
+  const handleResendOtp = async () => {
+    setResending(true);
+    setOtpErr('');
+    try {
+      await authService.resendVerification(email.trim());
+      addToast(`New verification OTP sent to ${email.trim()}`, 'success');
+    } catch (err) {
+      console.error(err);
+      addToast(err?.message || 'Failed to resend verification OTP.', 'error');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -354,30 +299,35 @@ export function RegisterPage({ onNavigate }) {
               onChange={e => setFullName(e.target.value)}
               placeholder="Your real name (kept private)"
               required
-              style={inp(false)}
+              style={inp(false, !!fieldErrors.fullName)}
             />
           </div>
 
           {/* Mobile & Email — 2 columns */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <VerifyRow
-              label="Mobile Number"
-              type="tel"
-              value={mobile}
-              onChange={v => { setMobile(v); setMobileVerified(false); }}
-              placeholder="+91 9876543210"
-              verified={mobileVerified}
-              onVerify={() => setMobileVerified(true)}
-            />
-            <VerifyRow
-              label="Email Address"
-              type="email"
-              value={email}
-              onChange={v => { setEmail(v); setEmailVerified(false); }}
-              placeholder="you@email.com"
-              verified={emailVerified}
-              onVerify={() => setEmailVerified(true)}
-            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <Label required>Mobile Number</Label>
+              <input
+                type="tel"
+                value={mobile}
+                onChange={e => setMobile(e.target.value)}
+                placeholder="+91 9876543210"
+                required
+                style={inp(false, !!fieldErrors.mobile)}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <Label required>Email Address</Label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="you@email.com"
+                required
+                style={inp(false, !!fieldErrors.email)}
+              />
+            </div>
           </div>
 
           {/* Password */}
@@ -392,7 +342,7 @@ export function RegisterPage({ onNavigate }) {
                 onBlur={() => setPwFocused(false)}
                 placeholder="Create a strong password"
                 required
-                style={{ ...inp(pwFocused), paddingRight: 38 }}
+                style={{ ...inp(pwFocused, !!fieldErrors.password), paddingRight: 38 }}
               />
               <button
                 type="button"
@@ -461,6 +411,81 @@ export function RegisterPage({ onNavigate }) {
 
         </form>
       </div>
+
+      {/* ── EMAIL OTP VERIFICATION MODAL ── */}
+      <Modal
+        isOpen={isVerifyModalOpen}
+        onClose={() => setIsVerifyModalOpen(false)}
+        title="Verify Your Email Address"
+      >
+        <form onSubmit={handleConfirmOtp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, backgroundColor: 'rgba(111,64,95,0.06)', border: '1px solid rgba(111,64,95,0.15)' }}>
+            <Mail size={20} color={C.plum} />
+            <div style={{ fontSize: 12.5, color: C.eclipse }}>
+              An OTP has been sent to <strong style={{ color: C.plum }}>{email}</strong>.
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <Label required>Enter 6-Digit Verification Code</Label>
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={otp}
+              onChange={e => { setOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setOtpErr(''); }}
+              placeholder="••••••"
+              style={{
+                ...inp(true, !!otpErr),
+                letterSpacing: '0.3em',
+                fontSize: 18,
+                fontWeight: 700,
+                textAlign: 'center',
+                padding: '12px',
+              }}
+              autoFocus
+              required
+            />
+            {otpErr && <span style={{ fontSize: 11, color: C.error, marginTop: 2 }}>{otpErr}</span>}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <button
+              type="button"
+              onClick={handleResendOtp}
+              disabled={resending}
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: C.plum,
+                background: 'none',
+                border: 'none',
+                cursor: resending ? 'default' : 'pointer',
+                textDecoration: 'underline',
+              }}
+            >
+              {resending ? 'Sending...' : 'Resend OTP'}
+            </button>
+
+            <button
+              type="submit"
+              disabled={verifying || otp.length !== 6}
+              style={{
+                padding: '10px 20px',
+                borderRadius: 8,
+                backgroundColor: (verifying || otp.length !== 6) ? C.zorba : C.plum,
+                color: '#FFFFFF',
+                fontSize: 13,
+                fontWeight: 700,
+                border: 'none',
+                cursor: (verifying || otp.length !== 6) ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {verifying ? 'Verifying...' : 'Verify & Continue'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

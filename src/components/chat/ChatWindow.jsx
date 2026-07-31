@@ -4,34 +4,48 @@ import { InitialAvatar } from '../profile/InitialAvatar.jsx';
 import { formatDate } from '../../utils/formatDate.js';
 import { ModerationIndicator } from '../common/ModerationIndicator.jsx';
 import { Button } from '../common/Button.jsx';
-import { Send, Lock, MessageSquare, Paperclip, Smile, CheckCheck, MoreVertical, Search } from 'lucide-react';
+import { Send, Lock, MessageSquare, Paperclip, Smile, Check, CheckCheck, MoreVertical, Search, Mic, MicOff, Loader2, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { moderationCheck } from '../../utils/moderationCheck.js';
-import { mockChatService } from '../../services/mockChatService.js';
+import { apiChatService } from '../../services/apiChatService.js';
+import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
 
-export function ChatWindow({ conversation, currentUserUsername, onSendMessage, onNavigate }) {
+export function ChatWindow({ conversation, currentUserUsername, onSendMessage, onNavigate, onAcceptRequest, onDeclineRequest }) {
   const [inputText, setInputText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
   const messagesEndRef = useRef(null);
 
-  const otherUsername = conversation?.participants.find(
-    p => p.toLowerCase() !== currentUserUsername?.toLowerCase()
-  ) || 'User';
-
-  // TanStack Query for Realtime Messages (Polling every 2s)
-  const { data: messages = [] } = useQuery({
-    queryKey: ['messages', conversation?.id],
-    queryFn: () => (conversation ? mockChatService.getMessagesForConversation(conversation.id) : []),
-    enabled: !!conversation,
-    refetchInterval: 2000,
+  // Voice to text recorder for direct messaging
+  const { isRecording, isTranscribing, toggleRecording } = useVoiceRecorder((transcribedText) => {
+    setInputText((prev) => (prev ? `${prev} ${transcribedText}` : transcribedText));
   });
 
-  // TanStack Query for Realtime User Status ("online" / "Active 3m ago")
+  const otherUsername = conversation?.otherParticipantUsername
+    || conversation?.participant2Username
+    || (Array.isArray(conversation?.participants) ? conversation.participants.find(
+        p => p.toLowerCase() !== currentUserUsername?.toLowerCase()
+      ) : null)
+    || 'User';
+
+  const isPendingRequest = conversation?.requestStatus === 'PENDING';
+  const cleanSelf = currentUserUsername ? (currentUserUsername.startsWith('@') ? currentUserUsername.toLowerCase() : `@${currentUserUsername.toLowerCase()}`) : '';
+  const cleanSender = conversation?.requestSender ? (conversation.requestSender.startsWith('@') ? conversation.requestSender.toLowerCase() : `@${conversation.requestSender.toLowerCase()}`) : '';
+  const isRecipientOfRequest = isPendingRequest && cleanSender !== cleanSelf;
+
+  // TanStack Query for Realtime Messages (Polling every 5s)
+  const { data: messages = [] } = useQuery({
+    queryKey: ['messages', conversation?.id],
+    queryFn: () => (conversation ? apiChatService.getMessages(conversation.id) : []),
+    enabled: !!conversation,
+    refetchInterval: 5000,
+  });
+
+  // TanStack Query for Realtime User Status ("Online" / "Last seen today at 12:30 PM")
   const { data: userStatus } = useQuery({
     queryKey: ['userStatus', otherUsername],
-    queryFn: () => mockChatService.getUserRealtimeStatus(otherUsername),
+    queryFn: () => apiChatService.getUserRealtimeStatus(otherUsername),
     enabled: !!conversation && !!otherUsername,
-    refetchInterval: 4000,
+    refetchInterval: 5000,
   });
 
   useEffect(() => {
@@ -57,10 +71,6 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
     }
   };
 
-  const handleEmojiClick = (emoji) => {
-    setInputText((prev) => prev + emoji);
-  };
-
   if (!conversation) {
     return (
       <div className="mka-card flex-col items-center justify-center text-center p-lg" style={{ height: '100%', background: 'var(--pure-white)' }}>
@@ -77,16 +87,14 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
     );
   }
 
-  const QUICK_EMOJIS = ['😊', '🙏', '❤️', '💡', '🤝', '✨', '👍', '🌸'];
-
   return (
     <div className="mka-card flex-col" style={{ height: '100%', padding: 0, overflow: 'hidden', background: 'var(--pure-white)', borderRadius: 'var(--radius-lg)' }}>
-      {/* WhatsApp-Style Chat Header */}
+      {/* Chat Header */}
       <div className="flex-row items-center justify-between" style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-light)', background: 'var(--soft-white)' }}>
         <button
           onClick={() => onNavigate && onNavigate(`/profile/${otherUsername.replace('@', '')}`)}
           className="flex-row items-center gap-md"
-          style={{ cursor: 'pointer', textAlign: 'left' }}
+          style={{ cursor: 'pointer', textAlign: 'left', background: 'none', border: 'none' }}
         >
           <div style={{ position: 'relative' }}>
             <InitialAvatar username={otherUsername} size={42} />
@@ -109,35 +117,38 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
               {otherUsername}
             </span>
             <span className="caption-text" style={{ color: userStatus?.isOnline ? 'var(--success)' : 'var(--hurricane)', fontWeight: userStatus?.isOnline ? 600 : 400 }}>
-              {userStatus?.label || 'Active recently'}
+              {userStatus?.isOnline ? 'Online' : (userStatus?.statusText || userStatus?.label || 'Last seen recently')}
             </span>
           </div>
         </button>
 
         <div className="flex-row items-center gap-sm">
-          <button style={{ padding: '6px', color: 'var(--hurricane)' }} title="Search messages">
+          <button style={{ padding: '6px', color: 'var(--hurricane)', background: 'none', border: 'none', cursor: 'pointer' }} title="Search messages">
             <Search size={18} />
           </button>
-          <button style={{ padding: '6px', color: 'var(--hurricane)' }} title="More options">
+          <button style={{ padding: '6px', color: 'var(--hurricane)', background: 'none', border: 'none', cursor: 'pointer' }} title="More options">
             <MoreVertical size={18} />
           </button>
         </div>
       </div>
 
-      {/* WhatsApp Wallpaper Messages Area */}
+      {/* Messages Area */}
       <div
         className="flex-col gap-sm"
         style={{
           flex: 1,
           padding: '20px 16px',
           overflowY: 'auto',
-          background: '#EBE6E5', // WhatsApp-style warm neutral wallpaper background
+          background: '#EBE6E5',
           backgroundImage: 'radial-gradient(var(--border-light) 0.75px, transparent 0.75px)',
           backgroundSize: '16px 16px',
         }}
       >
         {messages.map((msg) => {
           const isMine = msg.senderUsername?.toLowerCase() === currentUserUsername?.toLowerCase();
+          const isRead = msg.status === 'READ' || msg.isRead === true;
+          const isDelivered = msg.status === 'DELIVERED';
+
           return (
             <div
               key={msg.id}
@@ -148,26 +159,40 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
               }}
             >
               {!isMine && <InitialAvatar username={msg.senderUsername} size={28} />}
-
               <div
-                className="flex-col gap-xs"
                 style={{
                   padding: '10px 14px',
-                  borderRadius: isMine ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
+                  borderRadius: isMine ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
                   background: isMine ? 'var(--deep-plum)' : 'var(--pure-white)',
                   color: isMine ? 'var(--pure-white)' : 'var(--eclipse)',
-                  boxShadow: 'var(--shadow-subtle)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                  fontSize: '14px',
+                  lineHeight: 1.45,
                 }}
               >
-                <p className="body-text" style={{ fontSize: '14px', color: 'inherit', whiteSpace: 'pre-line', lineHeight: '1.45' }}>
-                  {msg.text}
-                </p>
-
-                <div className="flex-row items-center gap-xs" style={{ alignSelf: 'flex-end', marginTop: '2px' }}>
-                  <span className="caption-text" style={{ fontSize: '10px', color: isMine ? 'rgba(255,255,255,0.75)' : 'var(--hurricane)' }}>
-                    {formatDate(msg.createdAt)}
-                  </span>
-                  {isMine && <CheckCheck size={13} style={{ color: 'rgba(255,255,255,0.85)' }} />}
+                {msg.text}
+                <div
+                  style={{
+                    fontSize: '10px',
+                    color: isMine ? 'rgba(255,255,255,0.75)' : 'var(--hurricane)',
+                    textAlign: 'right',
+                    marginTop: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    gap: '4px',
+                  }}
+                >
+                  {formatDate(msg.createdAt || msg.timestamp)}
+                  {isMine && (
+                    isRead ? (
+                      <CheckCheck size={14} color="#34B7F1" title="Read (Double Blue Tick)" />
+                    ) : isDelivered ? (
+                      <CheckCheck size={14} color="rgba(255,255,255,0.85)" title="Delivered (Double Grey Tick)" />
+                    ) : (
+                      <Check size={14} color="rgba(255,255,255,0.85)" title="Sent (Single Grey Tick)" />
+                    )
+                  )}
                 </div>
               </div>
             </div>
@@ -176,123 +201,144 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Quick Emojis bar */}
-      {showEmojis && (
-        <div className="flex-row items-center gap-xs flex-wrap" style={{ padding: '8px 16px', background: 'var(--soft-white)', borderTop: '1px solid var(--border-light)' }}>
-          {QUICK_EMOJIS.map((emoji) => (
-            <button key={emoji} type="button" onClick={() => handleEmojiClick(emoji)} style={{ fontSize: '20px', padding: '2px 4px' }}>
-              {emoji}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Instagram Accept/Decline Banner if Pending */}
-      {conversation.requestStatus === 'PENDING' && conversation.requestSender?.toLowerCase() !== currentUserUsername?.toLowerCase() ? (
+      {/* Chat Request Action Banner if Request Pending */}
+      {isPendingRequest ? (
         <div
           style={{
-            padding: '16px 20px',
-            background: 'var(--soft-white)',
+            padding: '14px 20px',
             borderTop: '1px solid var(--border-light)',
+            background: 'var(--soft-white)',
             display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
             alignItems: 'center',
-            textAlign: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
           }}
         >
-          <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--deep-plum)' }}>
-            📩 {otherUsername} wants to send you a message.
-          </span>
-          <span style={{ fontSize: '12px', color: 'var(--hurricane)' }}>
-            Do you want to accept this request and start talking anonymously?
-          </span>
-          <div style={{ display: 'flex', gap: '10px', width: '100%', maxWidth: '320px', marginTop: '4px' }}>
-            <button
-              type="button"
-              onClick={() => {
-                const convs = mockChatService.getConversations();
-                const idx = convs.findIndex(c => c.id === conversation.id);
-                if (idx !== -1) {
-                  convs[idx].requestStatus = 'ACCEPTED';
-                  localStorage.setItem('mka_chat_conversations', JSON.stringify(convs));
-                  window.location.reload();
-                }
-              }}
-              style={{
-                flex: 1,
-                padding: '9px 14px',
-                borderRadius: 'var(--radius-pill)',
-                background: 'var(--deep-plum)',
-                color: '#ffffff',
-                border: 'none',
-                fontSize: '13px',
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              Accept Request
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const convs = mockChatService.getConversations();
-                const filtered = convs.filter(c => c.id !== conversation.id);
-                localStorage.setItem('mka_chat_conversations', JSON.stringify(filtered));
-                window.location.reload();
-              }}
-              style={{
-                padding: '9px 16px',
-                borderRadius: 'var(--radius-pill)',
-                background: '#ffffff',
-                color: 'var(--hurricane)',
-                border: '1px solid var(--border-light)',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Decline
-            </button>
-          </div>
+          {isRecipientOfRequest ? (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--eclipse)' }}>
+                  {otherUsername} sent you a chat request
+                </span>
+                <span style={{ fontSize: '12px', color: 'var(--hurricane)' }}>
+                  Accept to start chatting and continuous messaging.
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => onAcceptRequest && onAcceptRequest(conversation.id)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '12px',
+                    background: 'var(--deep-plum)',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <CheckCircle2 size={16} /> Accept
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDeclineRequest && onDeclineRequest(conversation.id)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '12px',
+                    background: 'var(--soft-white)',
+                    color: 'var(--hurricane)',
+                    border: '1px solid var(--border-light)',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <XCircle size={16} /> Decline
+                </button>
+              </div>
+            </>
+          ) : (
+            <div style={{ width: '100%', textAlign: 'center', color: 'var(--deep-plum)', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <Clock size={16} /> Chat Request Sent ⏳ Waiting for {otherUsername} to accept.
+            </div>
+          )}
         </div>
       ) : (
-        /* WhatsApp Input Composer Bar */
+        /* Standard Composer Bar */
         <form onSubmit={handleSend} className="flex-col gap-xs" style={{ padding: '12px 16px', borderTop: '1px solid var(--border-light)', background: 'var(--pure-white)' }}>
           <ModerationIndicator text={inputText} />
 
           <div className="flex-row items-center gap-sm">
-            <button type="button" onClick={() => setShowEmojis(!showEmojis)} style={{ color: 'var(--hurricane)', padding: '6px' }}>
+            <button type="button" onClick={() => setShowEmojis(!showEmojis)} style={{ color: 'var(--hurricane)', padding: '6px', background: 'none', border: 'none', cursor: 'pointer' }}>
               <Smile size={20} />
-            </button>
-
-            <button type="button" style={{ color: 'var(--hurricane)', padding: '6px' }}>
-              <Paperclip size={18} />
             </button>
 
             <input
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder={`Type a message...`}
+              placeholder={
+                isRecording
+                  ? 'Recording message...'
+                  : isTranscribing
+                  ? 'Transcribing voice message...'
+                  : 'Type a message...'
+              }
               disabled={submitting}
               style={{
                 flex: 1,
                 padding: '10px 16px',
                 borderRadius: 'var(--radius-pill)',
-                border: isBlocked ? '1px solid var(--error)' : '1px solid var(--border-light)',
-                background: 'var(--soft-white)',
+                border: isRecording ? '1.5px solid #B33A3A' : isBlocked ? '1px solid var(--error)' : '1px solid var(--border-light)',
+                background: isRecording ? 'rgba(179,58,58,0.05)' : 'var(--soft-white)',
                 fontSize: '14px',
                 outline: 'none',
               }}
             />
 
+            {/* VOICE TO TEXT MICROPHONE BUTTON */}
+            <button
+              type="button"
+              onClick={toggleRecording}
+              disabled={isTranscribing}
+              title={isRecording ? 'Stop recording' : 'Speak to convert voice to text'}
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                backgroundColor: isRecording ? '#B33A3A' : 'rgba(111,64,95,0.10)',
+                color: isRecording ? '#FFFFFF' : 'var(--deep-plum)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {isTranscribing ? (
+                <Loader2 size={16} className="spin-animation" />
+              ) : isRecording ? (
+                <MicOff size={16} />
+              ) : (
+                <Mic size={16} />
+              )}
+            </button>
+
             <button
               type="submit"
               disabled={!inputText.trim() || isBlocked || submitting}
               style={{
-                width: '40px',
-                height: '40px',
+                width: '36px',
+                height: '36px',
                 borderRadius: '50%',
                 backgroundColor: !inputText.trim() || isBlocked ? 'var(--zorba)' : 'var(--deep-plum)',
                 color: 'var(--pure-white)',
@@ -304,7 +350,7 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
                 transition: 'background var(--transition-fast)',
               }}
             >
-              <Send size={18} />
+              <Send size={16} />
             </button>
           </div>
         </form>

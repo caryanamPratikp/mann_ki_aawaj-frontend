@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/authService.js';
+import { apiProfileService } from '../services/apiProfileService.js';
+import { apiUserService } from '../services/apiUserService.js';
 import { useToast } from './ToastContext.jsx';
 
 const AuthContext = createContext(null);
@@ -13,43 +15,97 @@ export function AuthProvider({ children }) {
   const { addToast } = useToast();
 
   useEffect(() => {
-    try {
-      const user = authService.getCurrentUser();
-      setCurrentUser(user);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
+    async function fetchUserAndProfile() {
+      try {
+        const user = authService.getCurrentUser();
+        if (user) {
+          try {
+            const profileRes = await apiProfileService.getMyProfile();
+            if (profileRes && profileRes.success && profileRes.data?.username) {
+              const dbUsername = profileRes.data.username.startsWith('@')
+                ? profileRes.data.username
+                : `@${profileRes.data.username}`;
+              const updatedUser = { ...user, username: dbUsername, hasProfile: true };
+              localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+              if (user.id) {
+                localStorage.setItem(`user_profile_${user.id}`, JSON.stringify(profileRes.data));
+              }
+              localStorage.setItem('user_profile', JSON.stringify(profileRes.data));
+              setCurrentUser(updatedUser);
+              return;
+            }
+          } catch (e) {
+            // DB profile fetch error fallback
+          }
+
+          const defaultHandle = user.fullName
+            ? `@${user.fullName.toLowerCase().replace(/\s+/g, '')}`
+            : (user.email ? `@${user.email.split('@')[0]}` : '@user');
+          const usernameFormatted = user.username
+            ? (user.username.startsWith('@') ? user.username : `@${user.username}`)
+            : defaultHandle;
+          setCurrentUser({ ...user, username: usernameFormatted });
+        } else {
+          setCurrentUser(null);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
     }
+    fetchUserAndProfile();
   }, []);
 
-  const login = async (username, password) => {
+  const login = async (email, password) => {
     try {
-      const user = await authService.login(username, password);
-      setCurrentUser(user);
-      addToast(`Welcome back, ${user.fullName || user.username}!`, 'success');
-      return user;
+      const result = await authService.login(email, password);
+      const user = result.user || result;
+      const defaultHandle = user.fullName
+        ? `@${user.fullName.toLowerCase().replace(/\s+/g, '')}`
+        : (user.email ? `@${user.email.split('@')[0]}` : '@user');
+      const usernameFormatted = user.username
+        ? (user.username.startsWith('@') ? user.username : `@${user.username}`)
+        : defaultHandle;
+      const updatedUser = { ...user, username: usernameFormatted };
+      setCurrentUser(updatedUser);
+      addToast(`Welcome back, ${updatedUser.username}!`, 'success');
+      return { ...result, user: updatedUser };
     } catch (err) {
-      addToast(err.message, 'error');
+      addToast(err.message || 'Login failed', 'error');
       throw err;
     }
   };
 
   const register = async (userData) => {
     try {
-      const user = await authService.register(userData);
-      setCurrentUser(user);
-      addToast(`Welcome to Man Ki Aavaj, ${user.fullName || user.username}!`, 'success');
-      return user;
+      const result = await authService.register(userData);
+      addToast('Registration successful. Verify your email to continue.', 'success');
+      return result;
     } catch (err) {
-      addToast(err.message, 'error');
+      addToast(err.message || 'Registration failed', 'error');
       throw err;
     }
   };
 
-  const updateProfile = (updates) => {
+  const updateProfile = async (updates) => {
     if (!currentUser) return;
-    const updated = authService.updateProfile ? authService.updateProfile(currentUser.id, updates) : { ...currentUser, ...updates };
+    try {
+      if (apiProfileService && apiProfileService.updateProfile) {
+        await apiProfileService.updateProfile(updates);
+      }
+    } catch (e) {
+      console.warn('API update profile warning:', e);
+    }
+    const cleanUsername = updates.username
+      ? (updates.username.startsWith('@') ? updates.username : `@${updates.username}`)
+      : currentUser.username;
+    const updated = { ...currentUser, ...updates, username: cleanUsername, hasProfile: true };
+    localStorage.setItem('auth_user', JSON.stringify(updated));
+    if (currentUser.id) {
+      localStorage.setItem(`user_profile_${currentUser.id}`, JSON.stringify(updated));
+    }
+    localStorage.setItem('user_profile', JSON.stringify(updated));
     setCurrentUser(updated);
     addToast('Profile updated successfully.', 'success');
     return updated;
@@ -61,14 +117,15 @@ export function AuthProvider({ children }) {
     addToast('You have logged out.', 'info');
   };
 
-  const adminLogin = (username, password) => {
-    if (username && password) {
-      setIsAdminLoggedIn(true);
-      localStorage.setItem('mka_admin_logged_in', 'true');
-      addToast('Admin logged in successfully.', 'success');
-      return true;
+  const adminLogin = async (email, password) => {
+    const result = await login(email, password);
+    if (result.user.role !== 'ADMIN') {
+      logout();
+      throw new Error('This account does not have administrator access.');
     }
-    throw new Error('Please enter valid admin credentials.');
+    setIsAdminLoggedIn(true);
+    localStorage.setItem('mka_admin_logged_in', 'true');
+    return result;
   };
 
   const adminLogout = () => {

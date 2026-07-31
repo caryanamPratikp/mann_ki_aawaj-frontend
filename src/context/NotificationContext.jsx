@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { mockNotificationService } from '../services/mockNotificationService.js';
+import { apiNotificationService } from '../services/apiNotificationService.js';
+import { mapNotification } from '../services/apiMappers.js';
 import { useAuth } from './AuthContext.jsx';
 
 const NotificationContext = createContext(null);
@@ -8,31 +9,37 @@ export function NotificationProvider({ children }) {
   const [notifications, setNotifications] = useState([]);
   const { currentUser } = useAuth();
 
-  const refreshNotifications = useCallback(() => {
-    if (!currentUser) return;
-    const list = mockNotificationService.getUserNotifications(currentUser.id);
-    setNotifications(list);
+  const refreshNotifications = useCallback(async () => {
+    if (!currentUser) { setNotifications([]); return; }
+    try {
+      const response = await apiNotificationService.getNotifications();
+      setNotifications((response.data?.content || []).map(mapNotification));
+    } catch (err) {
+      setNotifications([]);
+    }
   }, [currentUser]);
 
   useEffect(() => {
     refreshNotifications();
+    const timer = setInterval(() => {
+      refreshNotifications();
+    }, 5000);
+    return () => clearInterval(timer);
   }, [refreshNotifications]);
 
-  const markAsRead = (id) => {
-    mockNotificationService.markAsRead(id);
-    refreshNotifications();
+  const markAsRead = async (id) => {
+    await apiNotificationService.markAsRead(id);
+    await refreshNotifications();
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
     if (!currentUser) return;
-    mockNotificationService.markAllAsRead(currentUser.id);
-    refreshNotifications();
+    await apiNotificationService.markAllAsRead();
+    await refreshNotifications();
   };
 
-  const deleteNotification = (id) => {
-    mockNotificationService.deleteNotification(id);
-    refreshNotifications();
-  };
+  // No delete-notification endpoint exists in the current backend.
+  const deleteNotification = () => {};
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 

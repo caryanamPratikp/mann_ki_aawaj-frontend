@@ -6,7 +6,7 @@ import { ConversationList } from '../../components/chat/ConversationList.jsx';
 import { ChatWindow } from '../../components/chat/ChatWindow.jsx';
 
 export function ChatPage({ targetUsername, onNavigate }) {
-  const { conversations, activeConversation, activeMessages, openChatWithUser, selectConversation, sendMessage } = useChat();
+  const { conversations, activeConversation, activeMessages, openChatWithUser, selectConversation, sendMessage, acceptChatRequest, declineChatRequest } = useChat();
   const { currentUser } = useAuth();
 
   useEffect(() => {
@@ -53,6 +53,8 @@ export function ChatPage({ targetUsername, onNavigate }) {
           messages={activeMessages}
           currentUserUsername={currentUser?.username}
           onSendMessage={sendMessage}
+          onAcceptRequest={acceptChatRequest}
+          onDeclineRequest={declineChatRequest}
           onNavigate={onNavigate}
         />
       </div>

@@ -51,7 +51,7 @@ export function InstagramChatPopup({ targetUsername, onClose, onNavigate }) {
     if (!inputText.trim() || submitting) return;
     setSubmitting(true);
     try {
-      const msg = mockChatService.sendMessage(conversation.id, inputText.trim(), currentUser);
+      const msg = mockChatService.sendMessage(conversation.id, inputText.trim(), cleanSelf, cleanTarget);
       
       // Update conversation with request status
       const convs = mockChatService.getConversations();
@@ -97,7 +97,7 @@ export function InstagramChatPopup({ targetUsername, onClose, onNavigate }) {
     if (!inputText.trim() || submitting) return;
     setSubmitting(true);
     try {
-      const msg = mockChatService.sendMessage(conversation.id, inputText.trim(), currentUser);
+      const msg = mockChatService.sendMessage(conversation.id, inputText.trim(), cleanSelf, cleanTarget);
       setMessages(prev => [...prev, msg]);
       setInputText('');
     } catch (err) {

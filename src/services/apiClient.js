@@ -4,6 +4,7 @@ const API_BASE_URL = 'http://localhost:8080';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 8000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -21,14 +22,16 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Handle 401 Unauthorized by clearing token & redirecting
+// Response Interceptor: Handle 401 Unauthorized by clearing token & redirecting protected routes only
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_user');
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+      const publicPaths = ['/', '', '/index.html', '/about', '/privacy-policy', '/community-guidelines', '/contact', '/login', '/register', '/forgot-password'];
+      const currentPath = window.location.pathname.split('?')[0].replace(/\/+$/, '') || '/';
+      if (!publicPaths.includes(currentPath)) {
         window.location.href = '/login';
       }
     }

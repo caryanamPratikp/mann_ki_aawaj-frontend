@@ -12,7 +12,8 @@ export const mockNotificationService = {
   },
 
   getUserNotifications(userId) {
-    return this.getNotifications().filter(n => n.userId === userId || !n.userId);
+    if (!userId) return [];
+    return this.getNotifications().filter(n => n.userId === userId);
   },
 
   addNotification(notif) {
@@ -45,8 +46,9 @@ export const mockNotificationService = {
   },
 
   markAllAsRead(userId) {
+    if (!userId) return false;
     const notifications = this.getNotifications().map(n => {
-      if (n.userId === userId || !n.userId) {
+      if (n.userId === userId) {
         return { ...n, isRead: true };
       }
       return n;

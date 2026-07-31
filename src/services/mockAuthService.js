@@ -13,11 +13,14 @@ export const mockAuthService = {
 
   getCurrentUser() {
     const data = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    if (data) return JSON.parse(data);
-    const users = this.getUsers();
-    const defaultUser = users[0] || MOCK_USERS[0];
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(defaultUser));
-    return defaultUser;
+    if (data) {
+      try {
+        return JSON.parse(data);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   },
 
   setCurrentUser(user) {
@@ -39,15 +42,16 @@ export const mockAuthService = {
 
     // Auto-create mock account if logging in with new credentials in offline mode
     if (!user) {
-      const parts = identifier.split('@')[0] || 'user';
-      const cleanName = parts.charAt(0).toUpperCase() + parts.slice(1);
+      const rawPart = identifier.includes('@') ? identifier.split('@')[0] : identifier;
+      const cleanHandle = rawPart.trim().toLowerCase().replace(/\s+/g, '');
+      const cleanName = rawPart.charAt(0).toUpperCase() + rawPart.slice(1);
       user = {
         id: `user_${Date.now()}`,
-        username: `@${parts.toLowerCase()}`,
+        username: `@${cleanHandle || 'user'}`,
         fullName: cleanName,
-        email: identifier.includes('@') ? identifier : `${parts}@example.com`,
+        email: identifier.includes('@') ? identifier : `${cleanHandle}@example.com`,
         mobileNumber: '9876543210',
-        avatarInitials: cleanName.slice(0, 2).toUpperCase(),
+        avatarInitials: cleanHandle.slice(0, 2).toUpperCase(),
         bio: 'Anonymous author on Man Ki Aavaj',
         status: 'ACTIVE',
         joinedDate: new Date().toISOString(),

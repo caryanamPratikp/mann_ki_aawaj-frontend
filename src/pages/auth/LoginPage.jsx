@@ -3,7 +3,7 @@ import { AuthLayout } from '../../components/layout/AuthLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { loginSchema } from '../../utils/validationSchemas.js';
-import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
+import { LogIn, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 export function LoginPage({ onNavigate }) {
   const { login } = useAuth();
@@ -11,6 +11,7 @@ export function LoginPage({ onNavigate }) {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -32,12 +33,18 @@ export function LoginPage({ onNavigate }) {
     setSubmitting(true);
     try {
       const res = await login(email.trim(), password);
+      // Admins live in the backend Admin table and deliberately have no user profile.
+      // Role must be checked before the profile-onboarding condition.
+      if (res?.user?.role === 'ADMIN') {
+        onNavigate('/admin/dashboard');
+        return;
+      }
       // Check if user has completed profile setup (GET /api/profile/me)
       if (res && res.hasProfile === false) {
         addToast('Please complete your profile setup.', 'info');
-        onNavigate('/setup-profile');
+        onNavigate('/profile-setup');
       } else {
-        onNavigate('/dashboard');
+        onNavigate('/home');
       }
     } catch (err) {
       console.error(err);
@@ -109,14 +116,14 @@ export function LoginPage({ onNavigate }) {
               <Lock size={16} />
             </div>
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: null })); }}
               placeholder="••••••••"
               required
               style={{
                 width: '100%',
-                padding: '11px 12px 11px 38px',
+                padding: '11px 40px 11px 38px',
                 borderRadius: '8px',
                 border: errors.password ? '2px solid var(--error)' : '1.5px solid var(--border-light)',
                 fontSize: '14px',
@@ -125,6 +132,27 @@ export function LoginPage({ onNavigate }) {
                 boxSizing: 'border-box',
               }}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword((p) => !p)}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--hurricane)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+              }}
+              title={showPassword ? 'Hide Password' : 'Show Password'}
+            >
+              {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+            </button>
           </div>
           {errors.password && (
             <span style={{ fontSize: '12px', color: 'var(--error)', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -151,22 +179,30 @@ export function LoginPage({ onNavigate }) {
             justifyContent: 'center',
             gap: '8px',
             border: 'none',
-            marginTop: '4px',
+            marginTop: '6px',
+            transition: 'background 0.18s ease',
           }}
         >
-          <LogIn size={16} />
-          {submitting ? 'Logging in...' : 'Sign In'}
+          <LogIn size={17} />
+          {submitting ? 'Signing In...' : 'Sign In'}
         </button>
 
-        {/* Register Link */}
+        {/* Footer link */}
         <p style={{ textAlign: 'center', fontSize: '13px', color: 'var(--hurricane)', margin: 0 }}>
           Don't have an account?{' '}
           <button
             type="button"
             onClick={() => onNavigate('/register')}
-            style={{ color: 'var(--deep-plum)', fontWeight: 700, textDecoration: 'underline', background: 'none', cursor: 'pointer' }}
+            style={{
+              color: 'var(--deep-plum)',
+              fontWeight: 700,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              textDecoration: 'underline',
+            }}
           >
-            Register here
+            Create Anonymous Account
           </button>
         </p>
 

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { mockChatService } from '../services/mockChatService.js';
+import { apiChatService } from '../services/apiChatService.js';
 import { useAuth } from './AuthContext.jsx';
 import { useToast } from './ToastContext.jsx';
 
@@ -12,48 +12,92 @@ export function ChatProvider({ children }) {
   const { currentUser } = useAuth();
   const { addToast } = useToast();
 
-  const currentUsername = currentUser?.username || '@quietchapter';
-
-  const refreshConversations = useCallback(() => {
-    const username = currentUser?.username || '@quietchapter';
-    const list = mockChatService.getUserConversations(username);
-    setConversations(list);
+  const refreshConversations = useCallback(async () => {
+    if (!currentUser) {
+      setConversations([]);
+      return;
+    }
+    try {
+      const list = await apiChatService.getConversations();
+      setConversations(Array.isArray(list) ? list : []);
+    } catch (err) {
+      setConversations([]);
+    }
   }, [currentUser]);
 
   useEffect(() => {
     refreshConversations();
+    const interval = setInterval(() => {
+      refreshConversations();
+    }, 5000);
+    return () => clearInterval(interval);
   }, [refreshConversations]);
 
-  const openChatWithUser = (targetUsername) => {
-    const conv = mockChatService.getOrCreateConversation(currentUsername, targetUsername);
-    setActiveConversation(conv);
-    const msgs = mockChatService.getMessagesForConversation(conv.id);
-    setActiveMessages(msgs);
-    refreshConversations();
-    return conv;
-  };
-
-  const selectConversation = (convId) => {
-    const convs = mockChatService.getConversations();
-    const conv = convs.find(c => c.id === convId);
-    if (conv) {
+  const openChatWithUser = async (targetUsername) => {
+    try {
+      const conv = await apiChatService.startConversation(targetUsername);
       setActiveConversation(conv);
-      const msgs = mockChatService.getMessagesForConversation(convId);
-      setActiveMessages(msgs);
+      const msgs = await apiChatService.getMessages(conv.id);
+      setActiveMessages(Array.isArray(msgs) ? msgs : []);
+      await refreshConversations();
+      return conv;
+    } catch (err) {
+      addToast('Failed to open chat.', 'error');
     }
   };
 
-  const sendMessage = (text) => {
+  const selectConversation = async (convId) => {
+    const conv = conversations.find(c => c.id === convId);
+    if (conv) {
+      setActiveConversation(conv);
+      try {
+        const msgs = await apiChatService.getMessages(convId);
+        setActiveMessages(Array.isArray(msgs) ? msgs : []);
+      } catch (e) {
+        setActiveMessages([]);
+      }
+    }
+  };
+
+  const sendMessage = async (text) => {
     if (!activeConversation) return;
     try {
-      const activeUser = currentUser || { username: '@quietchapter', avatarInitials: 'QC' };
-      const msg = mockChatService.sendMessage(activeConversation.id, text, activeUser);
+      const otherUser = activeConversation.otherParticipantUsername
+        || activeConversation.participant2Username
+        || (Array.isArray(activeConversation.participants) ? activeConversation.participants.find(p => p.toLowerCase() !== currentUser?.username?.toLowerCase()) : null);
+
+      const msg = await apiChatService.sendMessage(activeConversation.id, text, otherUser);
       setActiveMessages(prev => [...prev, msg]);
-      refreshConversations();
+      await refreshConversations();
       return msg;
     } catch (err) {
-      addToast(err.message, 'error');
-      throw err;
+      addToast(err?.message || 'Failed to send message.', 'error');
+    }
+  };
+
+  const acceptChatRequest = async (conversationId) => {
+    try {
+      await apiChatService.acceptChatRequest(conversationId);
+      addToast('Chat request accepted!', 'success');
+      await refreshConversations();
+      const updated = conversations.find(c => c.id === conversationId);
+      if (updated) setActiveConversation(updated);
+    } catch (err) {
+      addToast('Failed to accept request.', 'error');
+    }
+  };
+
+  const declineChatRequest = async (conversationId) => {
+    try {
+      await apiChatService.declineChatRequest(conversationId);
+      addToast('Chat request declined.', 'info');
+      await refreshConversations();
+      if (activeConversation?.id === conversationId) {
+        setActiveConversation(null);
+        setActiveMessages([]);
+      }
+    } catch (err) {
+      addToast('Failed to decline request.', 'error');
     }
   };
 
@@ -65,7 +109,9 @@ export function ChatProvider({ children }) {
       refreshConversations,
       openChatWithUser,
       selectConversation,
-      sendMessage
+      sendMessage,
+      acceptChatRequest,
+      declineChatRequest,
     }}>
       {children}
     </ChatContext.Provider>

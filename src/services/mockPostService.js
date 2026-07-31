@@ -4,12 +4,27 @@ import { moderationCheck } from '../utils/moderationCheck.js';
 
 export const mockPostService = {
   getPosts() {
-    const data = localStorage.getItem(STORAGE_KEYS.POSTS);
-    if (!data) {
-      localStorage.setItem(STORAGE_KEYS.POSTS, JSON.stringify(MOCK_POSTS));
-      return MOCK_POSTS;
+    if (!localStorage.getItem('mka_purge_v4')) {
+      localStorage.setItem(STORAGE_KEYS.POSTS, JSON.stringify([]));
+      localStorage.setItem('mka_purge_v4', 'true');
+      return [];
     }
-    return JSON.parse(data);
+    const data = localStorage.getItem(STORAGE_KEYS.POSTS);
+    let posts = data ? JSON.parse(data) : [];
+    let modified = false;
+    posts = posts.map(p => {
+      if (p.username && p.username.includes(' ')) {
+        const cleanHandle = p.username.trim().replace(/\s+/g, '');
+        p.username = cleanHandle.startsWith('@') ? cleanHandle : `@${cleanHandle}`;
+        p.avatarInitials = p.username.replace('@', '').slice(0, 2).toUpperCase();
+        modified = true;
+      }
+      return p;
+    });
+    if (modified) {
+      localStorage.setItem(STORAGE_KEYS.POSTS, JSON.stringify(posts));
+    }
+    return posts;
   },
 
   getPostById(postId) {
@@ -18,7 +33,6 @@ export const mockPostService = {
   },
 
   createPost(postData, currentUser) {
-    // Run moderation check on title & content
     const fullText = `${postData.title || ''} ${postData.content || ''}`;
     const modResult = moderationCheck(fullText);
 
@@ -26,14 +40,31 @@ export const mockPostService = {
       throw new Error(`Post blocked: ${modResult.explanation}`);
     }
 
+    let resolvedUsername = currentUser?.username || postData.username;
+    if (!resolvedUsername && currentUser?.id) {
+      const storedProfile = localStorage.getItem(`user_profile_${currentUser.id}`) || localStorage.getItem('user_profile');
+      if (storedProfile) {
+        try {
+          const p = JSON.parse(storedProfile);
+          if (p.username) resolvedUsername = p.username;
+        } catch (e) {}
+      }
+    }
+    if (!resolvedUsername || resolvedUsername.startsWith('user_')) resolvedUsername = '@anonymous';
+    const formattedUsername = resolvedUsername.startsWith('@') ? resolvedUsername : `@${resolvedUsername}`;
+
+    const userToUse = (currentUser && (currentUser.id || currentUser.username))
+      ? { ...currentUser, username: formattedUsername }
+      : { id: `user_${Date.now()}`, username: formattedUsername, avatarInitials: 'AN' };
+
     const posts = this.getPosts();
     const newPost = {
       id: `post_${Date.now()}`,
-      userId: currentUser.id,
-      username: currentUser.username,
-      avatarInitials: currentUser.avatarInitials,
+      userId: userToUse.id || `user_${Date.now()}`,
+      username: formattedUsername,
+      avatarInitials: userToUse.avatarInitials || formattedUsername.replace('@', '').slice(0, 2).toUpperCase(),
       postType: postData.postType || 'Thought',
-      topic: postData.topic || 'Life',
+      topic: postData.topic || 'General',
       language: postData.language || 'English',
       title: postData.title || '',
       content: postData.content,
@@ -78,20 +109,17 @@ export const mockPostService = {
       const current = post.userReaction;
 
       if (current === reactionType) {
-        // Remove reaction
         reactions[reactionType] = Math.max(0, (reactions[reactionType] || 1) - 1);
         post.userReaction = null;
       } else {
-        // Change or set reaction
-        if (current && reactions[current]) {
-          reactions[current] = Math.max(0, reactions[current] - 1);
+        if (current) {
+          reactions[current] = Math.max(0, (reactions[current] || 1) - 1);
         }
         reactions[reactionType] = (reactions[reactionType] || 0) + 1;
         post.userReaction = reactionType;
       }
 
       post.reactions = reactions;
-      posts[index] = post;
       localStorage.setItem(STORAGE_KEYS.POSTS, JSON.stringify(posts));
       return post;
     }
@@ -99,14 +127,13 @@ export const mockPostService = {
   },
 
   toggleSavePost(postId) {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEYS.SAVED_POSTS) || '[]');
-    const exists = saved.includes(postId);
-    const updated = exists ? saved.filter(id => id !== postId) : [...saved, postId];
-    localStorage.setItem(STORAGE_KEYS.SAVED_POSTS, JSON.stringify(updated));
-    return !exists;
-  },
-
-  getSavedPostIds() {
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.SAVED_POSTS) || '[]');
+    const posts = this.getPosts();
+    const index = posts.findIndex(p => p.id === postId);
+    if (index !== -1) {
+      posts[index].isSaved = !posts[index].isSaved;
+      localStorage.setItem(STORAGE_KEYS.POSTS, JSON.stringify(posts));
+      return posts[index].isSaved;
+    }
+    return false;
   }
 };

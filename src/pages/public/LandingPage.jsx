@@ -1,367 +1,836 @@
 import React, { useState, useEffect } from 'react';
-import { PublicLayout } from '../../components/layout/PublicLayout.jsx';
-import { Button } from '../../components/common/Button.jsx';
 import {
   ShieldCheck,
-  ShieldAlert,
-  Feather,
-  Heart,
-  Sparkles,
-  MessageSquare,
+  Shield,
   Lock,
+  MessageCircle,
+  MessagesSquare,
+  Mic,
+  Bot,
   Users,
-  Globe,
+  Image,
+  Video,
+  Smile,
+  Flag,
+  ArrowUp,
   ArrowRight,
-  Eye,
-  Languages,
-  CheckCircle2,
-  Star,
-  TrendingUp,
-  BookOpen,
-  Lightbulb,
-  Mic2,
-  ChevronDown,
-  ChevronUp,
+  Check,
+  X,
+  UserPlus,
+  BadgeCheck,
+  Globe,
+  Zap,
+  ChevronRight,
+  FileText,
+  EyeOff,
 } from 'lucide-react';
-
-const STATS = [
-  { number: '50,000+', label: 'Anonymous Voices' },
-  { number: '22', label: 'Indian Languages' },
-  { number: '1.2M+', label: 'Thoughts Shared' },
-  { number: '100%', label: 'Identity Protected' },
-];
-
-const FEATURES = [
-  {
-    icon: Lock,
-    title: 'Full Anonymity Guaranteed',
-    desc: 'Your real name, phone, and email are completely hidden. You get a unique anonymous handle and initial avatar — that is all others see.',
-    color: 'var(--deep-plum)',
-  },
-  {
-    icon: Languages,
-    title: '22 Indian Languages',
-    desc: 'Write in your native language — Hindi, Tamil, Telugu, Bengali, Kannada, Malayalam, Gujarati, and more. AI-powered translation for every reader.',
-    color: '#3F7772',
-  },
-  {
-    icon: MessageSquare,
-    title: 'Anonymous 1-on-1 Chat',
-    desc: 'Connect privately with any member. Send end-to-end shielded direct messages without ever revealing your identity.',
-    color: '#8C5E3C',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'AI Moderation Engine',
-    desc: 'Real-time hate speech detection and content moderation keeps conversations respectful and safe for everyone on the platform.',
-    color: '#5E5B8C',
-  },
-  {
-    icon: Feather,
-    title: 'Multiple Post Formats',
-    desc: 'Share Thoughts, Confessions, Experiences, Questions, Positive Notes, and more — with comments, replies, and reactions.',
-    color: '#7B6E5E',
-  },
-  {
-    icon: Globe,
-    title: 'Real-Time Translation',
-    desc: 'Every post and comment auto-translates to your preferred language. Switch language live from the navbar at any time.',
-    color: '#3A6B7A',
-  },
-];
-
-const STEPS = [
-  {
-    step: '01',
-    title: 'Create Your Anonymous Account',
-    desc: 'Sign up with just an email. We generate your anonymous handle and avatar instantly. Your real identity is never visible.',
-  },
-  {
-    step: '02',
-    title: 'Set Your Language Preference',
-    desc: 'Select your preferred Indian language from 22 options during onboarding. The entire interface translates in real-time.',
-  },
-  {
-    step: '03',
-    title: 'Share Your Unspoken Thoughts',
-    desc: 'Write freely — confessions, personal experiences, questions, or positive notes. Our AI moderation ensures safety.',
-  },
-  {
-    step: '04',
-    title: 'Connect & Interact Anonymously',
-    desc: 'React, comment, reply, and even chat 1-on-1 with other members — all while staying completely anonymous.',
-  },
-];
-
-const POST_TYPES = [
-  { label: 'Thought', color: 'var(--deep-plum)', post: 'Nobody claps for the quiet battles you win inside your own head — but those are the ones that rebuild you.' },
-  { label: 'Positive Note', color: '#3F7772', post: 'You don\'t have to solve your entire life today. Focus on taking one gentle step forward.' },
-  { label: 'Question', color: '#8C5E3C', post: 'Does anyone else feel completely drained after trying to meet everyone\'s expectations at work?' },
-  { label: 'Confession', color: '#5E5B8C', post: 'I pretend to be confident every day at work, but inside I still feel like I don\'t belong here.' },
-];
-
-const TESTIMONIALS = [
-  {
-    username: '@quietchapter',
-    lang: 'Hindi',
-    text: 'This platform gave me a safe space to talk about career burnout without the fear of being judged by my colleagues. The anonymity is real.',
-  },
-  {
-    username: '@hiddenpage',
-    lang: 'Telugu',
-    text: 'Being able to write in Telugu and have others understand through translation changed everything. I finally feel heard.',
-  },
-  {
-    username: '@thoughtwindow',
-    lang: 'Bengali',
-    text: 'The 1-on-1 anonymous chat helped me connect with someone who went through the same family pressure. I felt less alone.',
-  },
-  {
-    username: '@plaintruth',
-    lang: 'Marathi',
-    text: 'I have been wanting to confess something for 2 years. Writing it here anonymously was the first time I felt truly free.',
-  },
-];
-
-const FAQS = [
-  {
-    q: 'Is my identity truly protected?',
-    a: 'Yes. We never display your real name, email, or phone number to any other user. You only see anonymous usernames and initial avatars across the entire platform.',
-  },
-  {
-    q: 'Can I write in my regional language?',
-    a: 'Absolutely. Man Ki Aavaj supports all 22 official scheduled Indian languages. You can write in your preferred language, and readers can translate posts to their own language in one click.',
-  },
-  {
-    q: 'What is the age requirement?',
-    a: 'This platform is designed for users aged 18 and above. The content includes personal experiences, confessions, and sensitive topics that require maturity.',
-  },
-  {
-    q: 'How does the moderation work?',
-    a: 'We use a real-time AI hate speech and harassment detection engine that checks all posts and comments before they are published. Flagged content goes to human admin review.',
-  },
-  {
-    q: 'Can someone find out who I am?',
-    a: 'No. Your generated anonymous handle is not linked to your real identity in any way that is visible to other members. Even in 1-on-1 chats, both parties remain anonymous.',
-  },
-];
+import heroBg from '../../assets/hero_bg.png';
 
 export function LandingPage({ onNavigate }) {
-  const [activePostType, setActivePostType] = useState(0);
-  const [openFaq, setOpenFaq] = useState(null);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setActivePostType((prev) => (prev + 1) % POST_TYPES.length);
-    }, 3200);
-    return () => clearInterval(interval);
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 40);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  return (
-    <PublicLayout activeRoute="/" onNavigate={onNavigate}>
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
-      {/* ─────────────────────────────────────────────── */}
-      {/* HERO SECTION */}
-      {/* ─────────────────────────────────────────────── */}
-      <section
+  return (
+    <div
+      style={{
+        fontFamily: '"Inter", sans-serif',
+        backgroundColor: '#F8F4EE',
+        color: '#181818',
+        overflowX: 'hidden',
+        minHeight: '100vh',
+      }}
+    >
+      <style>{`
+        .font-playfair {
+          font-family: "Playfair Display", serif;
+          font-weight: 700;
+          letter-spacing: -0.03em;
+          line-height: 1.05;
+        }
+
+        .font-inter {
+          font-family: "Inter", sans-serif;
+        }
+
+        .btn-accent {
+          background-color: #D89C7A;
+          color: #0B0A16;
+          font-weight: 600;
+          padding: 12px 28px;
+          border-radius: 12px;
+          border: none;
+          cursor: pointer;
+          font-size: 15px;
+          transition: all 0.25s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          font-family: "Inter", sans-serif;
+        }
+        .btn-accent:hover {
+          background-color: #C58967;
+          transform: translateY(-2px);
+        }
+
+        .btn-outline {
+          background: transparent;
+          color: #FFFFFF;
+          border: 1px solid rgba(255, 255, 255, 0.25);
+          font-weight: 500;
+          padding: 12px 26px;
+          border-radius: 12px;
+          cursor: pointer;
+          font-size: 15px;
+          transition: all 0.25s ease;
+          font-family: "Inter", sans-serif;
+        }
+        .btn-outline:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .nav-item {
+          color: rgba(255, 255, 255, 0.85);
+          font-size: 14.5px;
+          font-weight: 500;
+          text-decoration: none;
+          transition: color 0.2s ease;
+          cursor: pointer;
+        }
+        .nav-item:hover {
+          color: #D89C7A;
+        }
+
+        .card-cream {
+          background-color: #FFFDFB;
+          border: 1px solid #E8DDD4;
+          border-radius: 24px;
+          padding: 36px;
+          box-shadow: 0 4px 20px rgba(45, 29, 21, 0.03);
+          transition: all 0.25s ease;
+        }
+        .card-cream:hover {
+          border-color: #D89C7A;
+          transform: translateY(-2px);
+          box-shadow: 0 12px 30px rgba(45, 29, 21, 0.06);
+        }
+
+        .section-container {
+          max-width: 1240px;
+          margin: 0 auto;
+          padding: 0 24px;
+        }
+
+        .section-space {
+          padding: 120px 0;
+        }
+
+        @keyframes floatSlow {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-8px); }
+        }
+
+        .animate-float {
+          animation: floatSlow 6s ease-in-out infinite;
+        }
+      `}</style>
+
+      {/* ── STICKY GLASS NAVBAR OVER HERO ── */}
+      <nav
         style={{
-          background: 'linear-gradient(135deg, #F5F0EE 0%, #EDE8E6 50%, #E1DCDB 100%)',
-          padding: '80px 20px 64px',
-          position: 'relative',
-          overflow: 'hidden',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1000,
+          padding: '16px 0',
+          transition: 'all 0.3s ease',
+          backgroundColor: scrolled ? 'rgba(11, 10, 22, 0.95)' : 'rgba(11, 10, 22, 0.8)',
+          backdropFilter: 'blur(16px)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
         }}
       >
-        {/* Decorative background circles */}
-        <div style={{ position: 'absolute', top: '-80px', right: '-80px', width: '360px', height: '360px', borderRadius: '50%', background: 'rgba(111,64,95,0.06)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '-60px', left: '-60px', width: '280px', height: '280px', borderRadius: '50%', background: 'rgba(63,119,114,0.07)', pointerEvents: 'none' }} />
-
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '48px', alignItems: 'center' }}>
-          {/* Left: Copy */}
-          <div className="flex-col gap-md">
+        <div className="section-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {/* Logo */}
+          <div
+            onClick={() => onNavigate('/')}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+          >
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '10px',
+                backgroundColor: '#D89C7A',
+                color: '#0B0A16',
+                display: 'grid',
+                placeItems: 'center',
+                fontWeight: 900,
+                fontSize: '19px',
+                fontFamily: '"Playfair Display", serif',
+              }}
+            >
+              M
+            </div>
             <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: '#C0392B',
-                color: '#fff',
-                borderRadius: 'var(--radius-pill)',
-                padding: '5px 14px',
-                fontSize: '13px',
-                fontWeight: 700,
-                letterSpacing: '0.04em',
-                width: 'fit-content',
-                boxShadow: '0 2px 10px rgba(192,57,43,0.35)',
-              }}
+              className="font-playfair"
+              style={{ fontSize: '23px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.03em' }}
             >
-              <ShieldAlert size={14} />
-              18+ Strictly
+              Man Ki Aavaj
             </span>
-
-            <h1
-              style={{
-                fontFamily: 'var(--font-serif)',
-                fontSize: 'clamp(36px, 5vw, 56px)',
-                lineHeight: 1.15,
-                color: 'var(--eclipse)',
-                fontWeight: 700,
-                letterSpacing: '-0.02em',
-              }}
-            >
-              Share your thoughts,<br />
-              <span style={{ color: 'var(--deep-plum)' }}>not your identity.</span>
-            </h1>
-
-            <p style={{ fontSize: '18px', lineHeight: 1.65, color: 'var(--hurricane)', maxWidth: '500px' }}>
-              Share confessions, experiences, questions, and ideas anonymously in India's first multilingual anonymous writing platform — with zero public identity exposure.
-            </p>
-
-            <div className="flex-row items-center gap-md" style={{ flexWrap: 'wrap', marginTop: '8px' }}>
-              <button
-                onClick={() => onNavigate('/register')}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '8px',
-                  background: 'var(--deep-plum)', color: 'var(--pure-white)',
-                  padding: '14px 28px', borderRadius: 'var(--radius-pill)',
-                  fontSize: '16px', fontWeight: 600, cursor: 'pointer',
-                  boxShadow: '0 4px 20px rgba(111,64,95,0.35)',
-                  transition: 'transform 0.15s, box-shadow 0.15s',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(111,64,95,0.40)'; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(111,64,95,0.35)'; }}
-              >
-                Start Writing Free <ArrowRight size={18} />
-              </button>
-              <button
-                onClick={() => onNavigate('/explore')}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '8px',
-                  background: 'transparent', color: 'var(--eclipse)',
-                  padding: '14px 28px', borderRadius: 'var(--radius-pill)',
-                  fontSize: '16px', fontWeight: 500, cursor: 'pointer',
-                  border: '2px solid var(--eclipse)',
-                }}
-              >
-                Explore Thoughts
-              </button>
-            </div>
-
-            <div className="flex-row items-center gap-md" style={{ marginTop: '8px', flexWrap: 'wrap' }}>
-              {['No real name required', '22 Indian languages', 'Free forever'].map((tag) => (
-                <span key={tag} className="flex-row items-center gap-xs" style={{ fontSize: '13px', color: 'var(--hurricane)', fontWeight: 500 }}>
-                  <CheckCircle2 size={15} style={{ color: '#3F7772' }} />
-                  {tag}
-                </span>
-              ))}
-            </div>
           </div>
 
-          {/* Right: Animated Post Preview */}
-          <div className="flex-col gap-md" style={{ position: 'relative' }}>
-            {/* Active Post Card */}
-            <div
-              key={activePostType}
-              className="mka-card"
+          {/* Menu Items */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }} className="hidden-mobile">
+            <span className="nav-item" onClick={() => onNavigate('/')}>Home</span>
+            <a href="#features" className="nav-item">Features</a>
+            <a href="#how-it-works" className="nav-item">How It Works</a>
+            <a href="#safety" className="nav-item">Safety</a>
+            <a href="#about" className="nav-item">About Us</a>
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <button
+              type="button"
+              onClick={() => onNavigate('/login')}
               style={{
-                borderLeft: `5px solid ${POST_TYPES[activePostType].color}`,
-                padding: '24px',
-                animation: 'fadeIn 0.4s ease',
+                background: 'none',
+                border: 'none',
+                color: '#FFFFFF',
+                fontSize: '14.5px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                padding: '8px 12px',
               }}
             >
-              <div className="flex-row items-center gap-sm" style={{ marginBottom: '12px' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: POST_TYPES[activePostType].color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: '14px' }}>A</div>
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--eclipse)' }}>@anonymous{(activePostType * 47 + 12) % 99}</div>
-                  <span style={{ background: POST_TYPES[activePostType].color, color: 'white', borderRadius: '999px', padding: '2px 10px', fontSize: '11px', fontWeight: 600 }}>
-                    {POST_TYPES[activePostType].label}
-                  </span>
+              Login
+            </button>
+            <button
+              type="button"
+              className="btn-accent"
+              onClick={() => onNavigate('/register')}
+            >
+              Get Started
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* ── 1. HERO SECTION (NO TOP GAP, HERO_BG BACKDROP) ── */}
+      <section
+        style={{
+          backgroundColor: '#0B0A16',
+          backgroundImage: `url(${heroBg})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center center',
+          backgroundRepeat: 'no-repeat',
+          color: '#FFFFFF',
+          paddingTop: '110px', // Removed top gap completely
+          paddingBottom: '90px',
+          position: 'relative',
+          minHeight: '620px',
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
+        {/* Dark Left Gradient Overlay for text legibility */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(90deg, rgba(11, 10, 22, 0.96) 0%, rgba(11, 10, 22, 0.82) 48%, rgba(11, 10, 22, 0.2) 100%)',
+            zIndex: 1,
+          }}
+        />
+
+        <div className="section-container" style={{ position: 'relative', zIndex: 2, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '40px', flexWrap: 'wrap' }}>
+            {/* Left Column (45%) */}
+            <div style={{ flex: '1 1 480px', maxWidth: '580px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Small Badge */}
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '20px', backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.18)', width: 'fit-content' }}>
+                <ShieldCheck strokeWidth={1.75} size={18} color="#D89C7A" />
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#FFFFFF', letterSpacing: '0.02em' }}>
+                  India's Anonymous Discussion Platform
+                </span>
+              </div>
+
+              {/* Headline: Playfair Display 700, 3 lines */}
+              <h1
+                className="font-playfair"
+                style={{
+                  fontSize: 'clamp(44px, 5.5vw, 62px)',
+                  lineHeight: 1.08,
+                  fontWeight: 700,
+                  color: '#FFFFFF',
+                  margin: 0,
+                }}
+              >
+                Where Thoughts<br />
+                Matter More<br />
+                <span style={{ color: '#D89C7A' }}>Than Identity.</span>
+              </h1>
+
+              {/* Paragraph */}
+              <p
+                className="font-inter"
+                style={{
+                  fontSize: '16.5px',
+                  lineHeight: 1.6,
+                  color: 'rgba(255, 255, 255, 0.8)',
+                  margin: 0,
+                  fontWeight: 400,
+                }}
+              >
+                Share your thoughts, experiences and opinions without revealing your identity. AI moderation keeps discussions respectful.
+              </p>
+
+              {/* CTA Buttons */}
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', paddingTop: '4px' }}>
+                <button
+                  type="button"
+                  className="btn-accent"
+                  onClick={() => onNavigate('/register')}
+                >
+                  Get Started
+                </button>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={() => {
+                    const el = document.getElementById('features');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  Explore Features
+                </button>
+              </div>
+
+              {/* Trust Row Badges (Matching Screenshot 2 Icons) */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '24px',
+                  flexWrap: 'wrap',
+                  paddingTop: '18px',
+                  borderTop: '1px solid rgba(255, 255, 255, 0.12)',
+                  marginTop: '8px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D89C7A" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 12c0 5.5 4.5 10 10 10s10-4.5 10-10S17.5 2 12 2 2 6.5 2 12z"></path>
+                    <path d="M7 10c1-1 3-1 4 0"></path>
+                    <path d="M13 10c1-1 3-1 4 0"></path>
+                    <path d="M9 16s1.5 1.5 3 1.5 3-1.5 3-1.5"></path>
+                  </svg>
+                  <span>Anonymous by Design</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>
+                  <ShieldCheck strokeWidth={1.75} size={18} color="#D89C7A" />
+                  <span>AI Moderated</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>
+                  <Mic strokeWidth={1.75} size={18} color="#D89C7A" />
+                  <span>Voice-to-Text</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>
+                  <Globe strokeWidth={1.75} size={18} color="#D89C7A" />
+                  <span>Indian Languages</span>
                 </div>
               </div>
-              <p style={{ fontSize: '16px', lineHeight: 1.65, color: 'var(--eclipse)', fontStyle: 'italic' }}>
-                "{POST_TYPES[activePostType].post}"
-              </p>
-              <div className="flex-row items-center gap-md" style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--swiss-coffee)' }}>
-                <span className="caption-text flex-row items-center gap-xs"><Heart size={13} /> 47 I Relate</span>
-                <span className="caption-text flex-row items-center gap-xs"><MessageSquare size={13} /> 12 Comments</span>
+            </div>
+
+            {/* Right Side (55%): Background illustration artwork space */}
+            <div style={{ flex: '1 1 480px', minHeight: '360px' }} />
+          </div>
+        </div>
+      </section>
+
+      {/* ── 2. TRUST STRIP (CREAM BACKGROUND #F8F4EE - MATCHING SCREENSHOT 3) ── */}
+      <section style={{ backgroundColor: '#F8F4EE', borderBottom: '1px solid #E8DDD4', padding: '32px 0' }}>
+        <div className="section-container">
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-around',
+              flexWrap: 'wrap',
+              gap: '24px',
+            }}
+          >
+            {[
+              { label: 'Privacy First', icon: Shield },
+              { label: 'AI Moderated', icon: Bot },
+              { label: 'Discussion Focused', icon: MessageCircle },
+              { label: 'Built for India', icon: Globe },
+              { label: 'Real-time', icon: Zap },
+            ].map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <React.Fragment key={index}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', textAlign: 'center' }}>
+                    <Icon strokeWidth={1.75} size={22} color="#D89C7A" />
+                    <span style={{ fontSize: '14.5px', fontWeight: 600, color: '#181818' }}>
+                      {item.label}
+                    </span>
+                  </div>
+                  {index < 4 && (
+                    <div
+                      style={{
+                        width: '1px',
+                        height: '28px',
+                        backgroundColor: '#E8DDD4',
+                      }}
+                      className="hidden-mobile"
+                    />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 3. WHY MAN KI AAVAJ? (MATCHING SCREENSHOT 4 SIDE-BY-SIDE VS COMPARISON) ── */}
+      <section className="section-space" style={{ backgroundColor: '#F8F4EE' }}>
+        <div className="section-container">
+          <div style={{ display: 'flex', gap: '50px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Left Column Narrative */}
+            <div style={{ flex: '1 1 440px', display: 'flex', flexDirection: 'column', gap: '20px', position: 'relative' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#D89C7A' }}>
+                Why Man Ki Aavaj?
+              </span>
+              <h2 className="font-playfair" style={{ fontSize: '42px', lineHeight: 1.15, color: '#181818', margin: 0 }}>
+                Social media is<br />
+                built for followers.<br />
+                <span style={{ color: '#6F405F' }}>We are built for conversations.</span>
+              </h2>
+              <div style={{ width: '40px', height: '3px', backgroundColor: '#D89C7A', borderRadius: '2px' }} />
+
+              {/* Plant Accent Illustration at Bottom Left */}
+              <div style={{ marginTop: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '32px' }}>🪴</span>
+                <span style={{ fontSize: '13.5px', fontWeight: 500, color: '#666666', fontStyle: 'italic', maxWidth: '320px' }}>
+                  A calm, judgment-free space designed for ideas and true voice.
+                </span>
               </div>
             </div>
 
-            {/* Post type dots */}
-            <div className="flex-row items-center gap-xs" style={{ justifyContent: 'center' }}>
-              {POST_TYPES.map((pt, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActivePostType(i)}
+            {/* Right Column: Side-by-Side VS Comparison Cards */}
+            <div style={{ flex: '1 1 540px', position: 'relative' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', position: 'relative' }}>
+                {/* Center Floating VS Circle Badge */}
+                <div
                   style={{
-                    width: i === activePostType ? '24px' : '8px',
-                    height: '8px',
-                    borderRadius: '999px',
-                    background: i === activePostType ? pt.color : 'var(--zorba)',
-                    transition: 'all 0.3s',
-                    border: 'none',
-                    cursor: 'pointer',
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '50%',
+                    backgroundColor: '#FFFDFB',
+                    border: '1px solid #E8DDD4',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                    display: 'grid',
+                    placeItems: 'center',
+                    fontWeight: 800,
+                    fontSize: '13px',
+                    color: '#181818',
+                    zIndex: 10,
                   }}
-                />
-              ))}
-            </div>
+                >
+                  VS
+                </div>
 
-            {/* Stacked subtle cards behind */}
-            <div style={{ position: 'absolute', top: '12px', right: '-12px', zIndex: -1, width: '85%', height: '100%', background: 'var(--swiss-coffee)', borderRadius: 'var(--radius-lg)', opacity: 0.5 }} />
+                {/* Left Card: Traditional Social Media */}
+                <div
+                  style={{
+                    backgroundColor: '#FFFDFB',
+                    border: '1px solid #E8DDD4',
+                    borderRadius: '20px',
+                    padding: '28px 20px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '16px',
+                  }}
+                >
+                  <div style={{ fontSize: '14.5px', fontWeight: 700, color: '#181818', textAlign: 'center', borderBottom: '1px solid #E8DDD4', paddingBottom: '12px' }}>
+                    Traditional Social Media
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {['Followers', 'Likes', 'Personal Branding', 'Identity', 'Popularity', 'Toxicity & Hate'].map((item, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#666666' }}>
+                        <X size={15} color="#E85D5D" strokeWidth={2.5} />
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right Card: Man Ki Aavaj */}
+                <div
+                  style={{
+                    backgroundColor: '#FFFDFB',
+                    border: '1px solid #E8DDD4',
+                    borderRadius: '20px',
+                    padding: '28px 20px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '16px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '14.5px', fontWeight: 700, color: '#181818', borderBottom: '1px solid #E8DDD4', paddingBottom: '12px' }}>
+                    <div style={{ width: '20px', height: '20px', borderRadius: '5px', backgroundColor: '#D89C7A', color: '#0B0A16', display: 'grid', placeItems: 'center', fontSize: '11px', fontWeight: 900 }}>M</div>
+                    <span>Man Ki Aavaj</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {['Anonymous', 'Respectful', 'Ideas First', 'AI Moderated', 'Meaningful Discussions', 'Toxicity Free'].map((item, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#181818', fontWeight: 600 }}>
+                        <Check size={15} color="#3BA55D" strokeWidth={2.5} />
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ─────────────────────────────────────────────── */}
-      {/* STATS BAR */}
-      {/* ─────────────────────────────────────────────── */}
-      <section style={{ background: 'var(--eclipse)', padding: '32px 20px' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '24px' }}>
-          {STATS.map((stat) => (
-            <div key={stat.label} className="flex-col items-center text-center gap-xs">
-              <span style={{ fontFamily: 'var(--font-serif)', fontSize: '40px', fontWeight: 700, color: 'var(--swiss-coffee)', lineHeight: 1 }}>
-                {stat.number}
-              </span>
-              <span style={{ fontSize: '14px', color: 'var(--zorba)', fontWeight: 500, letterSpacing: '0.03em' }}>
-                {stat.label}
-              </span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ─────────────────────────────────────────────── */}
-      {/* FEATURES GRID */}
-      {/* ─────────────────────────────────────────────── */}
-      <section style={{ padding: '80px 20px', background: 'var(--soft-white)' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <div className="flex-col items-center text-center gap-sm" style={{ marginBottom: '52px' }}>
-            <span style={{ background: 'rgba(111,64,95,0.1)', color: 'var(--deep-plum)', borderRadius: 'var(--radius-pill)', padding: '5px 14px', fontSize: '13px', fontWeight: 600 }}>
-              Why Man Ki Aavaj
-            </span>
-            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(28px, 4vw, 40px)', color: 'var(--eclipse)', fontWeight: 700, maxWidth: '560px' }}>
-              Everything you need to speak without fear
+      {/* ── 4. WHAT MAKES US DIFFERENT (EXACT MATCH TO SCREENSHOT 5: 3 TOP ARTWORK CARDS + 3 BOTTOM CLEAN ITEMS) ── */}
+      <section id="features" className="section-space" style={{ backgroundColor: '#FFFDFB', borderTop: '1px solid #E8DDD4', borderBottom: '1px solid #E8DDD4' }}>
+        <div className="section-container" style={{ display: 'flex', flexDirection: 'column', gap: '60px' }}>
+          <div style={{ textAlign: 'center', maxWidth: '640px', margin: '0 auto' }}>
+            <h2 className="font-playfair" style={{ fontSize: '42px', color: '#181818', margin: 0 }}>
+              What Makes Us Different
             </h2>
-            <p style={{ fontSize: '16px', color: 'var(--hurricane)', maxWidth: '580px', lineHeight: 1.65 }}>
-              Built specifically for the Indian audience — in every language, with privacy-first design at every layer.
-            </p>
+            <div style={{ width: '40px', height: '3px', backgroundColor: '#D89C7A', borderRadius: '2px', margin: '12px auto 0 auto' }} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-            {FEATURES.map((feat) => {
-              const Icon = feat.icon;
+          {/* Top 3 Featured Cards with Artwork & "Learn More ->" (Screenshot 5 Top Row) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+            {/* Card 1: Anonymous by Design */}
+            <div
+              style={{
+                backgroundColor: '#FFFDFB',
+                border: '1px solid #E8DDD4',
+                borderRadius: '24px',
+                padding: '32px 24px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                gap: '16px',
+                boxShadow: '0 4px 20px rgba(45,29,21,0.03)',
+              }}
+            >
+              <div
+                style={{
+                  width: '90px',
+                  height: '90px',
+                  borderRadius: '50%',
+                  backgroundColor: '#F8F4EE',
+                  display: 'grid',
+                  placeItems: 'center',
+                  boxShadow: '0 8px 20px rgba(111,64,95,0.08)',
+                }}
+              >
+                <Lock strokeWidth={1.75} size={42} color="#6F405F" />
+              </div>
+              <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#6F405F', margin: 0 }}>Anonymous by Design</h3>
+              <p style={{ fontSize: '14px', color: '#666666', lineHeight: 1.5, margin: 0 }}>
+                No real names. No public profiles. Custom anonymous avatars.
+              </p>
+              <button
+                type="button"
+                onClick={() => onNavigate('/register')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#6F405F',
+                  fontWeight: 700,
+                  fontSize: '13.5px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  marginTop: '4px',
+                }}
+              >
+                Learn More <ArrowRight size={14} />
+              </button>
+            </div>
+
+            {/* Card 2: AI-Powered Safety */}
+            <div
+              style={{
+                backgroundColor: '#FFFDFB',
+                border: '1px solid #E8DDD4',
+                borderRadius: '24px',
+                padding: '32px 24px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                gap: '16px',
+                boxShadow: '0 4px 20px rgba(45,29,21,0.03)',
+              }}
+            >
+              <div
+                style={{
+                  width: '90px',
+                  height: '90px',
+                  borderRadius: '50%',
+                  backgroundColor: '#F8F4EE',
+                  display: 'grid',
+                  placeItems: 'center',
+                  boxShadow: '0 8px 20px rgba(111,64,95,0.08)',
+                }}
+              >
+                <ShieldCheck strokeWidth={1.75} size={42} color="#6F405F" />
+              </div>
+              <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#6F405F', margin: 0 }}>AI-Powered Safety</h3>
+              <p style={{ fontSize: '14px', color: '#666666', lineHeight: 1.5, margin: 0 }}>
+                Detects hate speech. Filters abuse. Protects conversations.
+              </p>
+              <button
+                type="button"
+                onClick={() => onNavigate('/register')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#6F405F',
+                  fontWeight: 700,
+                  fontSize: '13.5px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  marginTop: '4px',
+                }}
+              >
+                Learn More <ArrowRight size={14} />
+              </button>
+            </div>
+
+            {/* Card 3: Voice-to-Text */}
+            <div
+              style={{
+                backgroundColor: '#FFFDFB',
+                border: '1px solid #E8DDD4',
+                borderRadius: '24px',
+                padding: '32px 24px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                gap: '16px',
+                boxShadow: '0 4px 20px rgba(45,29,21,0.03)',
+              }}
+            >
+              <div
+                style={{
+                  width: '90px',
+                  height: '90px',
+                  borderRadius: '50%',
+                  backgroundColor: '#F8F4EE',
+                  display: 'grid',
+                  placeItems: 'center',
+                  boxShadow: '0 8px 20px rgba(111,64,95,0.08)',
+                }}
+              >
+                <Mic strokeWidth={1.75} size={42} color="#6F405F" />
+              </div>
+              <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#6F405F', margin: 0 }}>Voice-to-Text</h3>
+              <p style={{ fontSize: '14px', color: '#666666', lineHeight: 1.5, margin: 0 }}>
+                Speak naturally. Supports Indian languages. Voice deleted after processing.
+              </p>
+              <button
+                type="button"
+                onClick={() => onNavigate('/register')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#6F405F',
+                  fontWeight: 700,
+                  fontSize: '13.5px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  marginTop: '4px',
+                }}
+              >
+                Learn More <ArrowRight size={14} />
+              </button>
+            </div>
+          </div>
+
+          {/* Bottom 3 Clean Items (Screenshot 5 Bottom Row) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '32px', paddingTop: '20px' }}>
+            {/* Item 1: Discussion First */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '14px', backgroundColor: '#F8F4EE', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                <MessageCircle strokeWidth={1.75} size={24} color="#6F405F" />
+              </div>
+              <div>
+                <h4 style={{ fontSize: '17px', fontWeight: 700, color: '#6F405F', margin: '0 0 4px 0' }}>Discussion First</h4>
+                <p style={{ fontSize: '14px', color: '#666666', lineHeight: 1.5, margin: 0 }}>
+                  Ideas over popularity. Quality conversations that matter.
+                </p>
+              </div>
+            </div>
+
+            {/* Item 2: Privacy First */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '14px', backgroundColor: '#F8F4EE', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                <Lock strokeWidth={1.75} size={24} color="#6F405F" />
+              </div>
+              <div>
+                <h4 style={{ fontSize: '17px', fontWeight: 700, color: '#6F405F', margin: '0 0 4px 0' }}>Privacy First</h4>
+                <p style={{ fontSize: '14px', color: '#666666', lineHeight: 1.5, margin: 0 }}>
+                  No identity exposure. No follower counts. Privacy by default.
+                </p>
+              </div>
+            </div>
+
+            {/* Item 3: Community Moderation */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '14px', backgroundColor: '#F8F4EE', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                <Users strokeWidth={1.75} size={24} color="#6F405F" />
+              </div>
+              <div>
+                <h4 style={{ fontSize: '17px', fontWeight: 700, color: '#6F405F', margin: '0 0 4px 0' }}>Community Moderation</h4>
+                <p style={{ fontSize: '14px', color: '#666666', lineHeight: 1.5, margin: 0 }}>
+                  Report harmful content. Human + AI review for healthy discussions.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 5. BUILT FOR EVERY VOICE (AUDIENCE INCLUSIVENESS) ── */}
+      <section className="section-space" style={{ backgroundColor: '#F8F4EE' }}>
+        <div className="section-container">
+          <div style={{ display: 'flex', gap: '60px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Left Content */}
+            <div style={{ flex: '1 1 440px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#D89C7A' }}>
+                Audience Inclusiveness
+              </span>
+              <h2 className="font-playfair" style={{ fontSize: '42px', color: '#181818', margin: 0 }}>
+                Built For Every Voice.
+              </h2>
+              <p style={{ fontSize: '17px', color: '#666666', lineHeight: 1.6, margin: 0 }}>
+                Whether you're carrying a quiet win, seeking advice, or processing life—Man Ki Aavaj welcomes you.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '6px' }}>
+                {['Students', 'Creators', 'Professionals', 'Parents', 'Thinkers', 'Dreamers', 'Anyone with something meaningful to share'].map((item, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '16px', fontWeight: 600, color: '#181818' }}>
+                    <Check strokeWidth={1.75} size={16} color="#3BA55D" />
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right Large Illustration (60%) */}
+            <div style={{ flex: '1 1 540px', display: 'flex', justifyContent: 'center' }}>
+              <div
+                style={{
+                  width: '100%',
+                  borderRadius: '28px',
+                  background: 'linear-gradient(135deg, #6F405F 0%, #8E527A 100%)',
+                  padding: '48px',
+                  color: '#FFFFFF',
+                  boxShadow: '0 20px 40px rgba(111,64,95,0.18)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '20px',
+                }}
+              >
+                <span style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', color: '#FFD1E8' }}>
+                  A Sanctuary For All
+                </span>
+                <h3 className="font-playfair" style={{ fontSize: '30px', fontWeight: 700, margin: 0 }}>
+                  "Finally a platform where my thoughts matter more than my job title or social standing."
+                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#FFFDFB', color: '#6F405F', display: 'grid', placeItems: 'center', fontWeight: 800 }}>
+                    AN
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: 700 }}>@mindful_soul</div>
+                    <div style={{ fontSize: '12px', color: '#FFD1E8' }}>Anonymous Community Member</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 6. HOW IT WORKS (TIMELINE 4 STEPS) ── */}
+      <section id="how-it-works" className="section-space" style={{ backgroundColor: '#FFFDFB', borderTop: '1px solid #E8DDD4', borderBottom: '1px solid #E8DDD4' }}>
+        <div className="section-container">
+          <div style={{ textAlign: 'center', maxWidth: '640px', margin: '0 auto 80px auto' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#D89C7A' }}>
+              Simple Process
+            </span>
+            <h2 className="font-playfair" style={{ fontSize: '42px', color: '#181818', marginTop: '10px' }}>
+              Getting started is easy.
+            </h2>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '24px' }}>
+            {[
+              { icon: UserPlus, step: '1', title: 'Create Account', desc: 'Quick sign up with your email. Instant verification.' },
+              { icon: BadgeCheck, step: '2', title: 'Choose Username', desc: 'Pick a unique anonymous handle and custom avatar.' },
+              { icon: MessageCircle, step: '3', title: 'Share Thoughts', desc: 'Post or speak your mind safely without identity fear.' },
+              { icon: Users, step: '4', title: 'Join Discussions', desc: 'Engage in live topics and 1-on-1 private chats.' },
+            ].map((item, idx) => {
+              const Icon = item.icon;
               return (
                 <div
-                  key={feat.title}
-                  className="mka-card flex-col gap-sm"
-                  style={{ background: 'var(--pure-white)', transition: 'transform 0.2s, box-shadow 0.2s' }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.10)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = ''; }}
+                  key={idx}
+                  style={{
+                    backgroundColor: '#F8F4EE',
+                    border: '1px solid #E8DDD4',
+                    borderRadius: '20px',
+                    padding: '32px 24px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    textAlign: 'center',
+                    gap: '16px',
+                  }}
                 >
-                  <div style={{ width: '48px', height: '48px', borderRadius: 'var(--radius-md)', background: `${feat.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon size={24} style={{ color: feat.color }} />
+                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#FFFDFB', border: '1px solid #E8DDD4', display: 'grid', placeItems: 'center' }}>
+                    <Icon strokeWidth={1.75} size={20} color="#D89C7A" />
                   </div>
-                  <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', color: 'var(--eclipse)', fontWeight: 700 }}>{feat.title}</h3>
-                  <p style={{ fontSize: '14px', color: 'var(--hurricane)', lineHeight: 1.65 }}>{feat.desc}</p>
+                  <h4 style={{ fontSize: '18px', fontWeight: 600, color: '#181818', margin: 0 }}>{item.title}</h4>
+                  <p style={{ fontSize: '14px', color: '#666666', lineHeight: 1.5, margin: 0 }}>{item.desc}</p>
                 </div>
               );
             })}
@@ -369,235 +838,227 @@ export function LandingPage({ onNavigate }) {
         </div>
       </section>
 
-      {/* ─────────────────────────────────────────────── */}
-      {/* HOW IT WORKS */}
-      {/* ─────────────────────────────────────────────── */}
-      <section style={{ padding: '80px 20px', background: 'var(--swiss-coffee)' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <div className="flex-col items-center text-center gap-sm" style={{ marginBottom: '52px' }}>
-            <span style={{ background: 'rgba(111,64,95,0.1)', color: 'var(--deep-plum)', borderRadius: 'var(--radius-pill)', padding: '5px 14px', fontSize: '13px', fontWeight: 600 }}>
-              Simple as it gets
-            </span>
-            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(28px, 4vw, 40px)', color: 'var(--eclipse)', fontWeight: 700 }}>
-              How Man Ki Aavaj Works
-            </h2>
-          </div>
+      {/* ── 7. EXPRESS YOURSELF YOUR WAY (PRODUCT SHOWCASE) ── */}
+      <section className="section-space" style={{ backgroundColor: '#F8F4EE' }}>
+        <div className="section-container">
+          <div style={{ display: 'flex', gap: '60px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Left Content */}
+            <div style={{ flex: '1 1 480px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#D89C7A' }}>
+                Product Features
+              </span>
+              <h2 className="font-playfair" style={{ fontSize: '42px', color: '#181818', margin: 0 }}>
+                Express Yourself Your Way
+              </h2>
+              <p style={{ fontSize: '17px', color: '#666666', lineHeight: 1.6, margin: 0 }}>
+                Full freedom to communicate through multiple formats tailored to your mood.
+              </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '32px' }}>
-            {STEPS.map((step, i) => (
-              <div key={step.step} className="flex-col gap-sm" style={{ position: 'relative' }}>
-                {/* Connector line */}
-                {i < STEPS.length - 1 && (
-                  <div style={{ position: 'absolute', top: '24px', left: 'calc(50% + 24px)', width: 'calc(100% - 24px)', height: '2px', background: 'var(--zorba)', display: window.innerWidth > 768 ? 'block' : 'none', zIndex: 0 }} />
-                )}
-                <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'var(--deep-plum)', color: 'var(--pure-white)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-serif)', fontSize: '18px', fontWeight: 700, zIndex: 1, position: 'relative' }}>
-                  {step.step}
-                </div>
-                <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '18px', color: 'var(--eclipse)', fontWeight: 700, marginTop: '8px' }}>
-                  {step.title}
-                </h3>
-                <p style={{ fontSize: '14px', color: 'var(--hurricane)', lineHeight: 1.65 }}>{step.desc}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', paddingTop: '8px' }}>
+                {[
+                  { icon: FileText, title: 'Text Posts', desc: 'Share thoughts, questions, or personal confessions.' },
+                  { icon: Image, title: 'Images & Media', desc: 'Attach photos or graphics to illustrate your thoughts.' },
+                  { icon: Video, title: 'Video Sharing', desc: 'Post short video clips anonymously.' },
+                  { icon: Mic, title: 'Voice-to-Text', desc: 'Convert spoken speech into text in 22 languages.' },
+                  { icon: MessagesSquare, title: 'Comments & Replies', desc: 'Participate in live topic discussions.' },
+                  { icon: Smile, title: 'Empathy Reactions', desc: 'React with Relate, Well Said, Helpful, or Stay Strong.' },
+                ].map((item, idx) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                      <div style={{ padding: '6px', borderRadius: '8px', backgroundColor: '#FFFDFB', border: '1px solid #E8DDD4' }}>
+                        <Icon strokeWidth={1.75} size={20} color="#D89C7A" />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '15px', fontWeight: 600, color: '#181818' }}>{item.title}</div>
+                        <div style={{ fontSize: '13px', color: '#666666' }}>{item.desc}</div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            </div>
 
-          <div className="flex-col items-center" style={{ marginTop: '52px' }}>
-            <button
-              onClick={() => onNavigate('/register')}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                background: 'var(--deep-plum)', color: 'var(--pure-white)',
-                padding: '14px 32px', borderRadius: 'var(--radius-pill)',
-                fontSize: '16px', fontWeight: 600, cursor: 'pointer',
-                boxShadow: '0 4px 20px rgba(111,64,95,0.3)',
-              }}
-            >
-              Create Your Anonymous Account <ArrowRight size={18} />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* ─────────────────────────────────────────────── */}
-      {/* LANGUAGE BAND */}
-      {/* ─────────────────────────────────────────────── */}
-      <section style={{ padding: '60px 20px', background: 'var(--pure-white)', borderTop: '1px solid var(--border-light)' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '40px', alignItems: 'center' }}>
-          <div className="flex-col gap-md">
-            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(26px, 3.5vw, 36px)', color: 'var(--eclipse)', fontWeight: 700 }}>
-              Write in your language.<br />
-              <span style={{ color: 'var(--deep-plum)' }}>Be understood by everyone.</span>
-            </h2>
-            <p style={{ fontSize: '15px', color: 'var(--hurricane)', lineHeight: 1.7 }}>
-              Post in Hindi, Tamil, Telugu, Bengali, Kannada, Malayalam, Punjabi, Gujarati, Urdu, Odia, Marathi, or any of our 22 supported Indian languages. Our real-time translation engine ensures every reader sees the post in their own tongue.
-            </p>
-            <button
-              onClick={() => onNavigate('/register')}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--deep-plum)', fontWeight: 600, fontSize: '15px', background: 'transparent', cursor: 'pointer' }}
-            >
-              Start writing in your language <ArrowRight size={16} />
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-            {['हिन्दी', 'বাংলা', 'தமிழ்', 'తెలుగు', 'ಕನ್ನಡ', 'मराठी', 'ગુજરાતી', 'اردو', 'ਪੰਜਾਬੀ', 'ଓଡ଼ିଆ', 'മലയാളം', 'অসমীয়া', 'मैथिली', 'Sanskrit'].map((lang) => (
-              <span
-                key={lang}
+            {/* Right Phone Mockup UI Showcase */}
+            <div style={{ flex: '1 1 440px', display: 'flex', justifyContent: 'center' }}>
+              <div
+                className="animate-float"
                 style={{
-                  padding: '8px 16px',
-                  borderRadius: 'var(--radius-pill)',
-                  background: 'var(--swiss-coffee)',
-                  color: 'var(--eclipse)',
-                  fontSize: '15px',
-                  fontWeight: 500,
-                  border: '1px solid var(--border-light)',
+                  width: '320px',
+                  borderRadius: '40px',
+                  background: '#0B0A16',
+                  padding: '16px',
+                  boxShadow: '0 24px 60px rgba(45,29,21,0.18)',
+                  border: '4px solid #D89C7A',
                 }}
               >
-                {lang}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─────────────────────────────────────────────── */}
-      {/* TESTIMONIALS */}
-      {/* ─────────────────────────────────────────────── */}
-      <section style={{ padding: '80px 20px', background: 'var(--soft-white)' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <div className="flex-col items-center text-center gap-sm" style={{ marginBottom: '48px' }}>
-            <span style={{ background: 'rgba(111,64,95,0.1)', color: 'var(--deep-plum)', borderRadius: 'var(--radius-pill)', padding: '5px 14px', fontSize: '13px', fontWeight: 600 }}>
-              Real Voices
-            </span>
-            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(28px, 4vw, 40px)', color: 'var(--eclipse)', fontWeight: 700 }}>
-              What our members say
-            </h2>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px' }}>
-            {TESTIMONIALS.map((t) => (
-              <div
-                key={t.username}
-                className="mka-card flex-col gap-md"
-                style={{ background: 'var(--pure-white)' }}
-              >
-                <div className="flex-row items-center gap-xs" style={{ color: '#E6A817' }}>
-                  {[1,2,3,4,5].map(s => <Star key={s} size={14} style={{ fill: '#E6A817' }} />)}
-                </div>
-                <p style={{ fontSize: '14px', color: 'var(--eclipse)', lineHeight: 1.7, fontStyle: 'italic' }}>
-                  "{t.text}"
-                </p>
-                <div className="flex-row items-center gap-sm" style={{ marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid var(--swiss-coffee)' }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--deep-plum)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '13px', fontWeight: 700 }}>
-                    {t.username[1].toUpperCase()}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--eclipse)' }}>{t.username}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--hurricane)' }}>Writing in {t.lang}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─────────────────────────────────────────────── */}
-      {/* FAQ */}
-      {/* ─────────────────────────────────────────────── */}
-      <section style={{ padding: '80px 20px', background: 'var(--swiss-coffee)' }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <div className="flex-col items-center text-center gap-sm" style={{ marginBottom: '48px' }}>
-            <span style={{ background: 'rgba(111,64,95,0.1)', color: 'var(--deep-plum)', borderRadius: 'var(--radius-pill)', padding: '5px 14px', fontSize: '13px', fontWeight: 600 }}>
-              FAQs
-            </span>
-            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(28px, 4vw, 38px)', color: 'var(--eclipse)', fontWeight: 700 }}>
-              Frequently Asked Questions
-            </h2>
-          </div>
-
-          <div className="flex-col gap-sm">
-            {FAQS.map((faq, i) => (
-              <div
-                key={i}
-                className="mka-card"
-                style={{ background: 'var(--pure-white)', padding: '0', overflow: 'hidden' }}
-              >
-                <button
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  className="flex-row justify-between items-center"
-                  style={{ width: '100%', padding: '18px 20px', textAlign: 'left', gap: '16px' }}
+                <div
+                  style={{
+                    borderRadius: '28px',
+                    background: '#F8F4EE',
+                    padding: '20px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '14px',
+                  }}
                 >
-                  <span style={{ fontWeight: 600, fontSize: '15px', color: 'var(--eclipse)' }}>{faq.q}</span>
-                  {openFaq === i ? <ChevronUp size={18} style={{ color: 'var(--deep-plum)', flexShrink: 0 }} /> : <ChevronDown size={18} style={{ color: 'var(--hurricane)', flexShrink: 0 }} />}
-                </button>
-                {openFaq === i && (
-                  <div style={{ padding: '0 20px 18px', borderTop: '1px solid var(--swiss-coffee)' }}>
-                    <p style={{ fontSize: '14px', color: 'var(--hurricane)', lineHeight: 1.7, paddingTop: '14px' }}>{faq.a}</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', fontWeight: 700, color: '#6F405F' }}>
+                    <span>Man Ki Aavaj Feed</span>
+                    <span>Live 🟢</span>
                   </div>
-                )}
+
+                  <div
+                    style={{
+                      background: '#FFFDFB',
+                      border: '1px solid #E8DDD4',
+                      borderRadius: '16px',
+                      padding: '14px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: '#6F405F', color: '#FFF', display: 'grid', placeItems: 'center', fontSize: '11px', fontWeight: 800 }}>
+                        QP
+                      </div>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#181818' }}>@quietparagraph</span>
+                    </div>
+                    <div style={{ fontSize: '12.5px', color: '#181818', lineHeight: 1.4 }}>
+                      "Overcoming internal fear without seeking applause is the truest sign of maturity."
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', fontSize: '10px', color: '#6F405F', fontWeight: 700 }}>
+                      <span>❤️ 14 Relate</span>
+                      <span>💡 22 Well Said</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      borderRadius: '20px',
+                      background: '#6F405F',
+                      color: '#FFF',
+                      border: 'none',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                    }}
+                  >
+                    🎙️ Tap Mic to Speak Thought
+                  </button>
+                </div>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ─────────────────────────────────────────────── */}
-      {/* FINAL CTA SECTION */}
-      {/* ─────────────────────────────────────────────── */}
-      <section
-        style={{
-          padding: '80px 20px',
-          background: 'linear-gradient(135deg, var(--eclipse) 0%, #3D2535 100%)',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        <div style={{ position: 'absolute', top: '-60px', right: '-60px', width: '280px', height: '280px', borderRadius: '50%', background: 'rgba(225,220,219,0.06)' }} />
-        <div style={{ position: 'absolute', bottom: '-80px', left: '-80px', width: '360px', height: '360px', borderRadius: '50%', background: 'rgba(111,64,95,0.15)' }} />
-
-        <div style={{ maxWidth: '700px', margin: '0 auto' }} className="flex-col items-center text-center gap-md">
-          <Mic2 size={48} style={{ color: 'var(--swiss-coffee)' }} />
-          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(28px, 5vw, 44px)', color: 'var(--swiss-coffee)', fontWeight: 700, lineHeight: 1.2 }}>
-            Your voice matters.<br />Even when it's unheard.
+      {/* ── 8. FINAL CTA SECTION (SOFT PEACH GRADIENT) ── */}
+      <section className="section-space" style={{ background: 'linear-gradient(135deg, #F8F4EE 0%, #F5EAE2 100%)', textAlign: 'center', borderTop: '1px solid #E8DDD4' }}>
+        <div className="section-container" style={{ maxWidth: '720px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
+          <h2 className="font-playfair" style={{ fontSize: '42px', color: '#181818', margin: 0 }}>
+            Join India's Anonymous<br />Conversation Platform
           </h2>
-          <p style={{ fontSize: '17px', color: 'var(--zorba)', lineHeight: 1.7, maxWidth: '520px' }}>
-            Join thousands of anonymous writers from across India sharing their truth in their own language — safely and freely.
+          <p style={{ fontSize: '18px', color: '#666666', margin: 0, lineHeight: 1.6 }}>
+            Share your thoughts freely. Join meaningful discussions. Stay 100% anonymous.
           </p>
-
-          <div className="flex-row items-center gap-md" style={{ flexWrap: 'wrap', justifyContent: 'center', marginTop: '8px' }}>
+          <div style={{ paddingTop: '10px' }}>
             <button
+              type="button"
+              className="btn-accent"
+              style={{ fontSize: '16px', padding: '14px 32px' }}
               onClick={() => onNavigate('/register')}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                background: 'var(--swiss-coffee)', color: 'var(--eclipse)',
-                padding: '15px 32px', borderRadius: 'var(--radius-pill)',
-                fontSize: '16px', fontWeight: 700, cursor: 'pointer',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-              }}
             >
-              Start Writing Free <ArrowRight size={18} />
-            </button>
-            <button
-              onClick={() => onNavigate('/explore')}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                background: 'transparent', color: 'var(--swiss-coffee)',
-                padding: '15px 32px', borderRadius: 'var(--radius-pill)',
-                fontSize: '16px', fontWeight: 500, cursor: 'pointer',
-                border: '2px solid rgba(225,220,219,0.4)',
-              }}
-            >
-              Explore First
+              Get Started Now <ArrowRight size={18} />
             </button>
           </div>
-
-          <p style={{ fontSize: '13px', color: 'var(--zorba)', opacity: 0.7 }}>
-            No credit card. No real name. No exposure.
-          </p>
+          <span style={{ fontSize: '14px', color: '#666666' }}>
+            Free to use. No identity required.
+          </span>
         </div>
       </section>
 
-    </PublicLayout>
+      {/* ── 9. FOOTER SECTION ── */}
+      <footer id="about" style={{ backgroundColor: '#0B0A16', color: '#FFFFFF', paddingTop: '80px', paddingBottom: '40px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="section-container">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '40px', paddingBottom: '60px' }}>
+            {/* Logo Col */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '10px', backgroundColor: '#D89C7A', color: '#0B0A16', display: 'grid', placeItems: 'center', fontWeight: 900, fontFamily: '"Playfair Display", serif' }}>
+                  M
+                </div>
+                <span className="font-playfair" style={{ fontSize: '20px', fontWeight: 700 }}>Man Ki Aavaj</span>
+              </div>
+              <p style={{ fontSize: '13.5px', color: '#666666', lineHeight: 1.5, margin: 0 }}>
+                Share your thoughts,<br />not your identity.
+              </p>
+
+              {/* Monochrome Social Icons */}
+              <div style={{ display: 'flex', gap: '12px', marginTop: '6px', color: '#666666' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+              </div>
+            </div>
+
+            {/* Quick Links */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF', margin: 0 }}>About</h4>
+              <span onClick={() => onNavigate('/about')} style={{ color: '#666666', cursor: 'pointer', fontSize: '14px' }}>About Us</span>
+              <span onClick={() => onNavigate('/privacy-policy')} style={{ color: '#666666', cursor: 'pointer', fontSize: '14px' }}>Privacy Policy</span>
+              <span onClick={() => onNavigate('/community-guidelines')} style={{ color: '#666666', cursor: 'pointer', fontSize: '14px' }}>Terms & Conditions</span>
+              <span onClick={() => onNavigate('/help')} style={{ color: '#666666', cursor: 'pointer', fontSize: '14px' }}>Help & Support</span>
+            </div>
+
+            {/* Platform */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF', margin: 0 }}>Platform</h4>
+              <a href="#how-it-works" style={{ color: '#666666', textDecoration: 'none', fontSize: '14px' }}>How It Works</a>
+              <a href="#safety" style={{ color: '#666666', textDecoration: 'none', fontSize: '14px' }}>Safety Tips</a>
+              <span onClick={() => onNavigate('/community-guidelines')} style={{ color: '#666666', cursor: 'pointer', fontSize: '14px' }}>Community Guidelines</span>
+              <span onClick={() => onNavigate('/help')} style={{ color: '#666666', cursor: 'pointer', fontSize: '14px' }}>FAQ</span>
+            </div>
+
+            {/* Support & Contact */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF', margin: 0 }}>Contact</h4>
+              <span style={{ color: '#666666', fontSize: '14px' }}>support@manakiaavaj.com</span>
+              <span style={{ color: '#666666', fontSize: '14px' }}>+91 94218 73407</span>
+            </div>
+          </div>
+
+          {/* Bottom Bar */}
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            <span style={{ fontSize: '13.5px', color: '#666666' }}>
+              © 2026 Caryanam. All rights reserved. Caryanamindia
+            </span>
+
+            <button
+              type="button"
+              onClick={scrollToTop}
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(255,255,255,0.08)',
+                color: '#FFFFFF',
+                border: 'none',
+                display: 'grid',
+                placeItems: 'center',
+                cursor: 'pointer',
+                transition: 'background 0.2s ease',
+              }}
+              title="Back to Top"
+            >
+              <ArrowUp size={18} />
+            </button>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }

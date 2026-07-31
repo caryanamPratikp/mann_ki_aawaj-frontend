@@ -6,18 +6,10 @@ import { Checkbox } from '../common/Checkbox.jsx';
 import { useReports } from '../../context/ReportContext.jsx';
 import { Flag, ShieldAlert } from 'lucide-react';
 
+// These values must match the backend ReportReason enum exactly.
 const REPORT_REASONS = [
-  'Abusive language',
-  'Hate speech',
-  'Harassment',
-  'Threat',
-  'Political content',
-  'Religious content',
-  'Spam',
-  'Scam',
-  'Personal information exposed',
-  'Impersonation',
-  'Other',
+  'HATE_SPEECH', 'RELIGIOUS_HATE', 'CASTE_DISCRIMINATION', 'GENDER_HARASSMENT',
+  'ABUSIVE_LANGUAGE', 'VIOLENCE', 'SPAM', 'FAKE_INFORMATION', 'SEXUAL_CONTENT', 'OTHER',
 ];
 
 export function ReportModal({

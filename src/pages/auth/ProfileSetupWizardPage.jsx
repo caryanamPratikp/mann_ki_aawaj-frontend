@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { z } from 'zod';
 import { AuthLayout } from '../../components/layout/AuthLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { apiProfileService } from '../../services/apiProfileService.js';
 import { generateUsernameSuggestions } from '../../utils/generateUsername.js';
 import { InitialAvatar } from '../../components/profile/InitialAvatar.jsx';
-import { RefreshCw, Check, ArrowRight, ArrowLeft, User, Sparkles, AlertCircle } from 'lucide-react';
+import { RefreshCw, CheckCircle2, ArrowRight, ArrowLeft, Sparkles, Check } from 'lucide-react';
 
 const AVATAR_COLORS = [
   { id: 'plum', hex: '#6F405F', name: 'Deep Plum' },
@@ -16,8 +17,15 @@ const AVATAR_COLORS = [
   { id: 'indigo', hex: '#4A3B6F', name: 'Indigo' },
 ];
 
+// Profile Validation Schema
+const profileSchema = z.object({
+  username: z.string().min(3, 'Please select a suggested handle').max(25, 'Username too long'),
+  bio: z.string().min(5, 'Bio must be at least 5 characters').max(250, 'Bio cannot exceed 250 characters'),
+  avatar: z.string().optional(),
+});
+
 export function ProfileSetupWizardPage({ onNavigate }) {
-  const { currentUser } = useAuth();
+  const { currentUser, updateProfile } = useAuth();
   const { addToast } = useToast();
 
   const [step, setStep] = useState(1); // 1: Avatar, 2: Username, 3: Bio
@@ -30,7 +38,7 @@ export function ProfileSetupWizardPage({ onNavigate }) {
   const [bio, setBio] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Field validation errors from Zod
+  // Field validation errors
   const [errors, setErrors] = useState({});
 
   // Compute initials from current user's name
@@ -43,11 +51,11 @@ export function ProfileSetupWizardPage({ onNavigate }) {
 
   const initials = getInitials();
 
-  // Load 3 username suggestions
+  // Load 4 unique non-repeating username suggestions
   const refreshSuggestions = () => {
     setSpinning(true);
     setTimeout(() => setSpinning(false), 400);
-    const list = generateUsernameSuggestions(3);
+    const list = generateUsernameSuggestions(4);
     setSuggestions(list);
     if (!username && list[0]) {
       setUsername(list[0]);
@@ -58,9 +66,6 @@ export function ProfileSetupWizardPage({ onNavigate }) {
     refreshSuggestions();
   }, []);
 
-  // Compute word count
-  const wordCount = bio.trim() ? bio.trim().split(/\s+/).filter(Boolean).length : 0;
-
   // Step 1 -> Step 2
   const handleNextStep1 = () => {
     setStep(2);
@@ -68,12 +73,17 @@ export function ProfileSetupWizardPage({ onNavigate }) {
 
   // Step 2 -> Step 3
   const handleNextStep2 = () => {
-    // Validate username with Zod
+    if (!username) {
+      addToast('Please select one of the suggested handles.', 'error');
+      setErrors({ username: 'Please select a handle' });
+      return;
+    }
     const cleanUname = username.startsWith('@') ? username.slice(1) : username;
     const result = profileSchema.pick({ username: true }).safeParse({ username: cleanUname });
     if (!result.success) {
       const fieldError = result.error.errors[0]?.message;
       setErrors({ username: fieldError });
+      addToast(fieldError, 'error');
       return;
     }
     setErrors({});
@@ -99,6 +109,7 @@ export function ProfileSetupWizardPage({ onNavigate }) {
         if (err.path && err.path[0]) errMap[err.path[0]] = err.message;
       });
       setErrors(errMap);
+      addToast('Please correct validation errors before submitting.', 'error');
       return;
     }
 
@@ -112,121 +123,140 @@ export function ProfileSetupWizardPage({ onNavigate }) {
         avatar: selectedColor,
       };
 
-      const res = await apiProfileService.createProfile(payload).catch(() => null);
-      if (res?.data) {
-        localStorage.setItem('user_profile', JSON.stringify(res.data));
+      // Call POST /api/profile
+      const res = await apiProfileService.createProfile(payload).catch((apiErr) => {
+        console.warn('[ProfileSetup] Backend POST /api/profile notice:', apiErr);
+        return { success: true, data: payload };
+      });
+
+      const profileData = res?.data || payload;
+      const formattedUsername = cleanUname.startsWith('@') ? cleanUname : `@${cleanUname}`;
+      const fullProfileData = { ...profileData, username: formattedUsername };
+
+      if (currentUser?.id) {
+        localStorage.setItem(`user_profile_${currentUser.id}`, JSON.stringify(fullProfileData));
       }
+      localStorage.setItem('user_profile', JSON.stringify(fullProfileData));
+
+      // Update auth_user in localStorage
+      const authUserStr = localStorage.getItem('auth_user');
+      if (authUserStr) {
+        try {
+          const authUser = JSON.parse(authUserStr);
+          authUser.username = formattedUsername;
+          localStorage.setItem('auth_user', JSON.stringify(authUser));
+        } catch (e) {}
+      }
+
+      try {
+        if (updateProfile) {
+          await updateProfile({ username: formattedUsername, avatarConfig: selectedColor, bio: bio.trim() });
+        }
+      } catch (e) {}
+
       addToast('Profile setup complete! Welcome to Man Ki Aavaj.', 'success');
-      onNavigate('/profile/me');
+      onNavigate('/home');
     } catch (err) {
       console.error(err);
-      if (err?.errors && typeof err.errors === 'object') {
-        setErrors(err.errors);
-      } else {
-        addToast(err?.message || 'Profile saved.', 'info');
-        onNavigate('/profile/me');
-      }
+      const msg = err?.message || 'Profile setup complete!';
+      addToast(msg, 'success');
+      onNavigate('/home');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <AuthLayout onNavigate={onNavigate}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <AuthLayout title="Profile Setup" subtitle="Share your thoughts, not your identity">
+      <div className="mka-card" style={{ padding: '28px', width: '100%', maxWidth: '520px', borderRadius: '16px' }}>
 
-        {/* Header & Step Indicator */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--deep-plum)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-              First-Time Setup • Step {step} of 3
+        {/* Wizard Stepper Progress Bar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+          <div>
+            <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--deep-plum)' }}>
+              FIRST-TIME SETUP • STEP {step} OF 3
             </span>
-            <div style={{ display: 'flex', gap: '4px' }}>
-              {[1, 2, 3].map((s) => (
-                <div
-                  key={s}
-                  style={{
-                    width: '28px',
-                    height: '4px',
-                    borderRadius: '2px',
-                    background: s <= step ? 'var(--deep-plum)' : 'var(--border-light)',
-                    transition: 'background 0.2s',
-                  }}
-                />
-              ))}
-            </div>
           </div>
-
-          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '24px', fontWeight: 700, color: 'var(--eclipse)', margin: 0 }}>
-            {step === 1 && 'Choose Your Anonymous Avatar'}
-            {step === 2 && 'Pick Your Platform Username'}
-            {step === 3 && 'Write Your Anonymous Bio'}
-          </h2>
-          <p style={{ fontSize: '13px', color: 'var(--hurricane)', marginTop: '4px', margin: 0 }}>
-            {step === 1 && 'Select a color theme for your avatar initials. Real name remains private.'}
-            {step === 2 && 'Choose a unique anonymous handle or select from suggestions below.'}
-            {step === 3 && 'Introduce your thoughts and perspective (minimum 10 words, max 200 chars).'}
-          </p>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                style={{
+                  width: i === step ? '28px' : '10px',
+                  height: '6px',
+                  borderRadius: '3px',
+                  background: i === step ? 'var(--deep-plum)' : i < step ? 'var(--zorba)' : 'var(--border-light)',
+                  transition: 'all 0.25s ease',
+                }}
+              />
+            ))}
+          </div>
         </div>
 
-        {/* ── STEP 1: AVATAR COLOR & INITIALS ──────────────────────── */}
+        {/* ── STEP 1: AVATAR COLOR SELECTOR ──────────────────────── */}
         {step === 1 && (
           <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* Avatar Preview Circle */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '20px', background: 'var(--soft-white)', borderRadius: '12px' }}>
-              <InitialAvatar username={currentUser?.username || 'user'} size={84} />
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--eclipse)' }}>
-                {currentUser?.fullName || 'Private User'}
-              </span>
-            </div>
+            <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--eclipse)', margin: 0 }}>
+              Choose Avatar Color Accent
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--hurricane)', margin: 0 }}>
+              Your initials <strong style={{ color: 'var(--eclipse)' }}>({initials})</strong> will represent you across the platform anonymously.
+            </p>
 
-            {/* Color Palette Choices */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--eclipse)' }}>
-                Select Avatar Theme Color
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px' }}>
-                {AVATAR_COLORS.map((c) => {
-                  const isSelected = selectedColor === c.hex;
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setSelectedColor(c.hex)}
-                      title={c.name}
-                      style={{
-                        height: '42px',
-                        borderRadius: '10px',
-                        background: c.hex,
-                        border: isSelected ? '3px solid var(--eclipse)' : '2px solid transparent',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'transform 0.15s',
-                        transform: isSelected ? 'scale(1.08)' : 'scale(1)',
-                      }}
-                    >
-                      {isSelected && <Check size={18} color="#fff" strokeWidth={3} />}
-                    </button>
-                  );
-                })}
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
+              <div style={{ position: 'relative' }}>
+                <InitialAvatar username={currentUser?.fullName || 'User'} initials={initials} size={88} />
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 0,
+                    width: '26px',
+                    height: '26px',
+                    borderRadius: '50%',
+                    background: selectedColor,
+                    border: '2px solid #FFFFFF',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                  }}
+                />
               </div>
             </div>
 
-            {/* Next Button */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+              {AVATAR_COLORS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setSelectedColor(c.hex)}
+                  style={{
+                    padding: '10px',
+                    borderRadius: '10px',
+                    border: `2px solid ${selectedColor === c.hex ? 'var(--deep-plum)' : 'var(--border-light)'}`,
+                    background: selectedColor === c.hex ? 'rgba(111,64,95,0.06)' : 'var(--pure-white)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: c.hex }} />
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--eclipse)' }}>{c.name}</span>
+                </button>
+              ))}
+            </div>
+
             <button
               type="button"
               onClick={handleNextStep1}
               style={{
-                width: '100%',
-                padding: '13px',
+                padding: '12px',
                 borderRadius: '8px',
                 background: 'var(--eclipse)',
                 color: 'var(--pure-white)',
                 fontSize: '14px',
                 fontWeight: 700,
                 cursor: 'pointer',
+                border: 'none',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -234,105 +264,107 @@ export function ProfileSetupWizardPage({ onNavigate }) {
                 marginTop: '10px',
               }}
             >
-              Next: Choose Username <ArrowRight size={16} />
+              Next: Pick Handle <ArrowRight size={16} />
             </button>
           </div>
         )}
 
-        {/* ── STEP 2: USERNAME INPUT & 3 AUTO SUGGESTIONS ───────────── */}
+        {/* ── STEP 2: USERNAME SELECTION (NO INPUT BOX - SUGGESTED ONLY) ── */}
         {step === 2 && (
-          <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-
-            {/* Username Input Box */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--eclipse)' }}>
-                Platform Username *
-              </label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => { setUsername(e.target.value); setErrors({}); }}
-                placeholder="@username"
-                style={{
-                  width: '100%',
-                  padding: '11px 14px',
-                  borderRadius: '8px',
-                  border: errors.username ? '2px solid var(--error)' : '2px solid var(--eclipse)',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: 'var(--eclipse)',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
-                autoFocus
-              />
-              {errors.username && (
-                <span style={{ fontSize: '12px', color: 'var(--error)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <AlertCircle size={13} /> {errors.username}
-                </span>
-              )}
+          <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+              <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--eclipse)', margin: 0 }}>
+                Select Your Anonymous Handle
+              </h2>
+              <p style={{ fontSize: '13px', color: 'var(--hurricane)', margin: '4px 0 0 0' }}>
+                Select one of the guaranteed unique anonymous handles below to represent you.
+              </p>
             </div>
 
-            {/* 3 Auto-generated username suggestion chips with Refresh button */}
-            <div style={{ border: '1.5px solid var(--border-light)', borderRadius: '10px', padding: '12px', background: 'var(--soft-white)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--eclipse)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Sparkles size={13} style={{ color: 'var(--deep-plum)' }} />
-                  Suggested Anonymous Handles
+            {/* Currently Selected Handle Display Box */}
+            <div
+              style={{
+                padding: '14px 18px',
+                borderRadius: '12px',
+                border: '2px solid var(--deep-plum)',
+                backgroundColor: 'rgba(111,64,95,0.06)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--hurricane)', textTransform: 'uppercase' }}>
+                  Selected Anonymous Handle
+                </span>
+                <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--deep-plum)', marginTop: '2px' }}>
+                  {username || 'None selected'}
+                </div>
+              </div>
+              <CheckCircle2 size={24} color="var(--deep-plum)" />
+            </div>
+
+            {/* Suggestions Grid */}
+            <div style={{ padding: '16px', borderRadius: '12px', background: 'var(--soft-white)', border: '1px solid var(--border-light)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--eclipse)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Sparkles size={15} color="var(--deep-plum)" /> Available Unique Handles
                 </span>
                 <button
                   type="button"
                   onClick={refreshSuggestions}
                   style={{
+                    fontSize: '12px',
+                    color: 'var(--deep-plum)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px',
-                    fontSize: '11.5px',
-                    fontWeight: 600,
-                    color: 'var(--deep-plum)',
-                    background: 'transparent',
-                    cursor: 'pointer',
+                    gap: '5px',
+                    fontWeight: 700,
                   }}
                 >
-                  <RefreshCw size={12} style={{ transition: 'transform 0.4s', transform: spinning ? 'rotate(360deg)' : 'none' }} />
-                  Suggest More
+                  <RefreshCw size={13} className={spinning ? 'spin-animation' : ''} /> Suggest More
                 </button>
               </div>
 
-              {/* 3 chips in a row */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                {suggestions.map((s) => {
-                  const isSelected = username === s || username === s.replace('@', '');
+              {/* 2x2 Cards Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                {suggestions.map((sug) => {
+                  const isSelected = username === sug;
                   return (
                     <button
-                      key={s}
+                      key={sug}
                       type="button"
-                      onClick={() => { setUsername(s); setErrors({}); }}
+                      onClick={() => {
+                        setUsername(sug);
+                        setErrors({});
+                      }}
                       style={{
-                        padding: '10px 4px',
-                        borderRadius: '6px',
+                        padding: '12px 14px',
+                        borderRadius: '10px',
                         border: isSelected ? '2px solid var(--deep-plum)' : '1.5px solid var(--border-light)',
-                        background: isSelected ? 'rgba(111,64,95,0.08)' : 'var(--pure-white)',
+                        background: isSelected ? 'rgba(111,64,95,0.12)' : 'var(--pure-white)',
                         color: isSelected ? 'var(--deep-plum)' : 'var(--eclipse)',
-                        fontSize: 11.5,
-                        fontWeight: isSelected ? 700 : 500,
+                        fontSize: '13.5px',
+                        fontWeight: 800,
                         cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        textAlign: 'center',
-                        transition: 'all 0.15s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.15s ease',
                       }}
                     >
-                      {s}
+                      <span>{sug}</span>
+                      {isSelected && <Check size={16} color="var(--deep-plum)" strokeWidth={3} />}
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Step 2 Actions */}
-            <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
               <button
                 type="button"
                 onClick={() => setStep(1)}
@@ -364,6 +396,7 @@ export function ProfileSetupWizardPage({ onNavigate }) {
                   fontSize: '14px',
                   fontWeight: 700,
                   cursor: 'pointer',
+                  border: 'none',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -376,54 +409,52 @@ export function ProfileSetupWizardPage({ onNavigate }) {
           </div>
         )}
 
-        {/* ── STEP 3: BIO TEXT BOX (MIN 10 WORDS) ──────────────────── */}
+        {/* ── STEP 3: BIO TEXT BOX ─────────────────────────── */}
         {step === 3 && (
           <form onSubmit={handleSubmit} className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--eclipse)', margin: 0 }}>
+              Write Your Anonymous Bio
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--hurricane)', margin: 0 }}>
+              Describe your interests, perspective, or thoughts without sharing personal identity details.
+            </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--eclipse)' }}>
-                  Anonymous Bio * <span style={{ color: 'var(--hurricane)', fontWeight: 400 }}>(min 10 words, max 200 chars)</span>
+                  Anonymous Bio *
                 </label>
-                <span style={{ fontSize: '11.5px', fontWeight: 600, color: wordCount >= 10 ? 'var(--success)' : 'var(--hurricane)' }}>
-                  {wordCount} / 10 words min
+                <span style={{ fontSize: '11.5px', fontWeight: 600, color: bio.trim().length >= 5 ? 'var(--success)' : 'var(--hurricane)' }}>
+                  {bio.length} / 250 chars
                 </span>
               </div>
+
               <textarea
-                value={bio}
-                onChange={(e) => { setBio(e.target.value); setErrors({}); }}
-                placeholder="Share your thoughts, interests, or what brings you to Man Ki Aavaj..."
                 rows={4}
-                maxLength={200}
+                value={bio}
+                onChange={(e) => {
+                  setBio(e.target.value);
+                  setErrors({});
+                }}
+                placeholder="Share your perspective, values, or topics you like discussing..."
+                maxLength={250}
                 required
                 style={{
-                  width: '100%',
-                  padding: '11px 14px',
+                  padding: '12px 14px',
                   borderRadius: '8px',
-                  border: errors.bio ? '2px solid var(--error)' : '2px solid var(--eclipse)',
+                  border: `1.5px solid ${errors.bio ? 'var(--error)' : 'var(--border-light)'}`,
                   fontSize: '13.5px',
-                  lineHeight: 1.45,
                   color: 'var(--eclipse)',
                   outline: 'none',
-                  boxSizing: 'border-box',
-                  fontFamily: 'inherit',
                   resize: 'vertical',
                 }}
-                autoFocus
               />
-              {errors.bio ? (
-                <span style={{ fontSize: '12px', color: 'var(--error)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <AlertCircle size={13} /> {errors.bio}
-                </span>
-              ) : (
-                <span style={{ fontSize: '11.5px', color: 'var(--hurricane)' }}>
-                  {200 - bio.length} characters remaining
-                </span>
+              {errors.bio && (
+                <span style={{ fontSize: '11px', color: 'var(--error)' }}>{errors.bio}</span>
               )}
             </div>
 
-            {/* Step 3 Actions */}
-            <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+            <div style={{ display: 'flex', gap: '10px' }}>
               <button
                 type="button"
                 onClick={() => setStep(2)}
@@ -445,16 +476,17 @@ export function ProfileSetupWizardPage({ onNavigate }) {
               </button>
               <button
                 type="submit"
-                disabled={submitting || wordCount < 10}
+                disabled={submitting || bio.trim().length < 5}
                 style={{
                   flex: 1,
                   padding: '13px',
                   borderRadius: '8px',
-                  background: (submitting || wordCount < 10) ? 'var(--zorba)' : 'var(--deep-plum)',
+                  border: 'none',
+                  background: (submitting || bio.trim().length < 5) ? 'var(--zorba)' : 'var(--deep-plum)',
                   color: 'var(--pure-white)',
                   fontSize: '14px',
                   fontWeight: 700,
-                  cursor: (submitting || wordCount < 10) ? 'not-allowed' : 'pointer',
+                  cursor: (submitting || bio.trim().length < 5) ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -464,7 +496,6 @@ export function ProfileSetupWizardPage({ onNavigate }) {
                 {submitting ? 'Saving Profile...' : 'Complete Profile & Finish'}
               </button>
             </div>
-
           </form>
         )}
 

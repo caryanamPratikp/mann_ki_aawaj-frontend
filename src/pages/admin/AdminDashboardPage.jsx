@@ -1,20 +1,21 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { AdminLayout } from '../../components/layout/AdminLayout.jsx';
 import { AdminMetricCard } from '../../components/admin/AdminMetricCard.jsx';
-import { useReports } from '../../context/ReportContext.jsx';
-import { mockModerationService } from '../../services/mockModerationService.js';
-import { Flag, FileCheck, MessageSquare, AlertTriangle, ShieldAlert, CheckCircle, Trash2 } from 'lucide-react';
+import { apiAdminService } from '../../services/apiAdminService.js';
+import { Flag, FileCheck, MessageSquare, ShieldAlert } from 'lucide-react';
 import { Button } from '../../components/common/Button.jsx';
 
 export function AdminDashboardPage({ onNavigate }) {
-  const { adminQueue } = useReports();
-  const heldContent = mockModerationService.getHeldContentQueue();
+  const [stats, setStats] = useState(null);
 
-  const pendingReports = adminQueue.filter((r) => r.status === 'Submitted' || r.status === 'Under Review').length;
-  const postsHeld = heldContent.filter((h) => h.contentType === 'POST').length;
-  const commentsHeld = heldContent.filter((h) => h.contentType === 'COMMENT').length;
-  const repliesHeld = heldContent.filter((h) => h.contentType === 'REPLY').length;
-  const highRiskCases = adminQueue.filter((r) => r.riskLevel === 'HIGH' || r.riskLevel === 'CRITICAL').length;
+  useEffect(() => {
+    apiAdminService.getDashboard().then((response) => setStats(response.data)).catch(console.error);
+  }, []);
+
+  const pendingReports = stats?.totalPendingReports || 0;
+  const postsHeld = stats?.totalPosts || 0;
+  const blockedUsers = stats?.totalBlockedUsers || 0;
+  const totalUsers = stats?.totalUsers || 0;
 
   return (
     <AdminLayout activeRoute="/admin/dashboard" onNavigate={onNavigate}>
@@ -27,10 +28,9 @@ export function AdminDashboardPage({ onNavigate }) {
         {/* Metric Cards Grid */}
         <div className="grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
           <AdminMetricCard title="Pending Reports" value={pendingReports} icon={Flag} color="var(--warning)" />
-          <AdminMetricCard title="Posts Held for Review" value={postsHeld} icon={FileCheck} color="var(--deep-plum)" />
-          <AdminMetricCard title="Comments Held for Review" value={commentsHeld} icon={MessageSquare} color="var(--deep-plum)" />
-          <AdminMetricCard title="Replies Held for Review" value={repliesHeld} icon={MessageSquare} color="var(--deep-plum)" />
-          <AdminMetricCard title="High-Risk Cases" value={highRiskCases} icon={ShieldAlert} color="var(--error)" />
+          <AdminMetricCard title="Total Posts" value={postsHeld} icon={FileCheck} color="var(--deep-plum)" />
+          <AdminMetricCard title="Registered Users" value={totalUsers} icon={MessageSquare} color="var(--deep-plum)" />
+          <AdminMetricCard title="Blocked Users" value={blockedUsers} icon={ShieldAlert} color="var(--error)" />
         </div>
 
         {/* Quick Actions */}
@@ -39,9 +39,6 @@ export function AdminDashboardPage({ onNavigate }) {
           <div className="flex-row gap-md flex-wrap">
             <Button variant="primary" onClick={() => onNavigate('/admin/reports')}>
               Review Reports Queue ({pendingReports})
-            </Button>
-            <Button variant="secondary" onClick={() => onNavigate('/admin/content-review')}>
-              Review Held Content Queue ({heldContent.length})
             </Button>
           </div>
         </div>

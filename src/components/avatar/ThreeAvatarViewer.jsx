@@ -1,19 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { createGLBCharacterSystem, updateMorphTargets } from './glbAvatarPipeline.js';
-import {
-  SKIN_TONES,
-  HAIR_COLORS,
-  EYE_COLORS,
-  OUTFIT_COLORS,
-  DEFAULT_AVATAR_CONFIG
-} from './avatarOptionsData.js';
+import { loadGLBModel, createGLBCharacterSystem } from './glbAvatarPipeline.js';
+import { DEFAULT_AVATAR_CONFIG } from './avatarOptionsData.js';
 
 /**
- * ThreeAvatarViewer — First-Party GLB 2.0 Avatar Engine
- * Renders Snapchat Bitmoji / Meta style GLB characters with humanoid rig,
- * 10 standard morph targets, 16 skin tones, PBR materials, soft studio lighting,
- * and 360° interactive rotation, zoom, double-click reset, breathing, and blinking.
+ * ThreeAvatarViewer — Organic Human Head & Bust Renderer (v2.1 Fresh Cache)
+ * Seamless scalp fitting (ZERO forehead gap), contoured face shape, almond eyes,
+ * human neck & shoulder bust, PBR lighting, and self-hosted GLB loading pipeline.
  */
 export function ThreeAvatarViewer({ config = DEFAULT_AVATAR_CONFIG, width = '100%', height = '100%' }) {
   const mountRef = useRef(null);
@@ -27,15 +20,15 @@ export function ThreeAvatarViewer({ config = DEFAULT_AVATAR_CONFIG, width = '100
     const w = container.clientWidth || 400;
     const h = container.clientHeight || 500;
 
+    let isDisposed = false;
+
     // 1. SCENE & CAMERA SETUP
     const scene = new THREE.Scene();
 
-    // Perspective Camera framed for upper bust / full body character
-    const camera = new THREE.PerspectiveCamera(28, w / h, 0.1, 100);
-    const initialCamPos = new THREE.Vector3(0, 0.1, 5.2);
-    const initialCamLookAt = new THREE.Vector3(0, -0.15, 0);
-    camera.position.copy(initialCamPos);
-    camera.lookAt(initialCamLookAt);
+    // Perspective Camera: un-zoomed framing showing Head, Neck, and Shoulders
+    const camera = new THREE.PerspectiveCamera(22, w / h, 0.1, 100);
+    camera.position.set(0, -0.12, 4.8);
+    camera.lookAt(0, -0.15, 0);
 
     // WebGL Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
@@ -49,27 +42,27 @@ export function ThreeAvatarViewer({ config = DEFAULT_AVATAR_CONFIG, width = '100
     }
     container.appendChild(renderer.domElement);
 
-    // 2. PBR STUDIO LIGHTING SYSTEM
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+    // 2. STUDIO PBR LIGHTING
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     scene.add(ambientLight);
 
-    const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
-    keyLight.position.set(3, 4, 4);
+    const keyLight = new THREE.DirectionalLight(0xfff5ea, 1.2);
+    keyLight.position.set(2.8, 3.8, 3.8);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.width = 1024;
     keyLight.shadow.mapSize.height = 1024;
-    keyLight.shadow.bias = -0.001;
+    keyLight.shadow.bias = -0.0008;
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0xffecd6, 0.45);
-    fillLight.position.set(-3, 2, 3);
+    const fillLight = new THREE.DirectionalLight(0xebd5c1, 0.45);
+    fillLight.position.set(-2.8, 1.8, 2.5);
     scene.add(fillLight);
 
-    const rimLight = new THREE.DirectionalLight(0x6f405f, 0.65);
-    rimLight.position.set(0, 3, -4);
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.7);
+    rimLight.position.set(0, 3, -3.5);
     scene.add(rimLight);
 
-    // 3. GLB HUMANOID RIG CHARACTER INITIALIZATION
+    // 3. CHARACTER RIG SETUP
     const glbSystem = createGLBCharacterSystem(c, scene);
     const avatarGroup = glbSystem.rootGroup;
     scene.add(avatarGroup);
@@ -81,25 +74,65 @@ export function ThreeAvatarViewer({ config = DEFAULT_AVATAR_CONFIG, width = '100
       if (obj.material) materials.push(obj.material);
     };
 
-    // Color Resolution & PBR Materials
+    // Colors & Materials
     const skinHex = c.skinTone || '#E2A77F';
     const hairHex = c.hairColor || '#1A1412';
     const eyeHex  = c.eyeColor || '#5C3A21';
     const topHex  = c.outfitTopColor || '#6F405F';
-    const bottomHex = c.outfitBottomColor || '#1E3A5F';
-    const shoesHex = c.shoesColor || '#F5F0E8';
+    const isFemale = c.gender === 'female';
 
+    // Local GLB Loading (when user places base character GLB in /public/avatar-assets/)
+    if (c.glbUrl) {
+      loadGLBModel(c.glbUrl).then((glbScene) => {
+        if (isDisposed || !glbScene) return;
+
+        glbScene.position.set(0, -1.45, 0);
+        glbScene.scale.setScalar(1.0);
+
+        glbScene.traverse((child) => {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            trackObj(child);
+
+            const name = (child.name || '').toLowerCase();
+            const matName = (child.material?.name || '').toLowerCase();
+
+            if (child.material) {
+              child.material = child.material.clone();
+              materials.push(child.material);
+            }
+
+            if (name.includes('head') || name.includes('body') || name.includes('skin') || matName.includes('skin')) {
+              if (child.material?.color) child.material.color.set(skinHex);
+            } else if (name.includes('hair') || matName.includes('hair')) {
+              if (child.material?.color) child.material.color.set(hairHex);
+            } else if (name.includes('top') || name.includes('outfit') || matName.includes('top')) {
+              if (child.material?.color) child.material.color.set(topHex);
+            }
+          }
+        });
+
+        avatarGroup.add(glbScene);
+        camera.position.set(0, 0.15, 2.2);
+        camera.lookAt(0, 0.08, 0);
+      }).catch((err) => {
+        console.warn('[ThreeAvatarViewer] GLB load fallback:', err);
+      });
+    }
+
+    // ── 4. ORGANIC HUMAN HEAD & FACE ──
     const skinMat = new THREE.MeshStandardMaterial({
       color: new THREE.Color(skinHex),
-      roughness: 0.4,
-      metalness: 0.03,
+      roughness: 0.48,
+      metalness: 0.0,
     });
     materials.push(skinMat);
 
     const hairMat = new THREE.MeshStandardMaterial({
       color: new THREE.Color(hairHex),
       roughness: 0.65,
-      metalness: 0.08,
+      metalness: 0.04,
     });
     materials.push(hairMat);
 
@@ -110,25 +143,13 @@ export function ThreeAvatarViewer({ config = DEFAULT_AVATAR_CONFIG, width = '100
     });
     materials.push(topMat);
 
-    const bottomMat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(bottomHex),
-      roughness: 0.6,
-      metalness: 0.05,
-    });
-    materials.push(bottomMat);
-
-    const shoesMat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(shoesHex),
-      roughness: 0.3,
-      metalness: 0.1,
-    });
-    materials.push(shoesMat);
-
-    // ── HEAD & MORPH TARGET MESH ──
     const headGroup = glbSystem.sockets.Head;
 
-    let headGeo = new THREE.SphereGeometry(0.68, 36, 36);
+    // Organic Human Head Mesh
+    let headGeo = new THREE.SphereGeometry(0.46, 48, 48);
+    headGeo.scale(isFemale ? 0.94 : 1.0, isFemale ? 1.14 : 1.18, 0.96);
     const pos = headGeo.attributes.position;
+
     for (let i = 0; i < pos.count; i++) {
       let x = pos.getX(i);
       let y = pos.getY(i);
@@ -136,22 +157,39 @@ export function ThreeAvatarViewer({ config = DEFAULT_AVATAR_CONFIG, width = '100
 
       x *= (c.faceWidth || 1.0);
 
-      if (y < 0) {
-        if (c.faceShape === 'square') {
-          x *= (1.15 * (c.jawWidth || 1.0));
-          z *= 1.05;
-        } else if (c.faceShape === 'heart') {
-          x *= (0.85 * (c.jawWidth || 1.0));
-        } else if (c.faceShape === 'diamond') {
-          x *= (0.9 * (c.jawWidth || 1.0));
+      // Deep Recessed Eye Sockets
+      const distEyeL = Math.hypot(x - (-0.17), y - 0.08);
+      const distEyeR = Math.hypot(x - 0.17, y - 0.08);
+      if (z > 0.1 && (distEyeL < 0.18 || distEyeR < 0.18)) {
+        const socketDepth = Math.min(distEyeL, distEyeR);
+        const indent = (0.18 - socketDepth) * 0.45;
+        z -= indent;
+      }
+
+      // Brow Ridge Overhang
+      if (z > 0.2 && y > 0.16 && y < 0.26 && Math.abs(x) < 0.28) {
+        z += 0.035;
+      }
+
+      // Continuous Sculpted Nose Bridge & Tip
+      if (z > 0.15 && y > -0.08 && y < 0.16 && Math.abs(x) < 0.12) {
+        const noseFactor = (0.12 - Math.abs(x)) * 0.7;
+        z += noseFactor;
+      }
+
+      // Chin and Jaw Contours
+      if (y < -0.1) {
+        if (!isFemale) {
+          x *= 1.06 * (c.jawWidth || 1.0);
+          z *= 1.02;
         } else {
-          x *= (c.jawWidth || 1.0);
+          x *= 0.90 * (c.jawWidth || 1.0);
         }
       }
 
-      if (Math.abs(y) < 0.25) {
-        x *= (c.cheekFullness || 1.0);
-        z *= (c.cheekFullness || 1.0);
+      // Cheekbones
+      if (y > -0.08 && y < 0.15 && Math.abs(x) > 0.2) {
+        x *= 1.03 * (c.cheekFullness || 1.0);
       }
 
       pos.setXYZ(i, x, y, z);
@@ -165,183 +203,172 @@ export function ThreeAvatarViewer({ config = DEFAULT_AVATAR_CONFIG, width = '100
     headMesh.receiveShadow = true;
     headGroup.add(headMesh);
 
-    // Ears attached to Head Bone
-    const earGeo = new THREE.SphereGeometry(0.12, 16, 16);
-    earGeo.scale(0.5, 1.2, 0.9);
+    // Anatomical Ears
+    const earGeo = new THREE.SphereGeometry(0.075, 16, 16);
+    earGeo.scale(0.38, 1.05, 0.7);
     trackObj(earGeo);
 
     const leftEar = new THREE.Mesh(earGeo, skinMat);
-    leftEar.position.set(-0.67 * (c.faceWidth || 1), 0, 0.05);
+    leftEar.position.set(isFemale ? -0.44 : -0.47, 0.02, -0.02);
+    leftEar.rotation.y = -0.15;
     headGroup.add(leftEar);
 
     const rightEar = new THREE.Mesh(earGeo, skinMat);
-    rightEar.position.set(0.67 * (c.faceWidth || 1), 0, 0.05);
+    rightEar.position.set(isFemale ? 0.44 : 0.47, 0.02, -0.02);
+    rightEar.rotation.y = 0.15;
     headGroup.add(rightEar);
 
-    // ── EXPRESSIVE 3D EYES (Sclera + Iris + Pupil + Eyelids) ──
+    // ── 5. RECESSED EYES ──
     const eyeGroup = new THREE.Group();
     headGroup.add(eyeGroup);
 
-    let eyeScale = c.eyeSize === 'large' ? 1.25 : c.eyeSize === 'small' ? 0.85 : 1.05;
-    const scleraGeo = new THREE.SphereGeometry(0.12, 32, 32);
-    scleraGeo.scale(1.0, 0.9, 0.7);
-    const scleraMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1 });
+    let eyeScale = c.eyeSize === 'large' ? 1.08 : c.eyeSize === 'small' ? 0.88 : 0.98;
+    const scleraGeo = new THREE.SphereGeometry(0.068, 24, 24);
+    scleraGeo.scale(1.0, 0.82, 0.6);
+    const scleraMat = new THREE.MeshStandardMaterial({ color: 0xf8f8f8, roughness: 0.1 });
     trackObj(scleraGeo); materials.push(scleraMat);
 
-    const irisGeo = new THREE.SphereGeometry(0.065, 32, 32);
-    irisGeo.scale(1, 1, 0.4);
-    const irisMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(eyeHex), roughness: 0.2 });
+    const irisGeo = new THREE.SphereGeometry(0.038, 24, 24);
+    irisGeo.scale(1, 1, 0.3);
+    const irisMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(eyeHex), roughness: 0.25 });
     trackObj(irisGeo); materials.push(irisMat);
 
-    const pupilGeo = new THREE.SphereGeometry(0.032, 32, 32);
-    pupilGeo.scale(1, 1, 0.4);
-    const pupilMat = new THREE.MeshBasicMaterial({ color: 0x121212 });
+    const pupilGeo = new THREE.SphereGeometry(0.019, 24, 24);
+    pupilGeo.scale(1, 1, 0.3);
+    const pupilMat = new THREE.MeshBasicMaterial({ color: 0x0a0a0a });
     trackObj(pupilGeo); materials.push(pupilMat);
 
-    const glintGeo = new THREE.SphereGeometry(0.015, 16, 16);
+    const glintGeo = new THREE.SphereGeometry(0.009, 12, 12);
     const glintMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     trackObj(glintGeo); materials.push(glintMat);
 
     const createEye = (x) => {
       const g = new THREE.Group();
       const sclera = new THREE.Mesh(scleraGeo, scleraMat); g.add(sclera);
-      const iris = new THREE.Mesh(irisGeo, irisMat); iris.position.set(0, 0, 0.075); g.add(iris);
-      const pupil = new THREE.Mesh(pupilGeo, pupilMat); pupil.position.set(0, 0, 0.09); g.add(pupil);
-      const glint = new THREE.Mesh(glintGeo, glintMat); glint.position.set(0.02, 0.02, 0.1); g.add(glint);
+      const iris = new THREE.Mesh(irisGeo, irisMat); iris.position.set(0, 0, 0.045); g.add(iris);
+      const pupil = new THREE.Mesh(pupilGeo, pupilMat); pupil.position.set(0, 0, 0.053); g.add(pupil);
+      const glint = new THREE.Mesh(glintGeo, glintMat); glint.position.set(0.01, 0.01, 0.06); g.add(glint);
 
-      const lidGeo = new THREE.SphereGeometry(0.128, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+      const lidGeo = new THREE.SphereGeometry(0.071, 24, 24, 0, Math.PI * 2, 0, Math.PI / 2);
       trackObj(lidGeo);
       const topLid = new THREE.Mesh(lidGeo, skinMat); topLid.rotation.x = Math.PI / 2; g.add(topLid);
       const bottomLid = new THREE.Mesh(lidGeo, skinMat); bottomLid.rotation.x = -Math.PI / 2; g.add(bottomLid);
 
-      g.position.set(x, 0.11, 0.59);
+      g.position.set(x, 0.08, 0.38);
       g.scale.setScalar(eyeScale);
       return { group: g, topLid, bottomLid };
     };
 
-    const leftEye = createEye(-0.25);
-    const rightEye = createEye(0.25);
+    const leftEye = createEye(-0.165);
+    const rightEye = createEye(0.165);
     eyeGroup.add(leftEye.group, rightEye.group);
     const eyelids = [leftEye.topLid, leftEye.bottomLid, rightEye.topLid, rightEye.bottomLid];
 
-    // ── EYEBROWS ──
-    const browGeo = new THREE.BoxGeometry(0.18, 0.035 * (c.eyebrowThickness || 1.0), 0.04);
+    // ── 6. EYEBROWS ──
+    const browGeo = new THREE.BoxGeometry(0.125, 0.022 * (c.eyebrowThickness || 1.0), 0.02);
     trackObj(browGeo);
-    const browMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(hairHex) });
+    const browMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(hairHex), roughness: 0.7 });
     materials.push(browMat);
 
     const leftBrow = new THREE.Mesh(browGeo, browMat);
-    leftBrow.position.set(-0.25, 0.28 + (c.eyebrowCurve || 0) * 0.05, 0.6);
-    leftBrow.rotation.z = 0.08 + (c.eyebrowCurve || 0) * 0.2;
+    leftBrow.position.set(-0.165, 0.19, 0.40);
+    leftBrow.rotation.z = 0.05;
     headGroup.add(leftBrow);
 
     const rightBrow = new THREE.Mesh(browGeo, browMat);
-    rightBrow.position.set(0.25, 0.28 + (c.eyebrowCurve || 0) * 0.05, 0.6);
-    rightBrow.rotation.z = -0.08 - (c.eyebrowCurve || 0) * 0.2;
+    rightBrow.position.set(0.165, 0.19, 0.40);
+    rightBrow.rotation.z = -0.05;
     headGroup.add(rightBrow);
 
-    // ── NOSE ──
-    let noseGeo;
-    if (c.noseStyle === 'button_small') noseGeo = new THREE.SphereGeometry(0.08, 16, 16);
-    else if (c.noseStyle === 'wide_soft') noseGeo = new THREE.BoxGeometry(0.22, 0.12, 0.12);
-    else if (c.noseStyle === 'sharp_bridge') noseGeo = new THREE.ConeGeometry(0.08, 0.2, 16);
-    else noseGeo = new THREE.CylinderGeometry(0.05, 0.09, 0.18, 16);
-    trackObj(noseGeo);
-
-    const noseMesh = new THREE.Mesh(noseGeo, skinMat);
-    noseMesh.position.set(0, -0.02, 0.65);
-    noseMesh.rotation.x = -0.2;
-    headGroup.add(noseMesh);
-
-    // ── LIPS & SMILE EXPRESSION ──
+    // ── 7. LIPS & MOUTH ──
     const smileVal = c.smileIntensity !== undefined ? c.smileIntensity : 0.6;
-    const mouthGeo = new THREE.TorusGeometry(0.11, 0.025, 16, 32, Math.PI * (0.6 + smileVal * 0.4));
+    const mouthGeo = new THREE.TorusGeometry(0.068, 0.015, 16, 24, Math.PI * (0.65 + smileVal * 0.35));
     trackObj(mouthGeo);
-    const lipMat = new THREE.MeshStandardMaterial({ color: 0xc45050, roughness: 0.35 });
+    const lipMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(isFemale ? '#B55353' : '#8C4848'),
+      roughness: 0.38
+    });
     materials.push(lipMat);
 
     const mouthMesh = new THREE.Mesh(mouthGeo, lipMat);
-    mouthMesh.position.set(0, -0.22, 0.62);
+    mouthMesh.position.set(0, -0.15, 0.40);
     mouthMesh.rotation.x = Math.PI;
     headGroup.add(mouthMesh);
 
-    // ── BEARD (ATTACHED TO HEAD / JAW SOCKET) ──
-    if (c.gender !== 'female' && c.beardStyle && c.beardStyle !== 'none') {
+    // ── 8. BEARD (MALE ONLY) ──
+    if (!isFemale && c.beardStyle && c.beardStyle !== 'none') {
       const beardMat = new THREE.MeshStandardMaterial({
         color: new THREE.Color(c.beardColor || hairHex),
-        roughness: 0.8,
+        roughness: 0.85,
       });
       materials.push(beardMat);
 
       if (c.beardStyle === 'mustache') {
-        const musGeo = new THREE.BoxGeometry(0.26, 0.06, 0.06);
+        const musGeo = new THREE.BoxGeometry(0.16, 0.035, 0.035);
         trackObj(musGeo);
         const mus = new THREE.Mesh(musGeo, beardMat);
-        mus.position.set(0, -0.13, 0.65);
+        mus.position.set(0, -0.09, 0.42);
         headGroup.add(mus);
-      } else if (c.beardStyle === 'full_beard' || c.beardStyle === 'stubble') {
-        const beardGeo = new THREE.SphereGeometry(0.69, 32, 32, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.55);
+      } else {
+        const beardGeo = new THREE.SphereGeometry(0.47, 24, 24, 0, Math.PI * 2, Math.PI * 0.46, Math.PI * 0.5);
         trackObj(beardGeo);
         const beardMesh = new THREE.Mesh(beardGeo, beardMat);
-        beardMesh.position.set(0, -0.05, 0);
+        beardMesh.position.set(0, -0.04, 0);
         headGroup.add(beardMesh);
       }
     }
 
-    // ── HAIR GLB / MESH ATTACHMENT SOCKET ──
+    // ── 9. SEAMLESS SCALP HAIR (ZERO GAP ABOVE FOREHEAD!) ──
     if (c.hairStyle !== 'bald') {
       const hairGroup = new THREE.Group();
       hairGroup.name = 'GLB_Hair_Socket';
       headGroup.add(hairGroup);
 
-      if (c.hairStyle === 'long_straight' || c.hairStyle === 'wavy_waves' || c.hairStyle === 'long_manbun' || c.hairStyle === 'long_wavy_dark') {
-        const topCap = new THREE.Mesh(new THREE.SphereGeometry(0.72, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMat);
-        topCap.position.set(0, 0.02, 0);
-        hairGroup.add(topCap); trackObj(topCap);
+      // Scalp Cap wraps smoothly over head from crown down to temples (ZERO FOREHEAD GAP)
+      const topCapGeo = new THREE.SphereGeometry(0.465, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.48);
+      topCapGeo.scale(1.01, 1.12, 0.97);
+      trackObj(topCapGeo);
 
-        const leftStrand = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 1.2, 16), hairMat);
-        leftStrand.position.set(-0.45, -0.2, 0.1);
-        leftStrand.rotation.z = -0.15;
-        hairGroup.add(leftStrand); trackObj(leftStrand);
+      const topCap = new THREE.Mesh(topCapGeo, hairMat);
+      topCap.position.set(0, 0.01, -0.01);
+      hairGroup.add(topCap);
 
-        const rightStrand = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 1.2, 16), hairMat);
-        rightStrand.position.set(0.45, -0.2, 0.1);
-        rightStrand.rotation.z = 0.15;
-        hairGroup.add(rightStrand); trackObj(rightStrand);
+      if (c.hairStyle === 'long_straight' || c.hairStyle === 'wavy_waves' || c.hairStyle === 'long_wavy_dark') {
+        const leftStrandGeo = new THREE.CylinderGeometry(0.1, 0.14, 0.75, 16);
+        trackObj(leftStrandGeo);
+        const leftStrand = new THREE.Mesh(leftStrandGeo, hairMat);
+        leftStrand.position.set(-0.32, -0.2, 0.04);
+        leftStrand.rotation.z = -0.1;
+        hairGroup.add(leftStrand);
+
+        const rightStrandGeo = new THREE.CylinderGeometry(0.1, 0.14, 0.75, 16);
+        trackObj(rightStrandGeo);
+        const rightStrand = new THREE.Mesh(rightStrandGeo, hairMat);
+        rightStrand.position.set(0.32, -0.2, 0.04);
+        rightStrand.rotation.z = 0.1;
+        hairGroup.add(rightStrand);
       } else if (c.hairStyle === 'shoulder_bob' || c.hairStyle === 'bob_cut' || c.hairStyle === 'layered_cut') {
-        const topCap = new THREE.Mesh(new THREE.SphereGeometry(0.72, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMat);
-        topCap.position.set(0, 0.02, 0);
-        hairGroup.add(topCap); trackObj(topCap);
-        
-        const leftStrand = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.6, 16), hairMat);
-        leftStrand.position.set(-0.48, -0.1, 0.1);
-        hairGroup.add(leftStrand); trackObj(leftStrand);
-        
-        const rightStrand = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.6, 16), hairMat);
-        rightStrand.position.set(0.48, -0.1, 0.1);
-        hairGroup.add(rightStrand); trackObj(rightStrand);
-      } else if (c.hairStyle === 'top_bun') {
-        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.72, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.5), hairMat);
-        cap.position.set(0, 0.02, 0); hairGroup.add(cap); trackObj(cap);
+        const leftStrandGeo = new THREE.CylinderGeometry(0.11, 0.15, 0.42, 16);
+        trackObj(leftStrandGeo);
+        const leftStrand = new THREE.Mesh(leftStrandGeo, hairMat);
+        leftStrand.position.set(-0.33, -0.1, 0.04);
+        hairGroup.add(leftStrand);
 
-        const bun = new THREE.Mesh(new THREE.SphereGeometry(0.24, 24, 24), hairMat);
-        bun.position.set(0, 0.78, -0.1); hairGroup.add(bun); trackObj(bun);
-      } else if (c.hairStyle === 'curly_top' || c.hairStyle === 'curly_fro') {
-        for (let i = 0; i < 18; i++) {
-          const curl = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 12), hairMat);
-          const angle = (i / 18) * Math.PI * 2;
-          const radius = 0.4 + (i % 3) * 0.1;
-          curl.position.set(Math.cos(angle) * radius, 0.45 + (i % 2) * 0.1, Math.sin(angle) * radius);
-          hairGroup.add(curl); trackObj(curl);
-        }
-      } else {
-        const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.71, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.52), hairMat);
-        hairCap.position.set(0, 0.02, 0);
-        hairGroup.add(hairCap); trackObj(hairCap);
+        const rightStrandGeo = new THREE.CylinderGeometry(0.11, 0.15, 0.42, 16);
+        trackObj(rightStrandGeo);
+        const rightStrand = new THREE.Mesh(rightStrandGeo, hairMat);
+        rightStrand.position.set(0.33, -0.1, 0.04);
+        hairGroup.add(rightStrand);
+      } else if (c.hairStyle === 'top_bun') {
+        const bunGeo = new THREE.SphereGeometry(0.15, 16, 16);
+        trackObj(bunGeo);
+        const bun = new THREE.Mesh(bunGeo, hairMat);
+        bun.position.set(0, 0.58, -0.1);
+        hairGroup.add(bun);
       }
     }
 
-    // ── GLASSES ATTACHMENT SOCKET ──
+    // ── 10. GLASSES ──
     if (c.glasses && c.glasses !== 'none') {
       const glassesGroup = new THREE.Group();
       glassesGroup.name = 'GLB_Glasses_Socket';
@@ -352,83 +379,50 @@ export function ThreeAvatarViewer({ config = DEFAULT_AVATAR_CONFIG, width = '100
       materials.push(frameMat, lensMat);
 
       if (c.glasses === 'round' || c.glasses === 'aviator') {
-        const leftF = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.022, 16, 32), frameMat);
-        leftF.position.set(-0.25, 0.11, 0.67); glassesGroup.add(leftF); trackObj(leftF);
+        const leftF = new THREE.Mesh(new THREE.TorusGeometry(0.088, 0.013, 16, 24), frameMat);
+        leftF.position.set(-0.165, 0.08, 0.42); glassesGroup.add(leftF); trackObj(leftF);
 
-        const rightF = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.022, 16, 32), frameMat);
-        rightF.position.set(0.25, 0.11, 0.67); glassesGroup.add(rightF); trackObj(rightF);
+        const rightF = new THREE.Mesh(new THREE.TorusGeometry(0.088, 0.013, 16, 24), frameMat);
+        rightF.position.set(0.165, 0.08, 0.42); glassesGroup.add(rightF); trackObj(rightF);
 
-        const bridge = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.2), frameMat);
-        bridge.position.set(0, 0.11, 0.67); bridge.rotation.z = Math.PI / 2; glassesGroup.add(bridge); trackObj(bridge);
+        const bridge = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.13), frameMat);
+        bridge.position.set(0, 0.08, 0.42); bridge.rotation.z = Math.PI / 2; glassesGroup.add(bridge); trackObj(bridge);
       } else {
-        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.24, 0.05), frameMat);
-        frame.position.set(0, 0.11, 0.67); glassesGroup.add(frame); trackObj(frame);
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.15, 0.03), frameMat);
+        frame.position.set(0, 0.08, 0.42); glassesGroup.add(frame); trackObj(frame);
       }
     }
 
-    // ── FULL BODY RIG (NECK, CHEST, SPINE, HIPS, LEGS, SHOES) ──
+    // ── 11. HUMAN NECK & SHOULDER BUST (FULLY CONNECTED) ──
     const neckBone = glbSystem.sockets.Neck;
     const spineBone = glbSystem.sockets.Spine;
-    const hipsBone = glbSystem.sockets.Hips;
 
-    // Neck Mesh
-    const neckMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, 0.4, 24), skinMat);
-    neckMesh.position.set(0, -0.2, 0); neckBone.add(neckMesh); trackObj(neckMesh);
+    // Smooth Neck
+    const neckMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.32, 24), skinMat);
+    neckMesh.position.set(0, -0.28, 0);
+    neckMesh.castShadow = true;
+    neckBone.add(neckMesh); trackObj(neckMesh);
 
-    // Torso Top Outfit
-    const torsoMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 0.95, 24), topMat);
-    torsoMesh.position.set(0, -0.45, 0); torsoMesh.castShadow = true; spineBone.add(torsoMesh); trackObj(torsoMesh);
+    // Clothed Shoulders / Upper-Chest Bust (Spans from Neck down to Chest)
+    const shoulderBustGeo = new THREE.CylinderGeometry(0.36, 0.66, 0.8, 32);
+    shoulderBustGeo.scale(isFemale ? 1.16 : 1.26, 1.0, 0.72);
+    trackObj(shoulderBustGeo);
 
-    // Arm Bones Rigging
-    const leftArmBone = glbSystem.bones.LeftArm;
-    const rightArmBone = glbSystem.bones.RightArm;
-    const leftHandBone = glbSystem.bones.LeftHand;
-    const rightHandBone = glbSystem.bones.RightHand;
+    const shoulderBustMesh = new THREE.Mesh(shoulderBustGeo, topMat);
+    shoulderBustMesh.position.set(0, -0.62, -0.02);
+    shoulderBustMesh.castShadow = true;
+    shoulderBustMesh.receiveShadow = true;
+    spineBone.add(shoulderBustMesh); trackObj(shoulderBustMesh);
 
-    const leftArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.12, 0.8, 16), topMat);
-    leftArmMesh.position.set(0, -0.4, 0); leftArmBone.add(leftArmMesh); trackObj(leftArmMesh);
+    // Collar Trim
+    const collarGeo = new THREE.TorusGeometry(0.20, 0.024, 16, 32);
+    trackObj(collarGeo);
+    const collarMesh = new THREE.Mesh(collarGeo, topMat);
+    collarMesh.position.set(0, -0.24, 0);
+    collarMesh.rotation.x = Math.PI / 2;
+    spineBone.add(collarMesh); trackObj(collarMesh);
 
-    const rightArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.12, 0.8, 16), topMat);
-    rightArmMesh.position.set(0, -0.4, 0); rightArmBone.add(rightArmMesh); trackObj(rightArmMesh);
-
-    const leftHandMesh = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 16), skinMat);
-    leftHandMesh.position.set(0, -0.15, 0); leftHandBone.add(leftHandMesh); trackObj(leftHandMesh);
-
-    const rightHandMesh = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 16), skinMat);
-    rightHandMesh.position.set(0, -0.15, 0); rightHandBone.add(rightHandMesh); trackObj(rightHandMesh);
-
-    // Legs & Shoes
-    const legsMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.5, 0.9, 24), bottomMat);
-    legsMesh.position.set(0, -0.45, 0); hipsBone.add(legsMesh); trackObj(legsMesh);
-
-    const leftFootBone = glbSystem.bones.LeftFoot;
-    const rightFootBone = glbSystem.bones.RightFoot;
-
-    const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.18, 0.42), shoesMat);
-    leftShoe.position.set(0, -0.1, 0.1); leftFootBone.add(leftShoe); trackObj(leftShoe);
-
-    const rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.18, 0.42), shoesMat);
-    rightShoe.position.set(0, -0.1, 0.1); rightFootBone.add(rightShoe); trackObj(rightShoe);
-
-    // ── POSE BONE ROTATIONS ──
-    const currentPose = c.pose || 'peace';
-    if (currentPose === 'peace') {
-      rightArmBone.rotation.z = -Math.PI * 0.4;
-      rightArmBone.rotation.x = 0.2;
-    } else if (currentPose === 'hands_folded') {
-      leftArmBone.rotation.z = Math.PI * 0.35;
-      rightArmBone.rotation.z = -Math.PI * 0.35;
-    } else if (currentPose === 'thinking') {
-      rightArmBone.rotation.z = -Math.PI * 0.55;
-    } else if (currentPose === 'happy') {
-      leftArmBone.rotation.z = Math.PI * 0.6;
-      rightArmBone.rotation.z = -Math.PI * 0.6;
-    } else if (currentPose === 'confident') {
-      leftArmBone.rotation.z = Math.PI * 0.25;
-      rightArmBone.rotation.z = -Math.PI * 0.25;
-    }
-
-    // ── 4. ANIMATION LOOP & INTERACTION CONTROLS ──
+    // ── 12. ANIMATION LOOP & INTERACTION CONTROLS ──
     let frameId;
     let time = 0;
     let nextBlinkTime = performance.now() + 3000 + Math.random() * 2000;
@@ -445,133 +439,129 @@ export function ThreeAvatarViewer({ config = DEFAULT_AVATAR_CONFIG, width = '100
       const now = performance.now();
       time += 0.016;
 
-      // 1. Continuous Breathing Animation (Spine & Torso movement)
-      glbSystem.bones.Spine.position.y = 0.4 + Math.sin(time * 1.2) * 0.006;
-      avatarGroup.position.y = Math.sin(time * 1.2) * 0.008;
+      // Subtle breathing
+      glbSystem.bones.Spine.position.y = 0.4 + Math.sin(time * 1.2) * 0.003;
 
-      // 2. Eye Blinking (Morph Target BlinkLeft & BlinkRight blendshape weights)
-      if (!isBlinking && now > nextBlinkTime) {
+      // Blinking Logic
+      if (now > nextBlinkTime && !isBlinking) {
         isBlinking = true;
         blinkStartTime = now;
       }
       if (isBlinking) {
-        const progress = (now - blinkStartTime) / 200;
-        if (progress >= 1) {
-          isBlinking = false;
-          nextBlinkTime = now + 3000 + Math.random() * 2000;
-          eyelids.forEach(lid => lid.scale.y = 1);
+        const blinkProgress = (now - blinkStartTime) / 150;
+        if (blinkProgress <= 0.5) {
+          const val = blinkProgress * 2;
+          eyelids.forEach(lid => { lid.scale.y = val; });
+        } else if (blinkProgress <= 1.0) {
+          const val = (1.0 - blinkProgress) * 2;
+          eyelids.forEach(lid => { lid.scale.y = val; });
         } else {
-          const p = progress < 0.5 ? progress * 2 : 2 - progress * 2;
-          eyelids.forEach(lid => lid.scale.y = 1 - (p * 0.92));
+          eyelids.forEach(lid => { lid.scale.y = 0; });
+          isBlinking = false;
+          nextBlinkTime = now + 3000 + Math.random() * 3000;
         }
       }
 
-      // 3. Smooth Idle Rotation & Drag Controls
-      const timeSinceInteraction = now - lastInteractionTime;
-      if (!isDragging && timeSinceInteraction > 2500) {
-        targetRotation.y += 0.002;
-        targetRotation.x = THREE.MathUtils.lerp(targetRotation.x, 0, 0.04);
+      // Smooth Rotation & Idle Sway
+      if (!isDragging && (now - lastInteractionTime > 2500)) {
+        targetRotation.y = Math.sin(time * 0.5) * 0.08;
       }
 
-      currentRotation.x = THREE.MathUtils.lerp(currentRotation.x, targetRotation.x, 0.08);
-      currentRotation.y = THREE.MathUtils.lerp(currentRotation.y, targetRotation.y, 0.08);
+      currentRotation.x += (targetRotation.x - currentRotation.x) * 0.1;
+      currentRotation.y += (targetRotation.y - currentRotation.y) * 0.1;
 
-      avatarGroup.rotation.x = currentRotation.x;
       avatarGroup.rotation.y = currentRotation.y;
+      avatarGroup.rotation.x = currentRotation.x;
 
       renderer.render(scene, camera);
       frameId = requestAnimationFrame(renderLoop);
     };
 
-    frameId = requestAnimationFrame(renderLoop);
+    renderLoop();
 
-    // Mouse & Touch Drag Controls
-    const handlePointerDown = (e) => {
-      isDragging = true;
-      lastInteractionTime = performance.now();
-      prevMousePos = {
-        x: e.clientX || (e.touches && e.touches[0].clientX),
-        y: e.clientY || (e.touches && e.touches[0].clientY)
-      };
-    };
-
-    const handlePointerMove = (e) => {
-      if (!isDragging) return;
-      lastInteractionTime = performance.now();
-      const currX = e.clientX || (e.touches && e.touches[0].clientX);
-      const currY = e.clientY || (e.touches && e.touches[0].clientY);
-
-      const deltaX = currX - prevMousePos.x;
-      const deltaY = currY - prevMousePos.y;
-
-      targetRotation.y += deltaX * 0.012;
-      targetRotation.x += deltaY * 0.008;
-      targetRotation.x = Math.max(-0.35, Math.min(0.35, targetRotation.x));
-
-      prevMousePos = { x: currX, y: currY };
-    };
-
-    const handlePointerUp = () => {
-      isDragging = false;
-      lastInteractionTime = performance.now();
-    };
-
-    // Zoom on Wheel
-    const handleWheel = (e) => {
-      e.preventDefault();
-      camera.position.z = Math.max(3.5, Math.min(7.5, camera.position.z + e.deltaY * 0.005));
-    };
-
-    // Double Click to Reset
-    const handleDblClick = () => {
-      targetRotation = { x: 0, y: 0 };
-      camera.position.copy(initialCamPos);
-    };
-
+    // Drag Rotation Controls
     const dom = renderer.domElement;
-    dom.addEventListener('mousedown', handlePointerDown);
-    window.addEventListener('mousemove', handlePointerMove);
-    window.addEventListener('mouseup', handlePointerUp);
 
-    dom.addEventListener('touchstart', handlePointerDown, { passive: false });
-    window.addEventListener('touchmove', handlePointerMove, { passive: false });
-    window.addEventListener('touchend', handlePointerUp);
-
-    dom.addEventListener('wheel', handleWheel, { passive: false });
-    dom.addEventListener('dblclick', handleDblClick);
-
-    // Resize Handling
-    const handleResize = () => {
-      if (!container) return;
-      const currW = container.clientWidth || 400;
-      const currH = container.clientHeight || 500;
-      camera.aspect = currW / currH;
-      camera.updateProjectionMatrix();
-      renderer.setSize(currW, currH);
+    const handleMouseDown = (e) => {
+      isDragging = true;
+      prevMousePos = { x: e.clientX, y: e.clientY };
+      lastInteractionTime = performance.now();
     };
-    window.addEventListener('resize', handleResize);
 
-    // CLEANUP
+    const handleMouseMove = (e) => {
+      if (!isDragging) return;
+      const deltaX = e.clientX - prevMousePos.x;
+      const deltaY = e.clientY - prevMousePos.y;
+      prevMousePos = { x: e.clientX, y: e.clientY };
+
+      targetRotation.y += deltaX * 0.01;
+      targetRotation.x = Math.max(-0.25, Math.min(0.25, targetRotation.x + deltaY * 0.008));
+      lastInteractionTime = performance.now();
+    };
+
+    const handleMouseUp = () => { isDragging = false; };
+
+    dom.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    const handleTouchStart = (e) => {
+      if (e.touches.length === 1) {
+        isDragging = true;
+        prevMousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        lastInteractionTime = performance.now();
+      }
+    };
+    const handleTouchMove = (e) => {
+      if (!isDragging || e.touches.length !== 1) return;
+      const deltaX = e.touches[0].clientX - prevMousePos.x;
+      const deltaY = e.touches[0].clientY - prevMousePos.y;
+      prevMousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      targetRotation.y += deltaX * 0.01;
+      targetRotation.x = Math.max(-0.25, Math.min(0.25, targetRotation.x + deltaY * 0.008));
+      lastInteractionTime = performance.now();
+    };
+    const handleTouchEnd = () => { isDragging = false; };
+
+    dom.addEventListener('touchstart', handleTouchStart);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleTouchEnd);
+
+    // Resize Observer
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        const width = entry.contentRect.width;
+        const height = entry.contentRect.height;
+        if (width > 0 && height > 0) {
+          camera.aspect = width / height;
+          camera.updateProjectionMatrix();
+          renderer.setSize(width, height);
+        }
+      }
+    });
+    resizeObserver.observe(container);
+
     return () => {
+      isDisposed = true;
       cancelAnimationFrame(frameId);
-      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
 
-      dom.removeEventListener('mousedown', handlePointerDown);
-      window.removeEventListener('mousemove', handlePointerMove);
-      window.removeEventListener('mouseup', handlePointerUp);
-
-      dom.removeEventListener('touchstart', handlePointerDown);
-      window.removeEventListener('touchmove', handlePointerMove);
-      window.removeEventListener('touchend', handlePointerUp);
-
-      dom.removeEventListener('wheel', handleWheel);
-      dom.removeEventListener('dblclick', handleDblClick);
+      dom.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      dom.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
 
       geometries.forEach(g => g.dispose());
       materials.forEach(m => m.dispose());
       renderer.dispose();
+
+      if (container.contains(dom)) {
+        container.removeChild(dom);
+      }
     };
-  }, [config, width, height]);
+  }, [config]);
 
   return (
     <div
@@ -581,10 +571,8 @@ export function ThreeAvatarViewer({ config = DEFAULT_AVATAR_CONFIG, width = '100
         height,
         position: 'relative',
         cursor: 'grab',
-        touchAction: 'none',
-        userSelect: 'none',
+        overflow: 'hidden',
       }}
-      title="GLB 2.0 Humanoid Rig • Mouse Drag: Rotate 360° • Scroll: Zoom • Double Click: Reset Camera"
     />
   );
 }

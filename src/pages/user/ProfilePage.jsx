@@ -153,6 +153,9 @@ export function ProfilePage({ username, onNavigate }) {
         username: `@${cleanUname}`,
       };
       setProfileData(updatedData);
+      if (currentUser?.id) {
+        localStorage.setItem(`user_profile_${currentUser.id}`, JSON.stringify(updatedData));
+      }
       localStorage.setItem('user_profile', JSON.stringify(updatedData));
       setIsEditModalOpen(false);
     } catch (err) {
@@ -239,14 +242,27 @@ export function ProfilePage({ username, onNavigate }) {
                 </button>
               </div>
             ) : (
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => setIsChatPopupOpen(true)}
-                icon={MessageSquare}
-              >
-                Chat Anonymous
-              </Button>
+              <div className="flex-row items-center gap-sm">
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => {
+                    const handle = targetUsername ? targetUsername.replace('@', '') : '';
+                    if (handle) onNavigate(`/chat/${handle}`);
+                  }}
+                  icon={MessageSquare}
+                >
+                  Message
+                </Button>
+                <Button
+                  variant="outline"
+                  size="md"
+                  onClick={() => setIsChatPopupOpen(true)}
+                  icon={MessageSquare}
+                >
+                  Quick Popup
+                </Button>
+              </div>
             )}
           </div>
 
