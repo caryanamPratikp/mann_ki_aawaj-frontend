@@ -5,12 +5,22 @@ import { formatDate } from '../../utils/formatDate.js';
 import { MessageSquare, Send, Sparkles, ChevronDown, ChevronUp, Mic, MicOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
+import { useComments } from '../../context/CommentContext.jsx';
 
 export function LargeDiscussionWindow({ post, comments: passedComments, onAddComment, onReactComment, onNavigate }) {
   const { currentUser } = useAuth();
+  const { createReply } = useComments();
   const [commentText, setCommentText] = useState('');
   const [pinnedCommentId, setPinnedCommentId] = useState(null);
   const [isExpanded, setIsExpanded] = useState(true);
+
+  const handleQuickReply = async (postId, text, commentAuthorUsername, commentId) => {
+    try {
+      await createReply(commentId, postId, text, commentAuthorUsername);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // Voice to text recorder for comments
   const { isRecording, isTranscribing, toggleRecording } = useVoiceRecorder((transcribedText) => {
@@ -52,6 +62,7 @@ export function LargeDiscussionWindow({ post, comments: passedComments, onAddCom
 
   const pinnedComment = comments.find((c) => c.id === pinnedCommentId);
   const regularComments = comments.filter((c) => c.id !== pinnedCommentId);
+  const sortedComments = [...regularComments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   return (
     <div
@@ -148,210 +159,187 @@ export function LargeDiscussionWindow({ post, comments: passedComments, onAddCom
                 textOverflow: 'ellipsis',
               }}
             >
-              {post.content}
+              {post.title}
             </h2>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-          {pinnedCommentId && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setPinnedCommentId(null);
-              }}
-              style={{
-                fontSize: '11px',
-                color: '#6F405F',
-                background: 'rgba(111,64,95,0.08)',
-                border: 'none',
-                padding: '4px 8px',
-                borderRadius: '12px',
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              Unpin
-            </button>
-          )}
-          <span
-            style={{
-              padding: '6px',
-              borderRadius: '50%',
-              backgroundColor: '#EDE8E6',
-              display: 'flex',
-              color: '#2D1D15',
-            }}
-          >
-            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '12px' }}>
+          {isExpanded ? <ChevronUp size={18} style={{ color: '#6F405F' }} /> : <ChevronDown size={18} style={{ color: '#6F405F' }} />}
         </div>
       </div>
 
       {/* ── EXPANDABLE DISCUSSION BODY ── */}
       {isExpanded && (
-        <div
-          style={{
-            padding: '16px 20px',
-            maxHeight: '460px',
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '14px',
-            backgroundColor: '#F7F4F3',
-          }}
-        >
-          {/* PINNED COMMENT BANNER */}
-          {pinnedComment && (
-            <div
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          {/* ── LIVE COMMENT COMPOSER (Sticky on Top) ── */}
+          <form
+            onSubmit={handleSubmit}
+            style={{
+              padding: '10px 16px',
+              borderBottom: '1px solid #EDE8E6',
+              backgroundColor: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <AvatarThumbnail
+              username={currentUser?.username || '@anonymous'}
+              initials={currentUser?.avatarInitials || 'AN'}
+              config={currentUser?.avatarConfig}
+              size={32}
+            />
+            <input
+              type="text"
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              placeholder={
+                isRecording
+                  ? 'Listening to voice...'
+                  : isTranscribing
+                  ? 'Converting speech to text...'
+                  : `Comment as ${currentUser?.username || 'anonymous'}...`
+              }
               style={{
-                backgroundColor: '#FFFFFF',
-                borderRadius: '12px',
-                padding: '12px 14px',
-                border: '1.5px solid #6F405F',
-                boxShadow: '0 2px 8px rgba(111,64,95,0.08)',
+                flex: 1,
+                padding: '8px 14px',
+                borderRadius: '20px',
+                border: isRecording ? '1.5px solid #B33A3A' : '1.5px solid #D4CECC',
+                fontSize: '12.5px',
+                outline: 'none',
+                color: '#2D1D15',
+                backgroundColor: isRecording ? 'rgba(179,58,58,0.05)' : '#FAFAFA',
+              }}
+            />
+
+            {/* VOICE-TO-TEXT MICROPHONE BUTTON */}
+            <button
+              type="button"
+              onClick={toggleRecording}
+              disabled={isTranscribing}
+              title={isRecording ? 'Click to stop recording' : 'Click to convert voice to text'}
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                border: 'none',
+                backgroundColor: isRecording ? '#B33A3A' : 'rgba(111,64,95,0.10)',
+                color: isRecording ? '#FFFFFF' : '#6F405F',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                flexShrink: 0,
               }}
             >
+              {isTranscribing ? (
+                <Loader2 size={14} className="spin-animation" />
+              ) : isRecording ? (
+                <MicOff size={14} />
+              ) : (
+                <Mic size={14} />
+              )}
+            </button>
+
+            <button
+              type="submit"
+              disabled={!commentText.trim()}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '20px',
+                border: 'none',
+                backgroundColor: commentText.trim() ? '#6F405F' : '#EAE5E3',
+                color: commentText.trim() ? '#FFFFFF' : '#9F9794',
+                fontSize: '12.5px',
+                fontWeight: 700,
+                cursor: commentText.trim() ? 'pointer' : 'default',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                flexShrink: 0,
+              }}
+            >
+              Post
+            </button>
+          </form>
+
+          {/* ── COMMENTS SCROLL AREA ── */}
+          <div
+            style={{
+              padding: '12px 16px',
+              maxHeight: '380px',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+              backgroundColor: '#FFFFFF',
+            }}
+          >
+            {/* PINNED COMMENT BANNER */}
+            {pinnedComment && (
               <div
                 style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  color: '#6F405F',
-                  marginBottom: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '12px',
+                  padding: '8px 12px',
+                  border: '1px solid #6F405F',
+                  boxShadow: '0 2px 8px rgba(111,64,95,0.04)',
+                  marginBottom: '4px',
                 }}
               >
-                <Sparkles size={13} /> PINNED HIGHLIGHT
-              </div>
-              <SpeechBubbleComment
-                comment={pinnedComment}
-                onReact={onReactComment}
-                isPinned={true}
-                onNavigate={onNavigate}
-              />
-            </div>
-          )}
-
-          {/* COMMENTS FEED */}
-          {regularComments.length > 0 ? (
-            regularComments.map((comment) => (
-              <div key={comment.id} style={{ position: 'relative' }}>
+                <div
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: '#6F405F',
+                    marginBottom: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <Sparkles size={12} /> PINNED HIGHLIGHT
+                </div>
                 <SpeechBubbleComment
-                  comment={comment}
+                  comment={pinnedComment}
                   onReact={onReactComment}
-                  onPin={() => setPinnedCommentId(comment.id)}
+                  isPinned={true}
+                  onQuickReply={(pId, text, author) => handleQuickReply(pId, text, author, pinnedComment.id)}
                   onNavigate={onNavigate}
                 />
               </div>
-            ))
-          ) : (
-            <div
-              style={{
-                textAlign: 'center',
-                padding: '24px',
-                color: '#8C8385',
-                fontSize: '13px',
-              }}
-            >
-              No comments yet. Be the first to start the conversation!
-            </div>
-          )}
+            )}
+
+            {/* COMMENTS FEED */}
+            {sortedComments.length > 0 ? (
+              sortedComments.map((comment) => (
+                <div key={comment.id} style={{ position: 'relative' }}>
+                  <SpeechBubbleComment
+                    comment={comment}
+                    onReact={onReactComment}
+                    onPinToggle={() => setPinnedCommentId(prev => prev === comment.id ? null : comment.id)}
+                    onQuickReply={(pId, text, author) => handleQuickReply(pId, text, author, comment.id)}
+                    onNavigate={onNavigate}
+                  />
+                </div>
+              ))
+            ) : (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '24px',
+                  color: '#8C8385',
+                  fontSize: '13px',
+                }}
+              >
+                No comments yet. Be the first to start the conversation!
+              </div>
+            )}
+          </div>
         </div>
       )}
-
-      {/* ── LIVE COMMENT COMPOSER (Bottom) ── */}
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          padding: '12px 16px',
-          borderTop: '1px solid #EDE8E6',
-          backgroundColor: '#FFFFFF',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-        }}
-      >
-        <AvatarThumbnail
-          username={currentUser?.username || '@anonymous'}
-          initials={currentUser?.avatarInitials || 'AN'}
-          config={currentUser?.avatarConfig}
-          size={32}
-        />
-        <input
-          type="text"
-          value={commentText}
-          onChange={(e) => setCommentText(e.target.value)}
-          placeholder={
-            isRecording
-              ? 'Listening to voice...'
-              : isTranscribing
-              ? 'Converting speech to text...'
-              : `Comment as ${currentUser?.username || 'anonymous'}...`
-          }
-          style={{
-            flex: 1,
-            padding: '8px 14px',
-            borderRadius: '20px',
-            border: isRecording ? '1.5px solid #B33A3A' : '1.5px solid #D4CECC',
-            fontSize: '12.5px',
-            outline: 'none',
-            color: '#2D1D15',
-            backgroundColor: isRecording ? 'rgba(179,58,58,0.05)' : '#FAFAFA',
-          }}
-        />
-
-        {/* VOICE-TO-TEXT MICROPHONE BUTTON */}
-        <button
-          type="button"
-          onClick={toggleRecording}
-          disabled={isTranscribing}
-          title={isRecording ? 'Click to stop recording' : 'Click to convert voice to text'}
-          style={{
-            width: '34px',
-            height: '34px',
-            borderRadius: '50%',
-            border: 'none',
-            backgroundColor: isRecording ? '#B33A3A' : 'rgba(111,64,95,0.10)',
-            color: isRecording ? '#FFFFFF' : '#6F405F',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          {isTranscribing ? (
-            <Loader2 size={15} className="spin-animation" />
-          ) : isRecording ? (
-            <MicOff size={15} />
-          ) : (
-            <Mic size={15} />
-          )}
-        </button>
-
-        <button
-          type="submit"
-          disabled={!commentText.trim()}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '20px',
-            border: 'none',
-            backgroundColor: commentText.trim() ? '#6F405F' : '#EAE5E3',
-            color: commentText.trim() ? '#FFFFFF' : '#9F9794',
-            fontSize: '12.5px',
-            fontWeight: 700,
-            cursor: commentText.trim() ? 'pointer' : 'default',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            transition: 'all 0.15s ease',
-          }}
-        >
-          <Send size={13} /> Send
-        </button>
-      </form>
     </div>
   );
 }

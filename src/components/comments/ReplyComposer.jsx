@@ -30,7 +30,7 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex-col gap-xs" style={{ marginTop: '8px', paddingLeft: '16px', borderLeft: '2px solid var(--border-light)' }}>
+    <form onSubmit={handleSubmit} className="flex-col gap-xs" style={{ marginTop: '4px', width: '100%' }}>
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}

@@ -1,20 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { PostCard } from '../../components/posts/PostCard.jsx';
 import { InitialAvatar } from '../../components/profile/InitialAvatar.jsx';
 import { usePosts } from '../../context/PostContext.jsx';
-import { mockAuthService } from '../../services/mockAuthService.js';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { apiProfileService } from '../../services/apiProfileService.js';
 import { Compass, Search, TrendingUp, Users, MessageSquare, ArrowRight } from 'lucide-react';
 import { Button } from '../../components/common/Button.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 
 export function ExplorePage({ onNavigate }) {
   const { posts } = usePosts();
+  const { currentUser } = useAuth();
   const { t } = useLanguage();
   const searchParams = new URLSearchParams(window.location.search);
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [activeTab, setActiveTab] = useState('Posts'); // Posts, Members
   const [activeTopic, setActiveTopic] = useState('All');
+  const [userBios, setUserBios] = useState({});
 
   const topicsList = [
     'All', 'Life', 'Career', 'Relationships', 'Education', 'Personal Growth',
@@ -22,8 +25,55 @@ export function ExplorePage({ onNavigate }) {
   ];
 
   let displayPosts = posts.filter((p) => p.status === 'PUBLISHED');
-  const allUsers = mockAuthService.getUsers();
-  let displayUsers = allUsers;
+
+  // Extract unique authors dynamically from the real database posts
+  const dbUsers = useMemo(() => {
+    const uniqueUsersMap = new Map();
+
+    posts.forEach((p) => {
+      if (p.username && p.status === 'PUBLISHED') {
+        const usernameKey = p.username.toLowerCase();
+        
+        // Exclude the current logged-in user
+        if (currentUser?.username && usernameKey === currentUser.username.toLowerCase()) {
+          return;
+        }
+
+        if (!uniqueUsersMap.has(usernameKey)) {
+          uniqueUsersMap.set(usernameKey, {
+            id: `db_user_${p.username.replace('@', '')}`,
+            username: p.username,
+            avatarInitials: p.avatarInitials || p.username.replace('@', '').slice(0, 2).toUpperCase(),
+            avatarConfig: p.avatarConfig,
+            bio: '',
+          });
+        }
+      }
+    });
+    return Array.from(uniqueUsersMap.values());
+  }, [posts, currentUser]);
+
+  // Load bios dynamically from database profiles
+  useEffect(() => {
+    dbUsers.forEach((u) => {
+      const usernameClean = u.username.replace('@', '');
+      if (usernameClean && !(usernameClean in userBios)) {
+        // Set sentinel to prevent duplicate API requests
+        setUserBios((prev) => ({ ...prev, [usernameClean]: '...' }));
+        apiProfileService.getPublicProfile(usernameClean)
+          .then((res) => {
+            const bio = res?.data?.bio || res?.bio || 'No bio written yet.';
+            setUserBios((prev) => ({ ...prev, [usernameClean]: bio }));
+          })
+          .catch((err) => {
+            console.warn('[ExplorePage] Failed to fetch bio for', usernameClean, err);
+            setUserBios((prev) => ({ ...prev, [usernameClean]: 'Anonymous author' }));
+          });
+      }
+    });
+  }, [dbUsers, userBios]);
+
+  let displayUsers = dbUsers;
 
   if (query.trim()) {
     const qLower = query.toLowerCase();
@@ -31,7 +81,8 @@ export function ExplorePage({ onNavigate }) {
       (p) => p.title?.toLowerCase().includes(qLower) || p.content.toLowerCase().includes(qLower) || p.topic.toLowerCase().includes(qLower)
     );
     displayUsers = displayUsers.filter(
-      (u) => u.username.toLowerCase().includes(qLower) || u.bio?.toLowerCase().includes(qLower)
+      (u) => u.username.toLowerCase().includes(qLower) || 
+             (u.bio || userBios[u.username.replace('@', '')] || '').toLowerCase().includes(qLower)
     );
   }
 
@@ -147,35 +198,96 @@ export function ExplorePage({ onNavigate }) {
         )}
 
         {activeTab === 'Members' && (
-          <div className="grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'flex-start' }}>
             {displayUsers.map((user) => (
-              <div key={user.id} className="mka-card flex-col gap-sm justify-between">
-                <div className="flex-row items-center gap-md">
-                  <button onClick={() => onNavigate(`/profile/${user.username.replace('@', '')}`)}>
-                    <InitialAvatar username={user.username} initials={user.avatarInitials} size={48} />
+              <div
+                key={user.id}
+                className="mka-card"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '18px 12px',
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid var(--border-light)',
+                  borderRadius: '12px',
+                  textAlign: 'center',
+                  width: '200px',
+                  height: '200px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                  flexShrink: 0,
+                }}
+              >
+                {/* Avatar & Info */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '100%' }}>
+                  <button
+                    onClick={() => onNavigate(`/profile/${user.username.replace('@', '')}`)}
+                    style={{ display: 'block', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                  >
+                    <InitialAvatar username={user.username} initials={user.avatarInitials} size={52} />
                   </button>
-                  <div className="flex-col" style={{ flex: 1, minWidth: 0 }}>
-                    <span className="bold" style={{ fontSize: '15px', color: 'var(--eclipse)' }}>
+                  <div style={{ width: '100%' }}>
+                    <span className="bold" style={{ fontSize: '14.0px', color: 'var(--eclipse)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {user.username}
                     </span>
-                    <p className="secondary-text" style={{ fontSize: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {user.bio || 'Anonymous author'}
+                    <p
+                      className="secondary-text"
+                      style={{
+                        fontSize: '11.0px',
+                        margin: '4px 0 0 0',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        lineHeight: '1.35',
+                        height: '30px',
+                      }}
+                    >
+                      {user.bio || userBios[user.username.replace('@', '')] || 'No bio written yet.'}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex-row justify-between items-center" style={{ borderTop: '1px solid var(--swiss-coffee)', paddingTop: '10px' }}>
-                  <Button variant="secondary" size="sm" onClick={() => onNavigate(`/profile/${user.username.replace('@', '')}`)}>
-                    View Profile
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => onNavigate(`/chat/${user.username.replace('@', '')}`)}
-                    icon={MessageSquare}
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: '6px', width: '100%', marginTop: '10px' }}>
+                  <button
+                    onClick={() => onNavigate(`/profile/${user.username.replace('@', '')}`)}
+                    style={{
+                      flex: 1,
+                      padding: '6px 10px',
+                      borderRadius: '20px',
+                      border: '1px solid var(--border-light)',
+                      backgroundColor: '#FFFFFF',
+                      color: 'var(--eclipse)',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
                   >
-                    {t('chatWithUser')}
-                  </Button>
+                    Profile
+                  </button>
+                  <button
+                    onClick={() => onNavigate(`/chat/${user.username.replace('@', '')}`)}
+                    style={{
+                      flex: 1,
+                      padding: '6px 10px',
+                      borderRadius: '20px',
+                      border: 'none',
+                      backgroundColor: 'var(--deep-plum)',
+                      color: '#FFFFFF',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <MessageSquare size={10} /> Chat
+                  </button>
                 </div>
               </div>
             ))}

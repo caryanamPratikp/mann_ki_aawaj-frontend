@@ -28,8 +28,21 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
     || 'User';
 
   const isPendingRequest = conversation?.requestStatus === 'PENDING';
+  
+  // Resolve current user's DB ID to match against requestSenderId
+  const currentUserId = conversation?.participant1Username?.toLowerCase() === currentUserUsername?.toLowerCase() 
+    ? conversation?.participant1Id 
+    : conversation?.participant2Id;
+
+  // Resolve request sender username handle
+  const requestSenderUsername = conversation?.requestSender || (
+    conversation?.requestSenderId === conversation?.participant1Id 
+      ? conversation?.participant1Username 
+      : conversation?.participant2Username
+  );
+
   const cleanSelf = currentUserUsername ? (currentUserUsername.startsWith('@') ? currentUserUsername.toLowerCase() : `@${currentUserUsername.toLowerCase()}`) : '';
-  const cleanSender = conversation?.requestSender ? (conversation.requestSender.startsWith('@') ? conversation.requestSender.toLowerCase() : `@${conversation.requestSender.toLowerCase()}`) : '';
+  const cleanSender = requestSenderUsername ? (requestSenderUsername.startsWith('@') ? requestSenderUsername.toLowerCase() : `@${requestSenderUsername.toLowerCase()}`) : '';
   const isRecipientOfRequest = isPendingRequest && cleanSender !== cleanSelf;
 
   // TanStack Query for Realtime Messages (Polling every 5s)
@@ -74,7 +87,7 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
   if (!conversation) {
     return (
       <div className="mka-card flex-col items-center justify-center text-center p-lg" style={{ height: '100%', background: 'var(--pure-white)' }}>
-        <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--soft-white)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto', color: 'var(--deep-plum)' }}>
+        <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--soft-white)', display: 'flex', alignItems: 'center', justifycontent: 'center', margin: '0 auto 16px auto', color: 'var(--deep-plum)' }}>
           <MessageSquare size={32} />
         </div>
         <h3 className="card-heading" style={{ fontSize: '20px', color: 'var(--eclipse)' }}>
@@ -146,7 +159,7 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
       >
         {messages.map((msg) => {
           const isMine = msg.senderUsername?.toLowerCase() === currentUserUsername?.toLowerCase();
-          const isRead = msg.status === 'READ' || msg.isRead === true;
+          const isRead = msg.status === 'READ' || msg.isRead === true || conversation?.requestStatus === 'ACCEPTED';
           const isDelivered = msg.status === 'DELIVERED';
 
           return (
@@ -170,7 +183,7 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
                   lineHeight: 1.45,
                 }}
               >
-                {msg.text}
+                {msg.text || msg.content}
                 <div
                   style={{
                     fontSize: '10px',
@@ -218,7 +231,7 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
             <>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--eclipse)' }}>
-                  {otherUsername} sent you a chat request
+                  {otherUsername} wants to chat with you
                 </span>
                 <span style={{ fontSize: '12px', color: 'var(--hurricane)' }}>
                   Accept to start chatting and continuous messaging.

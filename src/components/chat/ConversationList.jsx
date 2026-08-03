@@ -4,6 +4,7 @@ import { formatDate } from '../../utils/formatDate.js';
 import { mockChatService } from '../../services/mockChatService.js';
 import { MessageSquare, Inbox, Shield, Check, Clock } from 'lucide-react';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useChat } from '../../context/ChatContext.jsx';
 
 const normalizeUser = (u) => {
   if (!u) return '';
@@ -25,6 +26,7 @@ const getOtherUsername = (conv, cleanSelf) => {
 
 export function ConversationList({ conversations = [], activeConvId, onSelectConversation, currentUserUsername }) {
   const { addToast } = useToast();
+  const { acceptChatRequest, declineChatRequest } = useChat();
   const [activeTab, setActiveTab] = useState('chats'); // 'chats' | 'requests'
 
   const cleanSelf = currentUserUsername ? normalizeUser(currentUserUsername) : '';
@@ -41,24 +43,23 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
     return false;
   });
 
-  const handleAccept = (e, convId) => {
+  const handleAccept = async (e, convId) => {
     e.stopPropagation();
-    const convs = mockChatService.getConversations();
-    const idx = convs.findIndex(c => c.id === convId);
-    if (idx !== -1) {
-      convs[idx].requestStatus = 'ACCEPTED';
-      localStorage.setItem('mka_chat_conversations', JSON.stringify(convs));
+    try {
+      await acceptChatRequest(convId);
+      onSelectConversation(convId);
+    } catch (err) {
+      console.error(err);
     }
-    addToast('Chat request accepted!', 'success');
-    onSelectConversation(convId);
   };
 
-  const handleDecline = (e, convId) => {
+  const handleDecline = async (e, convId) => {
     e.stopPropagation();
-    const convs = mockChatService.getConversations();
-    const filtered = convs.filter(c => c.id !== convId);
-    localStorage.setItem('mka_chat_conversations', JSON.stringify(filtered));
-    addToast('Chat request declined.', 'info');
+    try {
+      await declineChatRequest(convId);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -247,14 +248,14 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
                           {otherUsername}
                         </span>
                         <span style={{ fontSize: '11px', color: 'var(--hurricane)', fontWeight: 600 }}>
-                          Sent you a chat request
+                          Chat Request
                         </span>
                       </div>
                     </div>
                   </div>
 
                   <p style={{ fontSize: '12px', color: 'var(--eclipse)', margin: '2px 0 4px 0', fontStyle: 'italic' }}>
-                    "{conv.lastMessage}"
+                    "{otherUsername} wants to chat with you"
                   </p>
 
                   <div style={{ display: 'flex', gap: '6px' }}>

@@ -1,10 +1,30 @@
+
 import React, { useState } from 'react';
 import { AvatarThumbnail } from '../avatar/AvatarThumbnail.jsx';
 import { formatDate } from '../../utils/formatDate.js';
-import { Heart, CornerDownLeft, Send, Pin } from 'lucide-react';
+import { CornerDownLeft, Pin, Sparkles } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { ReplyList } from './ReplyList.jsx';
 
 const EMOJI_REACTIONS = ['😀', '❤️', '👍', '🔥', '💯', '🤝'];
+
+const keyMap = {
+  'relate': '❤️',
+  'helpful': '🔥',
+  'wellSaid': '👍',
+  'stayStrong': '🤝',
+  'madeMeThink': '💯',
+  'happy': '😀'
+};
+
+const emojiMap = {
+  '❤️': 'relate',
+  '🔥': 'helpful',
+  '👍': 'wellSaid',
+  '🤝': 'stayStrong',
+  '💯': 'madeMeThink',
+  '😀': 'relate'
+};
 
 export function SpeechBubbleComment({
   comment,
@@ -17,33 +37,50 @@ export function SpeechBubbleComment({
   const { currentUser } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
   const [showReplyBox, setShowReplyBox] = useState(false);
-  const [replyText, setReplyText] = useState('');
-  const [userLiked, setUserLiked] = useState(comment.userReaction === 'relate');
-  const [likeCount, setLikeCount] = useState(
-    (comment.reactions?.relate || 0) + (comment.reactions?.helpful || 0) || 0
-  );
+
+  const [activeEmojis, setActiveEmojis] = useState(() => {
+    const list = [];
+    const r = comment.reactions || {};
+    if (r.relate > 0) list.push('❤️');
+    if (r.helpful > 0) list.push('🔥');
+    if (r.wellSaid > 0) list.push('👍');
+    if (r.stayStrong > 0) list.push('🤝');
+    if (r.madeMeThink > 0) list.push('💯');
+    const userR = comment.userReaction;
+    if (userR && keyMap[userR]) {
+      const emoji = keyMap[userR];
+      return [emoji, ...list.filter(x => x !== emoji)];
+    }
+    return list;
+  });
+
+  const handleEmojiClick = (emoji, e) => {
+    if (e) e.stopPropagation();
+    setActiveEmojis(prev => {
+      const exists = prev.includes(emoji);
+      if (exists) {
+        return prev.filter(x => x !== emoji);
+      } else {
+        return [emoji, ...prev]; // Latest first!
+      }
+    });
+
+    const key = emojiMap[emoji] || 'relate';
+    if (onReact) onReact(comment.id, key);
+  };
 
   const handleLikeToggle = (e) => {
     if (e) e.stopPropagation();
-    const newLiked = !userLiked;
-    setUserLiked(newLiked);
-    setLikeCount(prev => (newLiked ? prev + 1 : Math.max(0, prev - 1)));
-    if (onReact) onReact(comment.id, 'relate');
+    handleEmojiClick('❤️');
   };
 
-  const handleEmojiClick = (emoji, e) => {
-    e.stopPropagation();
-    if (onReact) onReact(comment.id, emoji);
-    handleLikeToggle();
-  };
+  const userLiked = activeEmojis.includes('❤️');
+  const reactionCount = (comment.reactions?.relate || 0) + (comment.reactions?.helpful || 0) || 0;
 
-  const handleReplySubmit = (e) => {
-    e.preventDefault();
-    if (!replyText.trim()) return;
+  const handleAddReply = async (replyText) => {
     if (onQuickReply) {
-      onQuickReply(comment.postId || comment.targetPostId, replyText.trim(), comment.username);
+      await onQuickReply(comment.postId || comment.targetPostId, replyText, comment.username);
     }
-    setReplyText('');
     setShowReplyBox(false);
   };
 
@@ -51,17 +88,16 @@ export function SpeechBubbleComment({
     <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      className="animate-fade-in"
       style={{
         position: 'relative',
-        padding: '10px 12px',
-        borderRadius: '12px',
-        background: isPinned ? 'rgba(111,64,95,0.03)' : '#ffffff',
-        border: `1.5px solid ${isPinned ? '#6F405F' : (isHovered ? '#6F405F' : '#D4CECC')}`,
         display: 'flex',
-        flexDirection: 'column',
-        gap: '6px',
-        transition: 'all 0.15s ease',
-        boxShadow: isHovered ? '0 3px 12px rgba(111,64,95,0.08)' : '0 1px 3px rgba(0,0,0,0.03)',
+        flexDirection: 'row',
+        gap: '10px',
+        padding: '6px 0',
+        backgroundColor: 'transparent',
+        alignItems: 'flex-start',
+        width: '100%',
       }}
     >
       {/* ── FLOATING HOVER EMOJI BAR & QUICK REPLY ── */}
@@ -70,8 +106,8 @@ export function SpeechBubbleComment({
           className="animate-fade-in"
           style={{
             position: 'absolute',
-            top: '-30px',
-            left: '12px',
+            top: '-26px',
+            left: '44px',
             zIndex: 30,
             display: 'flex',
             alignItems: 'center',
@@ -110,14 +146,7 @@ export function SpeechBubbleComment({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              setShowReplyBox((prev) => {
-                const next = !prev;
-                if (next) {
-                  const tag = comment.username ? (comment.username.startsWith('@') ? comment.username : `@${comment.username}`) : '';
-                  setReplyText(tag ? `${tag} ` : '');
-                }
-                return next;
-              });
+              setShowReplyBox((prev) => !prev);
             }}
             style={{
               background: 'none',
@@ -170,25 +199,27 @@ export function SpeechBubbleComment({
         </div>
       )}
 
-      {/* ── HEADER: Avatar, Username, Time (Left) & Like Reaction (Right) ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onNavigate && comment.username) onNavigate(`/profile/${comment.username.replace('@', '')}`);
-            }}
-            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}
-            title={`View ${comment.username}'s profile`}
-          >
-            <AvatarThumbnail
-              username={comment.username}
-              initials={comment.avatarInitials}
-              config={comment.avatarConfig}
-              size={28}
-            />
-          </button>
+      {/* Left Avatar */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (onNavigate && comment.username) onNavigate(`/profile/${comment.username.replace('@', '')}`);
+        }}
+        style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0, marginTop: '2px' }}
+        title={`View ${comment.username}'s profile`}
+      >
+        <AvatarThumbnail
+          username={comment.username}
+          initials={comment.avatarInitials}
+          config={comment.avatarConfig}
+          size={32}
+        />
+      </button>
+
+      {/* Middle Inline Text Content */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'inline', fontSize: '13.5px', lineHeight: 1.4, color: '#2D1D15' }}>
           <button
             type="button"
             onClick={(e) => {
@@ -199,106 +230,92 @@ export function SpeechBubbleComment({
               background: 'none',
               border: 'none',
               padding: 0,
+              marginRight: '6px',
               cursor: 'pointer',
-              fontSize: '13px',
+              fontSize: '13.5px',
               fontWeight: 700,
               color: '#6F405F',
-              textAlign: 'left',
+              display: 'inline',
             }}
             onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
             onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
           >
             {comment.username}
           </button>
-          <span style={{ fontSize: '11px', color: '#8C8385' }}>
-            • {formatDate(comment.createdAt)}
-          </span>
+          {isPinned && (
+            <span style={{
+              fontSize: '8.5px',
+              fontWeight: 700,
+              color: '#ffffff',
+              backgroundColor: '#6F405F',
+              padding: '1px 4px',
+              borderRadius: '3px',
+              textTransform: 'uppercase',
+              marginRight: '6px',
+              display: 'inline-block',
+              verticalAlign: 'middle',
+            }}>
+              Pinned
+            </span>
+          )}
+          <span style={{ whiteSpace: 'pre-line' }}>{comment.content}</span>
         </div>
 
-        {/* Like Reaction Count on Right Side */}
-        <button
-          type="button"
-          onClick={handleLikeToggle}
-          style={{
-            background: userLiked ? 'rgba(111,64,95,0.12)' : 'transparent',
-            border: `1px solid ${userLiked ? '#6F405F' : 'transparent'}`,
-            borderRadius: '12px',
-            padding: '2px 7px',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '4px',
-            fontSize: '11.5px',
-            color: userLiked ? '#6F405F' : '#8C8385',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-          }}
-        >
-          <Heart size={12} style={{ fill: userLiked ? '#6F405F' : 'none' }} />
-          {likeCount > 0 && <span style={{ fontWeight: 700 }}>{likeCount}</span>}
-        </button>
-      </div>
+        {/* Action / Meta row below text */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '2px', fontSize: '11px', color: 'var(--hurricane)' }}>
+          <span>{formatDate(comment.createdAt)}</span>
 
-      {/* ── COMMENT TEXT BELOW HEADER ── */}
-      <p
-        style={{
-          margin: 0,
-          fontSize: '13px',
-          lineHeight: 1.45,
-          color: '#2D1D15',
-          whiteSpace: 'pre-line',
-        }}
-      >
-        {comment.content}
-      </p>
+          {reactionCount > 0 && (
+            <span style={{ fontWeight: 600 }}>{reactionCount} {reactionCount === 1 ? 'like' : 'likes'}</span>
+          )}
 
-      {/* ── INLINE QUICK REPLY BOX ── */}
-      {showReplyBox && (
-        <form
-          onSubmit={handleReplySubmit}
-          style={{
-            marginTop: '4px',
-            display: 'flex',
-            gap: '6px',
-            alignItems: 'center',
-          }}
-        >
-          <input
-            type="text"
-            value={replyText}
-            onChange={(e) => setReplyText(e.target.value)}
-            placeholder={`Reply to ${comment.username}...`}
-            autoFocus
-            style={{
-              flex: 1,
-              padding: '6px 10px',
-              fontSize: '12px',
-              borderRadius: '16px',
-              border: '1.5px solid #6F405F',
-              background: '#ffffff',
-              outline: 'none',
-              color: '#2D1D15',
-            }}
-          />
           <button
-            type="submit"
-            disabled={!replyText.trim()}
+            type="button"
+            onClick={() => setShowReplyBox((prev) => !prev)}
             style={{
-              padding: '6px 12px',
-              borderRadius: '16px',
-              background: replyText.trim() ? '#6F405F' : '#9F9794',
-              color: '#ffffff',
+              background: 'none',
               border: 'none',
+              cursor: 'pointer',
               fontSize: '11px',
-              fontWeight: 700,
-              cursor: replyText.trim() ? 'pointer' : 'not-allowed',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
+              fontWeight: 600,
+              color: 'var(--hurricane)',
+              padding: 0,
             }}
           >
-            <Send size={11} /> Reply
+            Reply
           </button>
-        </form>
+        </div>
+
+        {/* Nested Replies List */}
+        <ReplyList
+          replies={comment.replies || []}
+          postId={comment.postId || comment.targetPostId}
+          commentId={comment.id}
+          onNavigate={onNavigate}
+          showReplyComposer={showReplyBox}
+          onCancelReplyComposer={() => setShowReplyBox(false)}
+          onSubmitReply={handleAddReply}
+          targetUsername={comment.username}
+          onReplyTrigger={(username) => {
+            setShowReplyBox(true);
+          }}
+        />
+      </div>
+
+      {/* Far Right Active Emojis Display */}
+      {activeEmojis.length > 0 && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '3px',
+          alignSelf: 'flex-start',
+          marginTop: '4px',
+          flexShrink: 0
+        }}>
+          {activeEmojis.map((emoji, index) => (
+            <span key={index} style={{ fontSize: '14px' }}>{emoji}</span>
+          ))}
+        </div>
       )}
     </div>
   );

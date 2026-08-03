@@ -1,51 +1,95 @@
 import React, { useState } from 'react';
 import { ReplyCard } from './ReplyCard.jsx';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ReplyComposer } from './ReplyComposer.jsx';
 
-export function ReplyList({ replies = [], postId, commentId, onNavigate }) {
-  const [showReplies, setShowReplies] = useState(true);
+export function ReplyList({
+  replies = [],
+  postId,
+  commentId,
+  onNavigate,
+  showReplyComposer,
+  onCancelReplyComposer,
+  onSubmitReply,
+  targetUsername,
+  onReplyTrigger
+}) {
+  const [showReplies, setShowReplies] = useState(false);
   const [visibleCount, setVisibleCount] = useState(3);
 
-  if (!replies || replies.length === 0) return null;
+  // If no replies and no composer, show nothing
+  if ((!replies || replies.length === 0) && !showReplyComposer) return null;
 
   const visibleReplies = replies.slice(0, visibleCount);
   const hasMore = replies.length > visibleCount;
 
   return (
-    <div className="flex-col gap-sm" style={{ marginTop: '10px', paddingLeft: '20px' }}>
-      <div className="flex-row items-center gap-xs">
-        <button
-          onClick={() => setShowReplies(!showReplies)}
-          className="flex-row items-center gap-xs secondary-text"
-          style={{ fontSize: '13px', fontWeight: 500, color: 'var(--deep-plum)' }}
-        >
-          {showReplies ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          <span>
-            {showReplies ? 'Hide replies' : `View ${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`}
-          </span>
-        </button>
-      </div>
+    <div className="flex-col gap-xs" style={{ marginTop: '4px', width: '100%' }}>
+      {replies.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0 2px 44px' }}>
+          {/* Horizontal Line Prefix */}
+          <div style={{ width: '24px', height: '1px', backgroundColor: 'var(--hurricane)', opacity: 0.3 }} />
+          <button
+            onClick={() => setShowReplies(!showReplies)}
+            style={{
+              fontSize: '12px',
+              fontWeight: 600,
+              color: 'var(--hurricane)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+            }}
+          >
+            {showReplies ? 'Hide replies' : `View replies (${replies.length})`}
+          </button>
+        </div>
+      )}
 
-      {showReplies && (
-        <div className="flex-col gap-sm">
-          {visibleReplies.map((reply) => (
+      {/* Indented Replies block */}
+      {((showReplies && replies.length > 0) || showReplyComposer) && (
+        <div className="flex-col gap-xs" style={{ paddingLeft: '44px' }}>
+          {showReplies && visibleReplies.map((reply) => (
             <ReplyCard
               key={reply.id}
               reply={reply}
               postId={postId}
               commentId={commentId}
               onNavigate={onNavigate}
+              onReplyTrigger={() => {
+                if (onReplyTrigger) onReplyTrigger(reply.username);
+              }}
             />
           ))}
 
-          {hasMore && (
+          {showReplies && hasMore && (
             <button
               onClick={() => setVisibleCount((prev) => prev + 3)}
               className="secondary-text"
-              style={{ fontSize: '12px', fontWeight: 600, color: 'var(--deep-plum)', textAlign: 'left', marginTop: '4px' }}
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                color: 'var(--deep-plum)',
+                textAlign: 'left',
+                margin: '4px 0 4px 32px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer'
+              }}
             >
               Load more replies ({replies.length - visibleCount} remaining)...
             </button>
+          )}
+
+          {showReplyComposer && (
+            <div style={{ marginTop: '6px', width: '100%' }}>
+              <ReplyComposer
+                commentId={commentId}
+                postId={postId}
+                targetUsername={targetUsername}
+                onSubmit={onSubmitReply}
+                onCancel={onCancelReplyComposer}
+              />
+            </div>
           )}
         </div>
       )}

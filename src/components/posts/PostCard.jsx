@@ -25,12 +25,6 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false 
   const [hidden, setHidden] = useState(false);
   const [manualToggle, setManualToggle] = useState(false);
 
-  useEffect(() => {
-    if (post?.id) {
-      fetchComments(post.id, 'Latest');
-    }
-  }, [post?.id, fetchComments]);
-
   if (hidden) {
     return (
       <div className="mka-card" style={{ padding: '10px 14px', background: '#F5F2F1', textAlign: 'center', borderRadius: '12px' }}>
