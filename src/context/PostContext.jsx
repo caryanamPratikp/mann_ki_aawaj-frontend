@@ -3,19 +3,21 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiPostService } from '../services/apiPostService.js';
 import { mapPost } from '../services/apiMappers.js';
 import { useAuth } from './AuthContext.jsx';
+import { useLanguage } from './LanguageContext.jsx';
 import { useToast } from './ToastContext.jsx';
 
 const PostContext = createContext(null);
 
 export function PostProvider({ children }) {
   const { currentUser } = useAuth();
+  const { currentLanguage } = useLanguage();
   const { addToast } = useToast();
   const queryClient = useQueryClient();
   const [savedPostIds, setSavedPostIds] = useState([]);
 
-  // React TanStack Query: Realtime Posts Feed from Backend DB with 3-second automatic refetch interval
+  // React TanStack Query: Realtime Posts Feed with currentLanguage dependency key
   const { data: posts = [], isLoading: loading, refetch: refreshPosts } = useQuery({
-    queryKey: ['posts'],
+    queryKey: ['posts', currentLanguage],
     queryFn: async () => {
       try {
         const response = await apiPostService.getPosts();

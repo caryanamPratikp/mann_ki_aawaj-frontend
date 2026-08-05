@@ -14,6 +14,18 @@ export function TopNavbar({ activeRoute, onNavigate }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
+  const [isChangingLang, setIsChangingLang] = useState(false);
+
+  const handleLanguageChange = async (newLang) => {
+    if (isChangingLang) return;
+    setIsChangingLang(true);
+    try {
+      await changeLanguage(newLang);
+    } finally {
+      setIsChangingLang(false);
+    }
+  };
+
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -107,24 +119,26 @@ export function TopNavbar({ activeRoute, onNavigate }) {
           <div className="flex-row items-center gap-md">
             {/* Direct Language Selector on Navbar */}
             <div className="flex-row items-center gap-xs" style={{ background: 'var(--soft-white)', padding: '4px 8px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-light)' }}>
-              <Globe size={15} style={{ color: 'var(--deep-plum)' }} />
+              <Globe size={15} style={{ color: isChangingLang ? 'var(--warning)' : 'var(--deep-plum)' }} />
               <select
                 value={currentLanguage}
-                onChange={(e) => changeLanguage(e.target.value)}
+                disabled={isChangingLang}
+                onChange={(e) => handleLanguageChange(e.target.value)}
                 style={{
                   background: 'transparent',
                   border: 'none',
                   color: 'var(--eclipse)',
                   fontSize: '13px',
                   fontWeight: 600,
-                  cursor: 'pointer',
+                  cursor: isChangingLang ? 'wait' : 'pointer',
                   outline: 'none',
+                  opacity: isChangingLang ? 0.6 : 1,
                 }}
                 aria-label="Language selector"
               >
                 {supportedLanguages.map((lang) => (
                   <option key={lang.code} value={lang.code}>
-                    {lang.native} ({lang.code})
+                    {lang.native} ({lang.label || lang.code})
                   </option>
                 ))}
               </select>

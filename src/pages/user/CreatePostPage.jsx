@@ -24,7 +24,7 @@ export function CreatePostPage({ onNavigate }) {
   const [content, setContent] = useState('');
   const [postType, setPostType] = useState('Thought');
   const [topic, setTopic] = useState('Life');
-  const [language, setLanguage] = useState('English');
+  const [language, setLanguage] = useState('EN');
   const [imageUrl, setImageUrl] = useState('');
   const [allowComments, setAllowComments] = useState(true);
 

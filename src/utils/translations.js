@@ -1,27 +1,27 @@
 export const SUPPORTED_LANGUAGES = [
-  { code: 'English', label: 'English', native: 'English' },
-  { code: 'Hindi', label: 'Hindi', native: 'हिन्दी' },
-  { code: 'Bengali', label: 'Bengali', native: 'বাংলা' },
-  { code: 'Marathi', label: 'Marathi', native: 'मराठी' },
-  { code: 'Telugu', label: 'Telugu', native: 'తెలుగు' },
-  { code: 'Tamil', label: 'Tamil', native: 'தமிழ்' },
-  { code: 'Gujarati', label: 'Gujarati', native: 'ગુજરાતી' },
-  { code: 'Urdu', label: 'Urdu', native: 'اردو' },
-  { code: 'Kannada', label: 'Kannada', native: 'ಕನ್ನಡ' },
-  { code: 'Odia', label: 'Odia', native: 'ଓଡ଼ିଆ' },
-  { code: 'Malayalam', label: 'Malayalam', native: 'മലയാളം' },
-  { code: 'Punjabi', label: 'Punjabi', native: 'ਪੰਜਾਬੀ' },
-  { code: 'Assamese', label: 'Assamese', native: 'অসমীয়া' },
-  { code: 'Maithili', label: 'Maithili', native: 'मैथिली' },
-  { code: 'Santali', label: 'Santali', native: 'ᱥᱟᱱᱛᱟᱲᱤ' },
-  { code: 'Kashmiri', label: 'Kashmiri', native: 'कॉशुर' },
-  { code: 'Nepali', label: 'Nepali', native: 'नेपाली' },
-  { code: 'Konkani', label: 'Konkani', native: 'कोंकणी' },
-  { code: 'Dogri', label: 'Dogri', native: 'डोगरी' },
-  { code: 'Sindhi', label: 'Sindhi', native: 'सिंधी' },
-  { code: 'Manipuri', label: 'Manipuri (Meitei)', native: 'মৈতৈলোন' },
-  { code: 'Bodo', label: 'Bodo', native: 'बड़ो' },
-  { code: 'Sanskrit', label: 'Sanskrit', native: 'संस्कृतम्' }
+  { code: 'EN', label: 'English', native: 'English' },
+  { code: 'HI', label: 'Hindi', native: 'हिन्दी' },
+  { code: 'BN', label: 'Bengali', native: 'বাংলা' },
+  { code: 'MR', label: 'Marathi', native: 'मराठी' },
+  { code: 'TE', label: 'Telugu', native: 'తెలుగు' },
+  { code: 'TA', label: 'Tamil', native: 'தமிழ்' },
+  { code: 'GU', label: 'Gujarati', native: 'ગુજરાતી' },
+  { code: 'UR', label: 'Urdu', native: 'اردو' },
+  { code: 'KN', label: 'Kannada', native: 'ಕನ್ನಡ' },
+  { code: 'OR', label: 'Odia', native: 'ଓଡ଼ିଆ' },
+  { code: 'ML', label: 'Malayalam', native: 'മലയാളം' },
+  { code: 'PA', label: 'Punjabi', native: 'ਪੰਜਾਬੀ' },
+  { code: 'AS', label: 'Assamese', native: 'অসমীয়া' },
+  { code: 'MAI', label: 'Maithili', native: 'मैथिली' },
+  { code: 'SAT', label: 'Santali', native: 'ᱥᱟᱱᱛᱟᱲᱤ' },
+  { code: 'KS', label: 'Kashmiri', native: 'कॉशुर' },
+  { code: 'NE', label: 'Nepali', native: 'नेपाली' },
+  { code: 'KOK', label: 'Konkani', native: 'कोंकणी' },
+  { code: 'DOI', label: 'Dogri', native: 'डोगरी' },
+  { code: 'SD', label: 'Sindhi', native: 'सिंधी' },
+  { code: 'MNI', label: 'Manipuri', native: 'মৈতৈলোন' },
+  { code: 'BRX', label: 'Bodo', native: 'बड़ो' },
+  { code: 'SA', label: 'Sanskrit', native: 'संस्कृतम्' }
 ];
 
 export const UI_DICTIONARY = {
@@ -387,6 +387,20 @@ const TRANSLATION_DICTIONARY = {
     "How do you handle workplace burnout?": "ਤੁਸੀਂ ਕੰਮ ਦੇ ਤਣਾਅ ਨੂੰ ਕਿਵੇਂ ਸੰਭਾਲਦੇ ਹੋ?",
   }
 };
+
+UI_DICTIONARY.EN = UI_DICTIONARY.English;
+UI_DICTIONARY.HI = UI_DICTIONARY.Hindi;
+UI_DICTIONARY.BN = UI_DICTIONARY.Bengali;
+UI_DICTIONARY.MR = UI_DICTIONARY.Marathi;
+UI_DICTIONARY.TE = UI_DICTIONARY.Telugu;
+UI_DICTIONARY.TA = UI_DICTIONARY.Tamil;
+UI_DICTIONARY.GU = UI_DICTIONARY.Gujarati;
+UI_DICTIONARY.UR = UI_DICTIONARY.Urdu;
+UI_DICTIONARY.KN = UI_DICTIONARY.Kannada;
+UI_DICTIONARY.OR = UI_DICTIONARY.Odia;
+UI_DICTIONARY.ML = UI_DICTIONARY.Malayalam;
+UI_DICTIONARY.PA = UI_DICTIONARY.Punjabi;
+UI_DICTIONARY.AS = UI_DICTIONARY.Assamese;
 
 /**
  * Performs real-time dynamic text translation into native Indian script

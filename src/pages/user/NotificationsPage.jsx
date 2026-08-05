@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { useNotifications } from '../../context/NotificationContext.jsx';
 import { InitialAvatar } from '../../components/profile/InitialAvatar.jsx';
@@ -6,9 +6,29 @@ import { formatDate } from '../../utils/formatDate.js';
 import { Button } from '../../components/common/Button.jsx';
 import { EmptyState } from '../../components/common/EmptyState.jsx';
 import { Bell, Check, CheckCheck, Trash2, ArrowRight } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext.jsx';
+
+function NotificationItemText({ message, currentLanguage, translateTextAsync }) {
+  const [text, setText] = useState(message);
+
+  useEffect(() => {
+    if (currentLanguage !== 'English' && message) {
+      let isMounted = true;
+      translateTextAsync(message, currentLanguage)
+        .then(tText => {
+          if (isMounted) setText(tText);
+        })
+        .catch(err => console.error(err));
+      return () => { isMounted = false; };
+    }
+  }, [message, currentLanguage]);
+
+  return <span>{text}</span>;
+}
 
 export function NotificationsPage({ onNavigate }) {
   const { notifications, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
+  const { currentLanguage, translateTextAsync } = useLanguage();
   const [filterUnread, setFilterUnread] = useState(false);
 
   const displayList = filterUnread ? notifications.filter((n) => !n.isRead) : notifications;
@@ -58,7 +78,7 @@ export function NotificationsPage({ onNavigate }) {
                   <InitialAvatar username={item.actorUsername} initials={item.actorInitials} size={36} />
                   <div className="flex-col gap-xs">
                     <p className="body-text" style={{ fontSize: '14px', color: 'var(--eclipse)' }}>
-                      {item.message}
+                      <NotificationItemText message={item.message} currentLanguage={currentLanguage} translateTextAsync={translateTextAsync} />
                     </p>
                     <span className="caption-text">{formatDate(item.createdAt)}</span>
                   </div>

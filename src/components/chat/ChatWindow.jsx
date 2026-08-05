@@ -1,4 +1,37 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useLanguage } from '../../context/LanguageContext.jsx';
+
+function ChatMessageItem({ msg, isMine, currentLanguage, translateTextAsync }) {
+  const originalText = msg.text || msg.content || '';
+  const [displayText, setDisplayText] = useState(originalText);
+  const [isTranslated, setIsTranslated] = useState(false);
+
+  useEffect(() => {
+    if (!isMine && currentLanguage !== 'English' && originalText) {
+      let isMounted = true;
+      translateTextAsync(originalText, currentLanguage)
+        .then(tText => {
+          if (isMounted && tText !== originalText) {
+            setDisplayText(tText);
+            setIsTranslated(true);
+          }
+        })
+        .catch(err => console.error(err));
+      return () => { isMounted = false; };
+    }
+  }, [originalText, currentLanguage, isMine]);
+
+  return (
+    <div style={{ wordBreak: 'break-word' }}>
+      {displayText}
+      {isTranslated && (
+        <span style={{ fontSize: '10px', opacity: 0.8, marginLeft: '6px', fontStyle: 'italic', display: 'inline-block' }}>
+          🌐 translated
+        </span>
+      )}
+    </div>
+  );
+}
 import { useQuery } from '@tanstack/react-query';
 import { InitialAvatar } from '../profile/InitialAvatar.jsx';
 import { formatDate } from '../../utils/formatDate.js';
@@ -10,6 +43,7 @@ import { apiChatService } from '../../services/apiChatService.js';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
 
 export function ChatWindow({ conversation, currentUserUsername, onSendMessage, onNavigate, onAcceptRequest, onDeclineRequest }) {
+  const { currentLanguage, translateTextAsync } = useLanguage();
   const [inputText, setInputText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
@@ -183,7 +217,7 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
                   lineHeight: 1.45,
                 }}
               >
-                {msg.text || msg.content}
+                <ChatMessageItem msg={msg} isMine={isMine} currentLanguage={currentLanguage} translateTextAsync={translateTextAsync} />
                 <div
                   style={{
                     fontSize: '10px',

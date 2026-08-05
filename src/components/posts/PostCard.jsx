@@ -17,7 +17,7 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false 
   const { commentsByPost, fetchComments } = useComments();
   const { currentUser } = useAuth();
   const { blockUser } = useReports();
-  const { currentLanguage, translateText } = useLanguage();
+  const { currentLanguage, translateText, translateTextAsync } = useLanguage();
 
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -34,11 +34,12 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false 
   }
 
   const isSaved = savedPostIds.includes(post.id);
-  const isAutoTranslating = currentLanguage !== 'English' && currentLanguage !== post.language;
-  const isTranslated = manualToggle ? !isAutoTranslating : isAutoTranslating;
-
-  const displayTitle = isTranslated ? translateText(post.title) : post.title;
-  const displayContent = isTranslated ? translateText(post.content) : post.content;
+  const isTranslated = Boolean(
+    !manualToggle && 
+    (post.isTranslated || (post.originalLanguage && post.displayLanguage && post.originalLanguage.toLowerCase() !== post.displayLanguage.toLowerCase()))
+  );
+  const displayTitle = post.title;
+  const displayContent = manualToggle ? (post.originalContent || post.content) : post.content;
 
   const postComments = commentsByPost[post.id] || [];
   const matchedCommentCount = postComments.length > 0 ? postComments.length : (post.commentCount || 0);

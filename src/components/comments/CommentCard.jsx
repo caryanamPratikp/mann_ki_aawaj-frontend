@@ -37,15 +37,11 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate })
   const { currentUser } = useAuth();
   const { updateComment, deleteComment, createReply, reactToComment } = useComments();
   const { blockUser } = useReports();
-  const { currentLanguage, translateText, t } = useLanguage();
+  const { currentLanguage, translateText, translateTextAsync, t } = useLanguage();
   const { addToast } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(comment.content);
-  const [showReplyComposer, setShowReplyComposer] = useState(false);
-  const [reportModalOpen, setReportModalOpen] = useState(false);
-  const [hidden, setHidden] = useState(false);
-  const [manualToggle, setManualToggle] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
   const [activeEmojis, setActiveEmojis] = useState(() => {
@@ -102,7 +98,19 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate })
   const isAutoTranslating = currentLanguage !== 'English';
   const isTranslated = manualToggle ? !isAutoTranslating : isAutoTranslating;
 
-  const displayContent = isTranslated ? translateText(comment.content) : comment.content;
+  useEffect(() => {
+    if (isTranslated && comment.content) {
+      let isMounted = true;
+      translateTextAsync(comment.content, currentLanguage)
+        .then(tText => {
+          if (isMounted) setTranslatedContent(tText);
+        })
+        .catch(err => console.error(err));
+      return () => { isMounted = false; };
+    }
+  }, [isTranslated, currentLanguage, comment.content]);
+
+  const displayContent = isTranslated ? (translatedContent || comment.content) : comment.content;
 
   const handleEmojiClick = (emoji, e) => {
     if (e) e.stopPropagation();
