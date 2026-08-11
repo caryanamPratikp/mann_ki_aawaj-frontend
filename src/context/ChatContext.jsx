@@ -66,6 +66,10 @@ export function ChatProvider({ children }) {
 
     socket.on('connect', () => {
       console.log('[Socket] Connected as', currentUser.username);
+      if (currentUser?.id) {
+        console.log('[Socket] Joining personal user room:', currentUser.id);
+        socket.emit('join_user_room', String(currentUser.id));
+      }
     });
 
     socket.on('receive_message', (msg) => {
@@ -76,6 +80,13 @@ export function ChatProvider({ children }) {
       
       // Refresh conversations list to update sidebar message preview
       refreshConversations();
+
+      // Show real-time message notification if from another user
+      const cleanSelf = currentUser?.username ? (currentUser.username.startsWith('@') ? currentUser.username.toLowerCase() : `@${currentUser.username.toLowerCase()}`) : '';
+      const cleanSender = msg.senderUsername ? (msg.senderUsername.startsWith('@') ? msg.senderUsername.toLowerCase() : `@${msg.senderUsername.toLowerCase()}`) : '';
+      if (cleanSender && cleanSender !== cleanSelf) {
+        addToast(`New message from ${msg.senderUsername}: ${msg.content || msg.text || ''}`, 'info');
+      }
     });
 
     socket.on('room_status_change', (updatedRoom) => {
@@ -104,7 +115,7 @@ export function ChatProvider({ children }) {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [currentUser, queryClient, refreshConversations]);
+  }, [currentUser, queryClient, refreshConversations, addToast]);
 
   // Join/leave room rooms via socket
   useEffect(() => {
