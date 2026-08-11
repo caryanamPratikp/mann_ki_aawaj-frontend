@@ -52,21 +52,20 @@ export function ChatProvider({ children }) {
       return;
     }
 
-    // Environment-based Socket URL resolution from .env:
-    // Reads VITE_ENVIRONMENT ('production' | 'testing' | 'local')
-    const getSocketUrl = () => {
-      const env = (import.meta.env.VITE_ENVIRONMENT || import.meta.env.VITE_ENV || 'local').toLowerCase();
+    // ==============================================================
+    // REAL-TIME SOCKET SERVER URL CONFIGURATION
+    // Fetches values directly from .env variables (No hardcoded URL strings)
+    // ==============================================================
 
-      if (env === 'production' || env === 'prod') {
-        return import.meta.env.VITE_PRODUCTION_SOCKET_URL || 'https://socketapi.awaazmanki.com';
-      }
-      if (env === 'testing' || env === 'test') {
-        return import.meta.env.VITE_TESTING_SOCKET_URL || 'https://testsocket.awaazmanki.com';
-      }
-      return import.meta.env.VITE_LOCAL_SOCKET_URL || 'http://localhost:9092';
-    };
+    // OPTION 1: PRODUCTION SOCKET SERVER URL (VITE_PRODUCTION_SOCKET_URL in .env)
+    const PRODUCTION_SOCKET_URL = import.meta.env.VITE_PRODUCTION_SOCKET_URL;
 
-    const socketUrl = getSocketUrl();
+    // OPTION 2: LOCAL DEVELOPMENT SOCKET SERVER URL (VITE_LOCAL_SOCKET_URL in .env)
+    const LOCAL_SOCKET_URL = import.meta.env.VITE_LOCAL_SOCKET_URL;
+
+    // Active Socket URL selection (Driven by VITE_ENVIRONMENT variable in .env)
+    const isProduction = import.meta.env.VITE_ENVIRONMENT === 'production';
+    const socketUrl = isProduction ? PRODUCTION_SOCKET_URL : LOCAL_SOCKET_URL;
 
     const socket = io(socketUrl, {
       transports: ['websocket'],

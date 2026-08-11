@@ -1,20 +1,19 @@
 import axios from 'axios';
 
-// Environment-based API Base URL resolution from .env:
-// Reads VITE_ENVIRONMENT ('production' | 'testing' | 'local')
-const getBaseUrl = () => {
-  const env = (import.meta.env.VITE_ENVIRONMENT || import.meta.env.VITE_ENV || 'local').toLowerCase();
+// ==============================================================
+// API BASE URL CONFIGURATION
+// Fetches values directly from .env variables (No hardcoded URL strings)
+// ==============================================================
 
-  if (env === 'production' || env === 'prod') {
-    return import.meta.env.VITE_PRODUCTION_URL || 'https://api.awaazmanki.com';
-  }
-  if (env === 'testing' || env === 'test') {
-    return import.meta.env.VITE_TESTING_URL || 'https://testapi.awaazmanki.com';
-  }
-  return import.meta.env.VITE_LOCAL_URL || 'http://localhost:8089';
-};
+// OPTION 1: PRODUCTION SERVER URL (Fetched from VITE_PRODUCTION_URL in .env)
+const PRODUCTION_URL = import.meta.env.VITE_PRODUCTION_URL;
 
-const API_BASE_URL = getBaseUrl();
+// OPTION 2: LOCAL DEVELOPMENT SERVER URL (Fetched from VITE_LOCAL_URL in .env)
+const LOCAL_URL = import.meta.env.VITE_LOCAL_URL;
+
+// Active API Base URL selection (Driven by VITE_ENVIRONMENT variable in .env)
+const isProduction = import.meta.env.VITE_ENVIRONMENT === 'production';
+const API_BASE_URL = isProduction ? PRODUCTION_URL : LOCAL_URL;
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
