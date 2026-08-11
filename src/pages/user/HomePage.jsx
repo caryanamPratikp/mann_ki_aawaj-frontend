@@ -17,7 +17,7 @@ import { SUPPORTED_LANGUAGES } from '../../utils/translations.js';
 import { formatDate } from '../../utils/formatDate.js';
 
 export function HomePage({ onNavigate }) {
-  const { posts, createPost } = usePosts();
+  const { posts, loading, isFetching, createPost } = usePosts();
   const { commentsByPost, fetchComments, createComment, reactToComment } = useComments();
   const { currentUser } = useAuth();
   const { blockedUsers } = useReports();
@@ -125,6 +125,27 @@ export function HomePage({ onNavigate }) {
 
   return (
     <UserLayout activeRoute="/home" onNavigate={onNavigate} wide={true}>
+      {/* ── SUBTLE BACKGROUND TRANSLATION FETCHING INDICATOR ── */}
+      {isFetching && !loading && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            backgroundColor: 'rgba(111, 64, 95, 0.08)',
+            color: '#6F405F',
+            padding: '6px 14px',
+            borderRadius: '10px',
+            fontSize: '12px',
+            fontWeight: 600,
+            marginBottom: '10px',
+            border: '1px solid rgba(111, 64, 95, 0.20)',
+          }}
+        >
+          <Loader2 size={14} className="spin-animation" />
+          <span>Updating translations in background...</span>
+        </div>
+      )}
       {/* ── TOP ACTION BAR: Feed Tabs (Left) & Quick Prompt Bar (Right) ── */}
       <div
         style={{

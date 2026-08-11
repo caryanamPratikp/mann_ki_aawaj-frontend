@@ -37,12 +37,16 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate })
   const { currentUser } = useAuth();
   const { updateComment, deleteComment, createReply, reactToComment } = useComments();
   const { blockUser } = useReports();
-  const { currentLanguage, translateText, translateTextAsync, t } = useLanguage();
+  const { t } = useLanguage();
   const { addToast } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(comment.content);
   const [isHovered, setIsHovered] = useState(false);
+  const [showReplyComposer, setShowReplyComposer] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const [manualToggle, setManualToggle] = useState(false);
 
   const [activeEmojis, setActiveEmojis] = useState(() => {
     const list = [];
@@ -95,22 +99,11 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate })
     setShowReplyComposer(false);
   };
 
-  const isAutoTranslating = currentLanguage !== 'English';
-  const isTranslated = manualToggle ? !isAutoTranslating : isAutoTranslating;
-
-  useEffect(() => {
-    if (isTranslated && comment.content) {
-      let isMounted = true;
-      translateTextAsync(comment.content, currentLanguage)
-        .then(tText => {
-          if (isMounted) setTranslatedContent(tText);
-        })
-        .catch(err => console.error(err));
-      return () => { isMounted = false; };
-    }
-  }, [isTranslated, currentLanguage, comment.content]);
-
-  const displayContent = isTranslated ? (translatedContent || comment.content) : comment.content;
+  const displayContent = manualToggle ? (comment.originalContent || comment.content) : comment.content;
+  const isTranslated = !manualToggle && Boolean(
+    (comment.originalLanguage && comment.displayLanguage && comment.originalLanguage.toLowerCase() !== comment.displayLanguage.toLowerCase()) ||
+    (comment.translatedContent && comment.originalContent && comment.translatedContent !== comment.originalContent)
+  );
 
   const handleEmojiClick = (emoji, e) => {
     if (e) e.stopPropagation();

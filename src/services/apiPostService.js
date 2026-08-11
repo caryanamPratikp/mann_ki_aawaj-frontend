@@ -90,9 +90,13 @@ export const apiPostService = {
       const response = await apiClient.post('/api/posts', payload);
       return response.data;
     } catch (err) {
-      const currentUser = mockAuthService.getCurrentUser() || JSON.parse(localStorage.getItem('auth_user') || '{}');
-      const created = mockPostService.createPost(postData, currentUser);
-      return { success: true, data: created };
+      if (err.response?.data) throw err.response.data;
+      if (isMockMode()) {
+        const currentUser = mockAuthService.getCurrentUser() || JSON.parse(localStorage.getItem('auth_user') || '{}');
+        const created = mockPostService.createPost(postData, currentUser);
+        return { success: true, data: created };
+      }
+      throw err;
     }
   },
 

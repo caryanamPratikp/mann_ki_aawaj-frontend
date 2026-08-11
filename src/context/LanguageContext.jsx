@@ -64,7 +64,7 @@ export function LanguageProvider({ children }) {
   };
 
   /**
-   * Async translation method invoking Spring Boot / IndicTrans2 NMT Microservice.
+   * Async translation method invoking Spring Boot / OpenAI Translation Service.
    */
   const translateTextAsync = async (text, targetLang = currentLanguage) => {
     if (!text || !text.trim() || targetLang === 'English') return text;

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useComments } from '../../context/CommentContext.jsx';
 import { useReports } from '../../context/ReportContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 import { ReportModal } from '../reports/ReportModal.jsx';
 import { MoreHorizontal, Edit, Trash2, Flag, Heart } from 'lucide-react';
 import { Dropdown, DropdownItem } from '../common/Dropdown.jsx';
@@ -34,11 +35,19 @@ export function ReplyCard({ reply, postId, commentId, onNavigate, onReplyTrigger
   const { updateReply, deleteReply, reactToReply } = useComments();
   const { blockUser } = useReports();
   const { addToast } = useToast();
+  const { t } = useLanguage();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(reply.content);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [manualToggle, setManualToggle] = useState(false);
+
+  const displayContent = manualToggle ? (reply.originalContent || reply.content) : reply.content;
+  const isTranslated = !manualToggle && Boolean(
+    (reply.originalLanguage && reply.displayLanguage && reply.originalLanguage.toLowerCase() !== reply.displayLanguage.toLowerCase()) ||
+    (reply.translatedContent && reply.originalContent && reply.translatedContent !== reply.originalContent)
+  );
 
   const [activeEmojis, setActiveEmojis] = useState(() => {
     const list = [];
@@ -223,7 +232,7 @@ export function ReplyCard({ reply, postId, commentId, onNavigate, onReplyTrigger
             >
               {reply.username}
             </button>
-            <span style={{ whiteSpace: 'pre-line' }}>{reply.content}</span>
+            <span style={{ whiteSpace: 'pre-line' }}>{displayContent}</span>
           </div>
         )}
 
@@ -265,6 +274,22 @@ export function ReplyCard({ reply, postId, commentId, onNavigate, onReplyTrigger
             }}
           >
             Reply
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setManualToggle(!manualToggle)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '11px',
+              fontWeight: 600,
+              color: 'var(--deep-plum)',
+              padding: 0,
+            }}
+          >
+            {isTranslated ? t('showOriginal') : t('translate')}
           </button>
 
           {/* More actions menu link inside action bar */}

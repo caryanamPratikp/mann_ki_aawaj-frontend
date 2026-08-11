@@ -1,9 +1,6 @@
 import { apiClient } from './apiClient.js';
-import axios from 'axios';
 
-const PYTHON_SERVICE_URL = 'http://localhost:8001/api/v1/translate';
-
-// Mapping UI language names to FLORES-200 language codes
+// Mapping UI language names to FLORES-200 / standard language codes
 export const LANGUAGE_MAP = {
   English: 'eng_Latn',
   Hindi: 'hin_Deva',
@@ -25,7 +22,7 @@ const translationCache = new Map();
 
 export const apiTranslationService = {
   /**
-   * Translates content dynamically via Spring Boot Backend (or fallback to Python microservice).
+   * Translates content dynamically via Spring Boot Backend (OpenAI Engine).
    * @param {string} text - Text to translate
    * @param {string} targetLang - Target language (e.g. 'Hindi', 'hin_Deva', 'Marathi')
    * @param {string} sourceLang - Source language (default: 'eng_Latn')
@@ -44,7 +41,7 @@ export const apiTranslationService = {
       return translationCache.get(cacheKey);
     }
 
-    // 1. Try Spring Boot Backend Endpoint first
+    // Call Spring Boot Backend Endpoint (/api/v1/translation/translate)
     try {
       const response = await apiClient.post('/api/v1/translation/translate', {
         text: text.trim(),
@@ -58,27 +55,10 @@ export const apiTranslationService = {
         return result;
       }
     } catch (err) {
-      console.warn('Backend translation service unavailable, trying fallback:', err?.message || err);
+      console.warn('Backend translation service unavailable:', err?.message || err);
     }
 
-    // 2. Direct fallback to Python FastAPI Microservice on port 8001
-    try {
-      const pyResponse = await axios.post(PYTHON_SERVICE_URL, {
-        text: text.trim(),
-        sourceLanguage: srcCode,
-        targetLanguage: tgtCode,
-      }, { timeout: 5000 });
-
-      if (pyResponse.data && pyResponse.data.translatedText) {
-        const result = pyResponse.data.translatedText;
-        translationCache.set(cacheKey, result);
-        return result;
-      }
-    } catch (pyErr) {
-      console.error('Direct Python translation call failed:', pyErr?.message || pyErr);
-    }
-
-    // 3. Fallback: Return original text if service is unreachable
+    // Fallback: Return original text if service is unreachable
     return text;
   }
 };

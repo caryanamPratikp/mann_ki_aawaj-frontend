@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { apiPostService } from '../services/apiPostService.js';
 import { mapPost } from '../services/apiMappers.js';
 import { useAuth } from './AuthContext.jsx';
@@ -16,7 +16,12 @@ export function PostProvider({ children }) {
   const [savedPostIds, setSavedPostIds] = useState([]);
 
   // React TanStack Query: Realtime Posts Feed with currentLanguage dependency key
-  const { data: posts = [], isLoading: loading, refetch: refreshPosts } = useQuery({
+  const {
+    data: posts = [],
+    isLoading: loading,
+    isFetching,
+    refetch: refreshPosts,
+  } = useQuery({
     queryKey: ['posts', currentLanguage],
     queryFn: async () => {
       try {
@@ -30,6 +35,7 @@ export function PostProvider({ children }) {
       }
       return [];
     },
+    placeholderData: keepPreviousData,
     refetchInterval: 5000, // 5 seconds automatic polling & background refresh
     staleTime: 1000,
   });
@@ -46,7 +52,7 @@ export function PostProvider({ children }) {
       const newPost = mapPost(rawPostData);
 
       // Invalidate query cache to trigger immediate update across all pages
-      await queryClient.invalidateQueries(['posts']);
+      await queryClient.invalidateQueries({ queryKey: ['posts'] });
       addToast('Thought published successfully!', 'success');
       return newPost;
     } catch (err) {
@@ -59,7 +65,7 @@ export function PostProvider({ children }) {
     try {
       const response = await apiPostService.updatePost(postId, updates.content || updates);
       const updated = mapPost(response.data || response);
-      await queryClient.invalidateQueries(['posts']);
+      await queryClient.invalidateQueries({ queryKey: ['posts'] });
       addToast('Post updated in database.', 'info');
       return updated;
     } catch (err) {
@@ -74,13 +80,13 @@ export function PostProvider({ children }) {
       console.warn('[PostContext] Backend delete notice:', e);
     }
 
-    // Optimistically update TanStack Query cache instantly for immediate UI removal
-    queryClient.setQueryData(['posts'], (oldPosts = []) =>
+    // Optimistically update TanStack Query cache instantly across all language query keys
+    queryClient.setQueriesData({ queryKey: ['posts'] }, (oldPosts = []) =>
       oldPosts.filter((p) => p.id !== postId)
     );
 
     // Invalidate query to refetch latest feed from DB
-    await queryClient.invalidateQueries(['posts']);
+    await queryClient.invalidateQueries({ queryKey: ['posts'] });
     addToast('Thought permanently deleted from database.', 'info');
   };
 
@@ -99,14 +105,14 @@ export function PostProvider({ children }) {
     } catch (e) {
       console.warn('[PostContext] Reaction error:', e);
     }
-    await queryClient.invalidateQueries(['posts']);
+    await queryClient.invalidateQueries({ queryKey: ['posts'] });
   };
 
   const toggleSavePost = (postId) => {
     setSavedPostIds((prev) =>
       prev.includes(postId) ? prev.filter((id) => id !== postId) : [...prev, postId]
     );
-    queryClient.invalidateQueries(['posts']);
+    queryClient.invalidateQueries({ queryKey: ['posts'] });
     addToast('Post saved state updated.', 'info');
   };
 
@@ -115,6 +121,7 @@ export function PostProvider({ children }) {
       value={{
         posts,
         loading,
+        isFetching,
         savedPostIds,
         refreshPosts,
         createPost,

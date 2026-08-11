@@ -37,7 +37,7 @@ export function CommentProvider({ children }) {
       const response = await apiCommentService.createComment(postId, content);
       const comment = mapComment(response.data || response);
       await fetchComments(postId);
-      queryClient.invalidateQueries(['posts']);
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
 
       // Notify post author if commenting on someone else's post
       if (postAuthorUsername && currentUser.username) {
@@ -124,7 +124,7 @@ export function CommentProvider({ children }) {
       console.warn('[CommentContext] Delete comment notice:', e);
     }
     await fetchComments(postId);
-    queryClient.invalidateQueries(['posts']);
+    queryClient.invalidateQueries({ queryKey: ['posts'] });
     addToast('Comment deleted from database.', 'info');
   };
 

@@ -100,7 +100,10 @@ export function mapComment(comment) {
 
   return {
     ...comment,
-    content: comment.originalContent || comment.content || '',
+    originalContent: comment.originalContent || comment.content || '',
+    translatedContent: comment.translatedContent || comment.originalContent || comment.content || '',
+    displayLanguage: comment.displayLanguage || comment.originalLanguage || 'EN',
+    content: comment.translatedContent || comment.originalContent || comment.content || '',
     username: formattedUname,
     avatarInitials: comment.avatarInitials || formattedUname.replace('@', '').slice(0, 2).toUpperCase(),
     avatarConfig: comment.authorAvatar || comment.avatarConfig || null,
