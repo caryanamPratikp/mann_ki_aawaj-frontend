@@ -52,10 +52,21 @@ export function ChatProvider({ children }) {
       return;
     }
 
-    // Socket.IO real-time server URL
-    // Option 1 (Production): 'https://api.awaazmanki.com'
-    // Option 2 (Local Dev): 'http://localhost:9092' or 'http://localhost:8090'
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:9092';
+    // Environment-based Socket URL resolution from .env:
+    // Reads VITE_ENVIRONMENT ('production' | 'testing' | 'local')
+    const getSocketUrl = () => {
+      const env = (import.meta.env.VITE_ENVIRONMENT || import.meta.env.VITE_ENV || 'local').toLowerCase();
+
+      if (env === 'production' || env === 'prod') {
+        return import.meta.env.VITE_PRODUCTION_SOCKET_URL || 'https://socketapi.awaazmanki.com';
+      }
+      if (env === 'testing' || env === 'test') {
+        return import.meta.env.VITE_TESTING_SOCKET_URL || 'https://testsocket.awaazmanki.com';
+      }
+      return import.meta.env.VITE_LOCAL_SOCKET_URL || 'http://localhost:9092';
+    };
+
+    const socketUrl = getSocketUrl();
 
     const socket = io(socketUrl, {
       transports: ['websocket'],

@@ -1,13 +1,20 @@
 import axios from 'axios';
 
-// ==============================================================
-// API BASE URL CONFIGURATION
-// ==============================================================
-// [OPTION 1: PRODUCTION SERVER DOMAIN (api.awaazmanki.com)]
-// const API_BASE_URL = 'https://api.awaazmanki.com';
+// Environment-based API Base URL resolution from .env:
+// Reads VITE_ENVIRONMENT ('production' | 'testing' | 'local')
+const getBaseUrl = () => {
+  const env = (import.meta.env.VITE_ENVIRONMENT || import.meta.env.VITE_ENV || 'local').toLowerCase();
 
-// [OPTION 2: LOCAL DEVELOPMENT SERVER (port 8089 / env variable)]
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8089';
+  if (env === 'production' || env === 'prod') {
+    return import.meta.env.VITE_PRODUCTION_URL || 'https://api.awaazmanki.com';
+  }
+  if (env === 'testing' || env === 'test') {
+    return import.meta.env.VITE_TESTING_URL || 'https://testapi.awaazmanki.com';
+  }
+  return import.meta.env.VITE_LOCAL_URL || 'http://localhost:8089';
+};
+
+const API_BASE_URL = getBaseUrl();
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
