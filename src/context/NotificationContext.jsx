@@ -3,6 +3,8 @@ import { apiNotificationService } from '../services/apiNotificationService.js';
 import { mapNotification } from '../services/apiMappers.js';
 import { useAuth } from './AuthContext.jsx';
 
+import { io } from 'socket.io-client';
+
 const NotificationContext = createContext(null);
 
 export function NotificationProvider({ children }) {
@@ -26,6 +28,29 @@ export function NotificationProvider({ children }) {
     }, 5000);
     return () => clearInterval(timer);
   }, [refreshNotifications]);
+
+  // Real-time Socket.IO notification listener
+  useEffect(() => {
+    if (!currentUser || !currentUser.id) return;
+
+    const socket = io('http://localhost:8085', {
+      transports: ['websocket'],
+      autoConnect: true,
+    });
+
+    socket.on('connect', () => {
+      socket.emit('join_user_room', String(currentUser.id));
+    });
+
+    socket.on('new_notification', (newNotif) => {
+      console.log('[NotificationSocket] Received real-time notification:', newNotif);
+      refreshNotifications();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [currentUser, refreshNotifications]);
 
   const markAsRead = async (id) => {
     await apiNotificationService.markAsRead(id);
