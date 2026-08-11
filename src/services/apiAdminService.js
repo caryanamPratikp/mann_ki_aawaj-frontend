@@ -313,4 +313,21 @@ export const apiAdminService = {
       throw err;
     }
   },
+
+  // GET /api/admin/blocked-content?contentType=POST&page=0&size=10
+  async getBlockedContent(params = {}) {
+    try {
+      const response = await apiClient.get('/api/admin/blocked-content', {
+        params: {
+          contentType: params.contentType || null,
+          page: params.page || 0,
+          size: params.size || 10,
+        },
+      });
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      throw err;
+    }
+  },
 };

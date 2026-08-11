@@ -33,13 +33,30 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false 
     );
   }
 
+  const [dynamicTranslation, setDynamicTranslation] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const sourceText = post.originalContent || post.content || post.description || post.title;
+    if (sourceText && currentLanguage) {
+      translateTextAsync(sourceText, currentLanguage).then((res) => {
+        if (isMounted && res) setDynamicTranslation(res);
+      });
+    } else {
+      setDynamicTranslation(null);
+    }
+    return () => { isMounted = false; };
+  }, [currentLanguage, post.originalContent, post.content, post.description, post.title]);
+
   const isSaved = savedPostIds.includes(post.id);
   const isTranslated = Boolean(
     !manualToggle && 
-    (post.isTranslated || (post.originalLanguage && post.displayLanguage && post.originalLanguage.toLowerCase() !== post.displayLanguage.toLowerCase()))
+    (dynamicTranslation || post.isTranslated || (post.originalLanguage && post.displayLanguage && post.originalLanguage.toLowerCase() !== post.displayLanguage.toLowerCase()))
   );
   const displayTitle = post.title;
-  const displayContent = manualToggle ? (post.originalContent || post.content) : post.content;
+  const displayContent = manualToggle
+    ? (post.originalContent || post.content)
+    : (dynamicTranslation || post.translatedContent || post.content || post.originalContent);
 
   const postComments = commentsByPost[post.id] || [];
   const matchedCommentCount = postComments.length > 0 ? postComments.length : (post.commentCount || 0);

@@ -1,10 +1,17 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8080';
+// ==============================================================
+// API BASE URL CONFIGURATION
+// ==============================================================
+// [OPTION 1: PRODUCTION SERVER DOMAIN (api.awaazmanki.com)]
+// const API_BASE_URL = 'https://api.awaazmanki.com';
+
+// [OPTION 2: LOCAL DEVELOPMENT SERVER (port 8089 / env variable)]
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8089';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 8000,
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },

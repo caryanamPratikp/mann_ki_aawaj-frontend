@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, LayoutDashboard, Flag, FileCheck, LogOut } from 'lucide-react';
+import { Shield, LayoutDashboard, Flag, FileCheck, ShieldAlert, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 export function AdminLayout({ children, activeRoute, onNavigate }) {
@@ -9,6 +9,7 @@ export function AdminLayout({ children, activeRoute, onNavigate }) {
     { label: 'Dashboard', icon: LayoutDashboard, route: '/admin/dashboard' },
     { label: 'Reports Queue', icon: Flag, route: '/admin/reports' },
     { label: 'Content Review', icon: FileCheck, route: '/admin/content-review' },
+    { label: 'Blocked Footprints', icon: ShieldAlert, route: '/admin/blocked-content' },
   ];
 
   return (

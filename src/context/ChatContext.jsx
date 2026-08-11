@@ -52,8 +52,12 @@ export function ChatProvider({ children }) {
       return;
     }
 
-    // Connect to Socket.IO server on port 8085
-    const socket = io('http://localhost:8085', {
+    // Socket.IO real-time server URL
+    // Option 1 (Production): 'https://api.awaazmanki.com'
+    // Option 2 (Local Dev): 'http://localhost:9092' or 'http://localhost:8090'
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:9092';
+
+    const socket = io(socketUrl, {
       transports: ['websocket'],
       autoConnect: true,
     });
