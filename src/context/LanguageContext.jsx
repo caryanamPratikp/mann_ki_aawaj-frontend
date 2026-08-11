@@ -67,7 +67,7 @@ export function LanguageProvider({ children }) {
    * Async translation method invoking Spring Boot / OpenAI Translation Service.
    */
   const translateTextAsync = async (text, targetLang = currentLanguage) => {
-    if (!text || !text.trim() || targetLang === 'English') return text;
+    if (!text || !text.trim()) return text;
     const cacheKey = `${targetLang}_${text.trim()}`;
     if (translationCache[cacheKey]) return translationCache[cacheKey];
 
@@ -80,7 +80,7 @@ export function LanguageProvider({ children }) {
    * Synchronous translation getter with fallback for instant UI render.
    */
   const translateText = (text, targetLang = currentLanguage) => {
-    if (!text || !text.trim() || targetLang === 'English') return text;
+    if (!text || !text.trim()) return text;
     const cacheKey = `${targetLang}_${text.trim()}`;
     if (translationCache[cacheKey]) {
       return translationCache[cacheKey];
