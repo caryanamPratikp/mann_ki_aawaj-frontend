@@ -5,6 +5,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { authService } from '../../services/authService.js';
 import { ShieldCheck, User, Mail, Phone, Lock, ArrowRight, Activity, Terminal } from 'lucide-react';
 import { Button } from '../../components/common/Button.jsx';
+import { API_BASE_URL } from '../../config/env.js';
 
 export function DashboardPage({ onNavigate }) {
   const { currentUser } = useAuth();
@@ -119,7 +120,7 @@ export function DashboardPage({ onNavigate }) {
               <Terminal size={18} style={{ color: 'var(--deep-plum)' }} /> Protected API Endpoint Tests
             </h3>
             <p className="secondary-text" style={{ fontSize: '13px', marginTop: '3px', margin: 0 }}>
-              Test your Bearer token authorization against protected backend endpoints at <code style={{ fontSize: '12px' }}>http://localhost:8080</code>.
+              Test your Bearer token authorization against protected backend endpoints at <code style={{ fontSize: '12px' }}>{API_BASE_URL}</code>.
             </p>
           </div>
 

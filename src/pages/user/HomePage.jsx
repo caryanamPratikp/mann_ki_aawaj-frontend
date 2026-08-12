@@ -10,7 +10,10 @@ import { useComments } from '../../context/CommentContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useReports } from '../../context/ReportContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
+import { useSpokenLanguage } from '../../hooks/useSpokenLanguage.js';
+import { SpokenLanguageSelector } from '../../components/common/SpokenLanguageSelector.jsx';
 import { PlusSquare, Sparkles, Filter, TrendingUp, MessageSquare, Edit3, Mic, MicOff, Loader2 } from 'lucide-react';
 import { EmptyState } from '../../components/common/EmptyState.jsx';
 import { SUPPORTED_LANGUAGES } from '../../utils/translations.js';
@@ -22,11 +25,13 @@ export function HomePage({ onNavigate }) {
   const { currentUser } = useAuth();
   const { blockedUsers } = useReports();
   const { addToast } = useToast();
+  const { currentLanguage } = useLanguage();
+  const [spokenLanguage, setSpokenLanguage] = useSpokenLanguage();
 
   const [activeTab, setActiveTab] = useState('Latest');
   const [selectedTopic, setSelectedTopic] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
-  const [selectedLanguage, setSelectedLanguage] = useState('All');
+  const [selectedLanguageFilter, setSelectedLanguageFilter] = useState('ALL');
 
   // Currently selected active post (click again to collapse / set null)
   const [selectedPostId, setSelectedPostId] = useState(null);
@@ -40,11 +45,11 @@ export function HomePage({ onNavigate }) {
   const [postLanguage, setPostLanguage] = useState('EN');
   const [submitting, setSubmitting] = useState(false);
 
-  // Voice to text recorder for post creation
+  // Voice to text recorder for post creation using dedicated spoken language state
   const { isRecording, isTranscribing, toggleRecording } = useVoiceRecorder((transcribedText) => {
     setPostContent((prev) => (prev ? `${prev} ${transcribedText}` : transcribedText));
     setIsCreateModalOpen(true);
-  });
+  }, spokenLanguage);
 
   // Fetch comments when active post changes
   useEffect(() => {
@@ -119,7 +124,7 @@ export function HomePage({ onNavigate }) {
       if (pTopic !== sTopic && !pTopic.includes(sTopic) && !sTopic.includes(pTopic)) return false;
     }
     if (selectedType !== 'All' && p.postType !== selectedType) return false;
-    if (selectedLanguage !== 'All' && (p.language || 'EN') !== selectedLanguage) return false;
+    if (selectedLanguageFilter !== 'ALL' && selectedLanguageFilter !== 'All' && (p.language || 'EN') !== selectedLanguageFilter) return false;
     return true;
   });
 
@@ -210,33 +215,36 @@ export function HomePage({ onNavigate }) {
             </span>
           </div>
 
-          {/* Voice to text mic icon button */}
-          <button
-            type="button"
-            onClick={toggleRecording}
-            disabled={isTranscribing}
-            title={isRecording ? 'Click to stop recording' : 'Speak thought (Voice-to-Text)'}
-            style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '50%',
-              backgroundColor: isRecording ? '#B33A3A' : 'rgba(111,64,95,0.10)',
-              color: isRecording ? '#FFFFFF' : '#6F405F',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            {isTranscribing ? (
-              <Loader2 size={13} className="spin-animation" />
-            ) : isRecording ? (
-              <MicOff size={13} />
-            ) : (
-              <Mic size={13} />
-            )}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <SpokenLanguageSelector value={spokenLanguage} onChange={setSpokenLanguage} />
+            {/* Voice to text mic icon button */}
+            <button
+              type="button"
+              onClick={toggleRecording}
+              disabled={isTranscribing}
+              title={isRecording ? 'Click to stop recording' : 'Speak thought (Voice-to-Text)'}
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                backgroundColor: isRecording ? '#B33A3A' : 'rgba(111,64,95,0.10)',
+                color: isRecording ? '#FFFFFF' : '#6F405F',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              {isTranscribing ? (
+                <Loader2 size={13} className="spin-animation" />
+              ) : isRecording ? (
+                <MicOff size={13} />
+              ) : (
+                <Mic size={13} />
+              )}
+            </button>
+          </div>
 
           <button
             type="button"
@@ -536,36 +544,36 @@ export function HomePage({ onNavigate }) {
               }}
             />
 
-            {/* Voice-to-Text Microphone button inside textarea */}
-            <button
-              type="button"
-              onClick={toggleRecording}
-              disabled={isTranscribing}
-              title={isRecording ? 'Stop recording' : 'Speak thought'}
-              style={{
-                position: 'absolute',
-                right: '10px',
-                bottom: '14px',
-                width: '28px',
-                height: '28px',
-                borderRadius: '50%',
-                backgroundColor: isRecording ? '#B33A3A' : 'rgba(111,64,95,0.10)',
-                color: isRecording ? '#FFFFFF' : '#6F405F',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              {isTranscribing ? (
-                <Loader2 size={14} className="spin-animation" />
-              ) : isRecording ? (
-                <MicOff size={14} />
-              ) : (
-                <Mic size={14} />
-              )}
-            </button>
+            <div style={{ position: 'absolute', right: '10px', bottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <SpokenLanguageSelector value={spokenLanguage} onChange={setSpokenLanguage} />
+              {/* Voice-to-Text Microphone button inside textarea */}
+              <button
+                type="button"
+                onClick={toggleRecording}
+                disabled={isTranscribing}
+                title={isRecording ? 'Stop recording' : 'Speak thought'}
+                style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  backgroundColor: isRecording ? '#B33A3A' : 'rgba(111,64,95,0.10)',
+                  color: isRecording ? '#FFFFFF' : '#6F405F',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                {isTranscribing ? (
+                  <Loader2 size={14} className="spin-animation" />
+                ) : isRecording ? (
+                  <MicOff size={14} />
+                ) : (
+                  <Mic size={14} />
+                )}
+              </button>
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>

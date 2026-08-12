@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8080';
+import { API_BASE_URL } from '../config/env.js';
 
 export async function apiRequest(endpoint, options = {}) {
   const token = localStorage.getItem('auth_token');

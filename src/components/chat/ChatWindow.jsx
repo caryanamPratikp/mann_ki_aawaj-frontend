@@ -7,19 +7,31 @@ function ChatMessageItem({ msg, isMine, currentLanguage, translateTextAsync }) {
   const [isTranslated, setIsTranslated] = useState(false);
 
   useEffect(() => {
-    if (!isMine && currentLanguage !== 'English' && originalText) {
+    if (!isMine && originalText && translateTextAsync) {
       let isMounted = true;
       translateTextAsync(originalText, currentLanguage)
         .then(tText => {
-          if (isMounted && tText !== originalText) {
+          if (isMounted && tText && tText !== originalText) {
             setDisplayText(tText);
             setIsTranslated(true);
+          } else if (isMounted) {
+            setDisplayText(originalText);
+            setIsTranslated(false);
           }
         })
-        .catch(err => console.error(err));
+        .catch(err => {
+          console.error(err);
+          if (isMounted) {
+            setDisplayText(originalText);
+            setIsTranslated(false);
+          }
+        });
       return () => { isMounted = false; };
+    } else {
+      setDisplayText(originalText);
+      setIsTranslated(false);
     }
-  }, [originalText, currentLanguage, isMine]);
+  }, [originalText, currentLanguage, isMine, translateTextAsync]);
 
   return (
     <div style={{ wordBreak: 'break-word' }}>
@@ -41,18 +53,21 @@ import { Send, Lock, MessageSquare, Paperclip, Smile, Check, CheckCheck, MoreVer
 import { moderationCheck } from '../../utils/moderationCheck.js';
 import { apiChatService } from '../../services/apiChatService.js';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
+import { useSpokenLanguage } from '../../hooks/useSpokenLanguage.js';
+import { SpokenLanguageSelector } from '../common/SpokenLanguageSelector.jsx';
 
 export function ChatWindow({ conversation, currentUserUsername, onSendMessage, onNavigate, onAcceptRequest, onDeclineRequest }) {
   const { currentLanguage, translateTextAsync } = useLanguage();
+  const [spokenLanguage, setSpokenLanguage] = useSpokenLanguage();
   const [inputText, setInputText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
   const messagesEndRef = useRef(null);
 
-  // Voice to text recorder for direct messaging
+  // Voice to text recorder for direct messaging using dedicated spoken language state
   const { isRecording, isTranscribing, toggleRecording } = useVoiceRecorder((transcribedText) => {
     setInputText((prev) => (prev ? `${prev} ${transcribedText}` : transcribedText));
-  });
+  }, spokenLanguage);
 
   const otherUsername = conversation?.otherParticipantUsername
     || conversation?.participant2Username
@@ -352,11 +367,12 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
             />
 
             {/* VOICE TO TEXT MICROPHONE BUTTON */}
+            <SpokenLanguageSelector value={spokenLanguage} onChange={setSpokenLanguage} />
             <button
               type="button"
               onClick={toggleRecording}
-              disabled={isTranscribing}
-              title={isRecording ? 'Stop recording' : 'Speak to convert voice to text'}
+              disabled={isTranscribing || isBlocked}
+              title={isRecording ? 'Click to stop recording' : 'Speak message'}
               style={{
                 width: '36px',
                 height: '36px',

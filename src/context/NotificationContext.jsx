@@ -4,6 +4,7 @@ import { mapNotification } from '../services/apiMappers.js';
 import { useAuth } from './AuthContext.jsx';
 
 import { io } from 'socket.io-client';
+import { SOCKET_URL } from '../config/env.js';
 
 const NotificationContext = createContext(null);
 
@@ -33,7 +34,7 @@ export function NotificationProvider({ children }) {
   useEffect(() => {
     if (!currentUser || !currentUser.id) return;
 
-    const socket = io('http://localhost:8085', {
+    const socket = io(SOCKET_URL, {
       transports: ['websocket'],
       autoConnect: true,
     });

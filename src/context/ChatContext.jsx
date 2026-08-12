@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext.jsx';
 import { useToast } from './ToastContext.jsx';
 import { useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
+import { SOCKET_URL } from '../config/env.js';
 
 const ChatContext = createContext(null);
 
@@ -52,8 +53,8 @@ export function ChatProvider({ children }) {
       return;
     }
 
-    // Connect to Socket.IO server on port 8085
-    const socket = io('http://localhost:8085', {
+    // Connect to environment-configured Socket.IO server
+    const socket = io(SOCKET_URL, {
       transports: ['websocket'],
       autoConnect: true,
     });

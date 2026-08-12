@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { apiAiService } from '../services/apiAiService.js';
 import { useToast } from '../context/ToastContext.jsx';
 
-export function useVoiceRecorder(onTranscriptionSuccess) {
+export function useVoiceRecorder(onTranscriptionSuccess, languageHint = 'AUTO') {
   const { addToast } = useToast();
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -28,7 +28,7 @@ export function useVoiceRecorder(onTranscriptionSuccess) {
         addToast('Transcribing audio via AI...', 'info');
 
         try {
-          const res = await apiAiService.voiceToText(audioBlob);
+          const res = await apiAiService.voiceToText(audioBlob, languageHint);
           const text = res?.data?.text || res?.text;
           if (text) {
             onTranscriptionSuccess(text);
@@ -56,7 +56,7 @@ export function useVoiceRecorder(onTranscriptionSuccess) {
       setIsTranscribing(true);
       setTimeout(async () => {
         try {
-          const res = await apiAiService.voiceToText(new Blob());
+          const res = await apiAiService.voiceToText(new Blob(), languageHint);
           const text = res?.data?.text || res?.text;
           if (text) onTranscriptionSuccess(text);
         } catch (e) {

@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { Button } from '../common/Button.jsx';
 import { ModerationIndicator } from '../common/ModerationIndicator.jsx';
-import { Smile, BookOpen, AlertCircle } from 'lucide-react';
+import { Smile, BookOpen, AlertCircle, Mic, MicOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
+import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
+import { useSpokenLanguage } from '../../hooks/useSpokenLanguage.js';
+import { SpokenLanguageSelector } from '../common/SpokenLanguageSelector.jsx';
 import { moderationCheck } from '../../utils/moderationCheck.js';
 
 const QUICK_EMOJIS = ['😊', '🙏', '❤️', '💡', '🤝', '🌸', '✨', '👏'];
@@ -22,6 +26,12 @@ export function CommentComposer({
   const [showEmojis, setShowEmojis] = useState(false);
   const { currentUser } = useAuth();
   const { addToast } = useToast();
+  const { currentLanguage } = useLanguage();
+  const [spokenLanguage, setSpokenLanguage] = useSpokenLanguage();
+
+  const { isRecording, isTranscribing, toggleRecording } = useVoiceRecorder((transcribedText) => {
+    setText((prev) => (prev ? `${prev} ${transcribedText}` : transcribedText));
+  }, spokenLanguage);
 
   const minLength = 2;
   const maxLength = 1000;
@@ -135,12 +145,38 @@ export function CommentComposer({
 
       {/* Toolbar Controls */}
       <div className="flex-row justify-between items-center flex-wrap gap-sm" style={{ paddingTop: '4px' }}>
-        <div className="flex-row items-center gap-md">
+        <div className="flex-row items-center gap-sm" style={{ gap: '8px' }}>
+          <SpokenLanguageSelector value={spokenLanguage} onChange={setSpokenLanguage} />
+          <button
+            type="button"
+            onClick={toggleRecording}
+            disabled={isTranscribing || currentUser?.status === 'COMMENT_RESTRICTED'}
+            title={isRecording ? 'Click to stop recording' : 'Speak comment (Voice-to-Text)'}
+            className="flex-row items-center gap-xs secondary-text"
+            style={{
+              fontSize: '13px',
+              color: isRecording ? '#B33A3A' : 'var(--deep-plum)',
+              fontWeight: isRecording ? 700 : 500,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            {isTranscribing ? (
+              <Loader2 size={15} className="spin-animation" />
+            ) : isRecording ? (
+              <MicOff size={15} />
+            ) : (
+              <Mic size={15} />
+            )}
+            <span>{isTranscribing ? 'Transcribing...' : isRecording ? 'Recording...' : 'Voice'}</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setShowEmojis(!showEmojis)}
             className="flex-row items-center gap-xs secondary-text"
-            style={{ fontSize: '13px' }}
+            style={{ fontSize: '13px', background: 'none', border: 'none', cursor: 'pointer' }}
           >
             <Smile size={16} />
             <span>Emoji</span>

@@ -12,16 +12,11 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'ML', label: 'Malayalam', native: 'മലയാളം' },
   { code: 'PA', label: 'Punjabi', native: 'ਪੰਜਾਬੀ' },
   { code: 'AS', label: 'Assamese', native: 'অসমীয়া' },
-  { code: 'MAI', label: 'Maithili', native: 'मैथिली' },
   { code: 'SAT', label: 'Santali', native: 'ᱥᱟᱱᱛᱟᱲᱤ' },
   { code: 'KS', label: 'Kashmiri', native: 'कॉशुर' },
-  { code: 'NE', label: 'Nepali', native: 'नेपाली' },
-  { code: 'KOK', label: 'Konkani', native: 'कोंकणी' },
-  { code: 'DOI', label: 'Dogri', native: 'डोगरी' },
-  { code: 'SD', label: 'Sindhi', native: 'सिंधी' },
   { code: 'MNI', label: 'Manipuri', native: 'মৈতৈলোন' },
-  { code: 'BRX', label: 'Bodo', native: 'बड़ो' },
-  { code: 'SA', label: 'Sanskrit', native: 'संस्कृतम्' }
+  { code: 'DOI', label: 'Dogri', native: 'डोगरी' },
+  { code: 'BHO', label: 'Bhojpuri', native: 'भोजपुरी' }
 ];
 
 export const UI_DICTIONARY = {
@@ -402,6 +397,8 @@ UI_DICTIONARY.ML = UI_DICTIONARY.Malayalam;
 UI_DICTIONARY.PA = UI_DICTIONARY.Punjabi;
 UI_DICTIONARY.AS = UI_DICTIONARY.Assamese;
 
+UI_DICTIONARY.BHO = UI_DICTIONARY.Hindi;
+
 /**
  * Performs real-time dynamic text translation into native Indian script
  */
@@ -428,16 +425,11 @@ export function translateContent(text, targetLanguage) {
     Malayalam: 'മലയാളം തർജ്ജമ: ',
     Punjabi: 'ਪੰਜਾਬੀ ਅਨੁਵਾਦ: ',
     Assamese: 'অসমীয়া অনুবাদ: ',
-    Maithili: 'मैथिली अनुवाद: ',
     Santali: 'ᱥᱟᱱᱛᱟᱲᱤ ᱚᱱᱚᱫᱚᱞ: ',
     Kashmiri: 'कॉशुर तर्जमा: ',
-    Nepali: 'नेपाली अनुवाद: ',
-    Konkani: 'कोंकणी भाशांतर: ',
     Dogri: 'डोगरी अनुवाद: ',
-    Sindhi: 'सिंधी अनुवाद: ',
     Manipuri: 'মৈতৈলোন হোংদোকপা: ',
-    Bodo: 'बड़ो रावसोलायनाय: ',
-    Sanskrit: 'संस्कृत अनुवादः: ',
+    Bhojpuri: 'भोजपुरी अनुवाद: ',
   };
 
   const prefix = nativeScriptPrefixes[targetLanguage] || `[${targetLanguage}]: `;

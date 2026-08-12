@@ -1,12 +1,23 @@
 import React, { useState } from 'react';
 import { Button } from '../common/Button.jsx';
 import { ModerationIndicator } from '../common/ModerationIndicator.jsx';
+import { Mic, MicOff, Loader2 } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext.jsx';
+import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
+import { useSpokenLanguage } from '../../hooks/useSpokenLanguage.js';
+import { SpokenLanguageSelector } from '../common/SpokenLanguageSelector.jsx';
 import { moderationCheck } from '../../utils/moderationCheck.js';
 
 export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onCancel }) {
+  const { currentLanguage } = useLanguage();
+  const [spokenLanguage, setSpokenLanguage] = useSpokenLanguage();
   const initialTag = targetUsername ? (targetUsername.startsWith('@') ? `${targetUsername} ` : `@${targetUsername} `) : '';
   const [text, setText] = useState(initialTag);
   const [submitting, setSubmitting] = useState(false);
+
+  const { isRecording, isTranscribing, toggleRecording } = useVoiceRecorder((transcribedText) => {
+    setText((prev) => (prev ? `${prev} ${transcribedText}` : transcribedText));
+  }, spokenLanguage);
 
   const minLength = 2;
   const maxLength = 1000;
@@ -51,7 +62,36 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
       />
 
       <div className="flex-row justify-between items-center">
-        <ModerationIndicator text={text} />
+        <div className="flex-row items-center gap-xs" style={{ gap: '8px' }}>
+          <SpokenLanguageSelector value={spokenLanguage} onChange={setSpokenLanguage} />
+          <button
+            type="button"
+            onClick={toggleRecording}
+            disabled={isTranscribing}
+            title={isRecording ? 'Click to stop recording' : 'Speak reply (Voice-to-Text)'}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '12px',
+              color: isRecording ? '#B33A3A' : 'var(--deep-plum)',
+              fontWeight: isRecording ? 700 : 500
+            }}
+          >
+            {isTranscribing ? (
+              <Loader2 size={14} className="spin-animation" />
+            ) : isRecording ? (
+              <MicOff size={14} />
+            ) : (
+              <Mic size={14} />
+            )}
+            <span>{isTranscribing ? 'Transcribing...' : isRecording ? 'Recording...' : 'Voice'}</span>
+          </button>
+          <ModerationIndicator text={text} />
+        </div>
         <div className="flex-row items-center gap-xs">
           <Button type="button" variant="text" size="sm" onClick={onCancel}>
             Cancel
