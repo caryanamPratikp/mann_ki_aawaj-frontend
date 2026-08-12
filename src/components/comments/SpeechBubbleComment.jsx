@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AvatarThumbnail } from '../avatar/AvatarThumbnail.jsx';
 import { formatDate } from '../../utils/formatDate.js';
 import { CornerDownLeft, Pin, Sparkles } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 import { ReplyList } from './ReplyList.jsx';
 
 const EMOJI_REACTIONS = ['😀', '❤️', '👍', '🔥', '💯', '🤝'];
@@ -35,8 +36,23 @@ export function SpeechBubbleComment({
   onNavigate,
 }) {
   const { currentUser } = useAuth();
+  const { currentLanguage, translateTextAsync } = useLanguage();
   const [isHovered, setIsHovered] = useState(false);
   const [showReplyBox, setShowReplyBox] = useState(false);
+  const [translatedCommentText, setTranslatedCommentText] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const srcText = comment.originalContent || comment.content;
+    if (srcText && currentLanguage) {
+      translateTextAsync(srcText, currentLanguage).then((res) => {
+        if (isMounted && res) setTranslatedCommentText(res);
+      });
+    } else {
+      setTranslatedCommentText(null);
+    }
+    return () => { isMounted = false; };
+  }, [currentLanguage, comment.originalContent, comment.content]);
 
   const [activeEmojis, setActiveEmojis] = useState(() => {
     const list = [];
@@ -258,7 +274,7 @@ export function SpeechBubbleComment({
               Pinned
             </span>
           )}
-          <span style={{ whiteSpace: 'pre-line' }}>{comment.content}</span>
+          <span style={{ whiteSpace: 'pre-line' }}>{translatedCommentText || comment.translatedContent || comment.content || comment.originalContent}</span>
         </div>
 
         {/* Action / Meta row below text */}

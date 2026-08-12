@@ -37,6 +37,7 @@ import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage.jsx';
 import { AdminReportsPage } from '../pages/admin/AdminReportsPage.jsx';
 import { AdminReportDetailsPage } from '../pages/admin/AdminReportDetailsPage.jsx';
 import { AdminContentReviewPage } from '../pages/admin/AdminContentReviewPage.jsx';
+import { AdminBlockedContentPage } from '../pages/admin/AdminBlockedContentPage.jsx';
 
 export function AppRoutes() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -111,6 +112,9 @@ export function AppRoutes() {
   }
   if (normalizedPath === '/admin/content-review') {
     return <AdminContentReviewPage onNavigate={navigate} />;
+  }
+  if (normalizedPath === '/admin/blocked-content') {
+    return <AdminBlockedContentPage onNavigate={navigate} />;
   }
 
   // 5. User App Protected Routes (redirect to /login if not logged in)

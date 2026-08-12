@@ -96,6 +96,7 @@ const translationCache = new Map();
 export const apiTranslationService = {
   /**
    * Translates content dynamically via Spring Boot Backend (OpenAI Engine).
+   * Backend performs automatic source-language detection via OpenAI.
    * @param {string} text - Text to translate
    * @param {string} targetLang - Target language (e.g. 'MR', 'EN', 'Hindi', 'Marathi')
    * @param {string} sourceLang - Optional source language (e.g. 'EN', 'MR'). Auto-detected if null.
@@ -119,11 +120,21 @@ export const apiTranslationService = {
       return translationCache.get(cacheKey);
     }
 
+    const srcSent = sourceLang === 'auto' ? 'auto' : (LANGUAGE_MAP[sourceLang] || sourceLang);
+
+    console.log('[MKA TRANSLATION DEBUG]', {
+      'Input text': text.trim(),
+      'Target language': tgtCode,
+      'Source language sent': srcSent,
+      'API endpoint': '/api/v1/translation/translate'
+    });
+
     // Call Spring Boot Backend Endpoint (/api/v1/translation/translate)
+    // Backend will auto-detect source language via OpenAI single-pass
     try {
       const response = await apiClient.post('/api/v1/translation/translate', {
         text: text.trim(),
-        sourceLanguage: srcCode,
+        sourceLanguage: srcSent,
         targetLanguage: tgtCode,
       });
 
@@ -138,5 +149,5 @@ export const apiTranslationService = {
 
     // Fallback: Return original text if service is unreachable
     return text;
-  }
+  },
 };

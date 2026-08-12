@@ -1,18 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SpeechBubbleComment } from '../comments/SpeechBubbleComment.jsx';
 import { AvatarThumbnail } from '../avatar/AvatarThumbnail.jsx';
 import { formatDate } from '../../utils/formatDate.js';
 import { MessageSquare, Send, Sparkles, ChevronDown, ChevronUp, Mic, MicOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
 import { useComments } from '../../context/CommentContext.jsx';
 
 export function LargeDiscussionWindow({ post, comments: passedComments, onAddComment, onReactComment, onNavigate }) {
   const { currentUser } = useAuth();
   const { createReply } = useComments();
+  const { currentLanguage, translateTextAsync } = useLanguage();
   const [commentText, setCommentText] = useState('');
   const [pinnedCommentId, setPinnedCommentId] = useState(null);
   const [isExpanded, setIsExpanded] = useState(true);
+  const [translatedTitle, setTranslatedTitle] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (post?.title && currentLanguage) {
+      translateTextAsync(post.title, currentLanguage).then((res) => {
+        if (isMounted && res) setTranslatedTitle(res);
+      });
+    } else {
+      setTranslatedTitle(null);
+    }
+    return () => { isMounted = false; };
+  }, [currentLanguage, post?.title]);
 
   const handleQuickReply = async (postId, text, commentAuthorUsername, commentId) => {
     try {
@@ -159,7 +174,7 @@ export function LargeDiscussionWindow({ post, comments: passedComments, onAddCom
                 textOverflow: 'ellipsis',
               }}
             >
-              {post.title}
+              {translatedTitle || post.title}
             </h2>
           </div>
         </div>
