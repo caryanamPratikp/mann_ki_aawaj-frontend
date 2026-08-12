@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext.jsx';
 import { useToast } from './ToastContext.jsx';
 import { useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
+import { SOCKET_URL } from '../config/env.js';
 
 const ChatContext = createContext(null);
 
@@ -52,22 +53,8 @@ export function ChatProvider({ children }) {
       return;
     }
 
-    // ==============================================================
-    // REAL-TIME SOCKET SERVER URL CONFIGURATION
-    // Fetches values directly from .env variables (No hardcoded URL strings)
-    // ==============================================================
-
-    // OPTION 1: PRODUCTION SOCKET SERVER URL (VITE_PRODUCTION_SOCKET_URL in .env)
-    const PRODUCTION_SOCKET_URL = import.meta.env.VITE_PRODUCTION_SOCKET_URL;
-
-    // OPTION 2: LOCAL DEVELOPMENT SOCKET SERVER URL (VITE_LOCAL_SOCKET_URL in .env)
-    const LOCAL_SOCKET_URL = import.meta.env.VITE_LOCAL_SOCKET_URL;
-
-    // Active Socket URL selection (Driven by VITE_ENVIRONMENT variable in .env)
-    const isProduction = import.meta.env.VITE_ENVIRONMENT === 'production';
-    const socketUrl = isProduction ? PRODUCTION_SOCKET_URL : LOCAL_SOCKET_URL;
-
-    const socket = io(socketUrl, {
+    // Connect to environment-configured Socket.IO server
+    const socket = io(SOCKET_URL, {
       transports: ['websocket'],
       autoConnect: true,
     });

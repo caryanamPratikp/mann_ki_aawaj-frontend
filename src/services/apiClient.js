@@ -1,19 +1,5 @@
 import axios from 'axios';
-
-// ==============================================================
-// API BASE URL CONFIGURATION
-// Fetches values directly from .env variables (No hardcoded URL strings)
-// ==============================================================
-
-// OPTION 1: PRODUCTION SERVER URL (Fetched from VITE_PRODUCTION_URL in .env)
-const PRODUCTION_URL = import.meta.env.VITE_PRODUCTION_URL;
-
-// OPTION 2: LOCAL DEVELOPMENT SERVER URL (Fetched from VITE_LOCAL_URL in .env)
-const LOCAL_URL = import.meta.env.VITE_LOCAL_URL;
-
-// Active API Base URL selection (Driven by VITE_ENVIRONMENT variable in .env)
-const isProduction = import.meta.env.VITE_ENVIRONMENT === 'production';
-const API_BASE_URL = isProduction ? PRODUCTION_URL : LOCAL_URL;
+import { API_BASE_URL } from '../config/env.js';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

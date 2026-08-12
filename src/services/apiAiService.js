@@ -1,11 +1,14 @@
 import { apiClient } from './apiClient.js';
 
 export const apiAiService = {
-  // POST /api/ai/voice-to-text (multipart/form-data, field: file)
-  async voiceToText(audioBlob) {
+  // POST /api/ai/voice-to-text (multipart/form-data, fields: file, optional language)
+  async voiceToText(audioBlob, language = null) {
     try {
       const formData = new FormData();
       formData.append('file', audioBlob, 'voice_recording.webm');
+      if (language) {
+        formData.append('language', language);
+      }
 
       const response = await apiClient.post('/api/ai/voice-to-text', formData, {
         headers: {

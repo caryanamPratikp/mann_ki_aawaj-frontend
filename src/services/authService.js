@@ -46,7 +46,7 @@ export const authService = {
         throw err.response.data;
       }
       if (err.isNetworkError || err.code === 'ECONNABORTED' || err.message?.includes('timeout') || err.message?.includes('Network Error') || err.message?.includes('Failed to fetch') || !err.response) {
-        console.warn('Backend server offline or timed out (http://localhost:8080). Falling back to mock auth.');
+        console.warn('Backend server offline or timed out. Falling back to mock auth.');
         const mockUser = mockAuthService.login(email, password);
         return { user: mockUser, hasProfile: true };
       }
