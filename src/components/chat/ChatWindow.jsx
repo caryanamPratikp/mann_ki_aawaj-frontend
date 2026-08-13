@@ -367,7 +367,6 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
             />
 
             {/* VOICE TO TEXT MICROPHONE BUTTON */}
-            <SpokenLanguageSelector value={spokenLanguage} onChange={setSpokenLanguage} />
             <button
               type="button"
               onClick={toggleRecording}

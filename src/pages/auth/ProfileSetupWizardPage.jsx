@@ -28,7 +28,7 @@ export function ProfileSetupWizardPage({ onNavigate }) {
   const { currentUser, updateProfile } = useAuth();
   const { addToast } = useToast();
 
-  const [step, setStep] = useState(1); // 1: Avatar, 2: Username, 3: Bio
+  const [step, setStep] = useState(2); // 1: Avatar (skipped), 2: Username, 3: Bio
 
   // Form State
   const [selectedColor, setSelectedColor] = useState(AVATAR_COLORS[0].hex);
@@ -174,11 +174,11 @@ export function ProfileSetupWizardPage({ onNavigate }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div>
             <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--deep-plum)' }}>
-              FIRST-TIME SETUP • STEP {step} OF 3
+              FIRST-TIME SETUP • STEP {step - 1} OF 2
             </span>
           </div>
           <div style={{ display: 'flex', gap: '6px' }}>
-            {[1, 2, 3].map((i) => (
+            {[2, 3].map((i) => (
               <div
                 key={i}
                 style={{
@@ -365,25 +365,6 @@ export function ProfileSetupWizardPage({ onNavigate }) {
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                style={{
-                  padding: '12px 18px',
-                  borderRadius: '8px',
-                  border: '1.5px solid var(--border-light)',
-                  background: 'var(--pure-white)',
-                  color: 'var(--eclipse)',
-                  fontSize: '13.5px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-              >
-                <ArrowLeft size={15} /> Back
-              </button>
               <button
                 type="button"
                 onClick={handleNextStep2}

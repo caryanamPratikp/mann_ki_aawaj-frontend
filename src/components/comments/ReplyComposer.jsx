@@ -63,7 +63,6 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
 
       <div className="flex-row justify-between items-center">
         <div className="flex-row items-center gap-xs" style={{ gap: '8px' }}>
-          <SpokenLanguageSelector value={spokenLanguage} onChange={setSpokenLanguage} />
           <button
             type="button"
             onClick={toggleRecording}

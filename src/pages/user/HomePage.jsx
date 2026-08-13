@@ -216,7 +216,6 @@ export function HomePage({ onNavigate }) {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <SpokenLanguageSelector value={spokenLanguage} onChange={setSpokenLanguage} />
             {/* Voice to text mic icon button */}
             <button
               type="button"
@@ -545,7 +544,6 @@ export function HomePage({ onNavigate }) {
             />
 
             <div style={{ position: 'absolute', right: '10px', bottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <SpokenLanguageSelector value={spokenLanguage} onChange={setSpokenLanguage} />
               {/* Voice-to-Text Microphone button inside textarea */}
               <button
                 type="button"

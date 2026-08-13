@@ -146,7 +146,6 @@ export function CommentComposer({
       {/* Toolbar Controls */}
       <div className="flex-row justify-between items-center flex-wrap gap-sm" style={{ paddingTop: '4px' }}>
         <div className="flex-row items-center gap-sm" style={{ gap: '8px' }}>
-          <SpokenLanguageSelector value={spokenLanguage} onChange={setSpokenLanguage} />
           <button
             type="button"
             onClick={toggleRecording}
