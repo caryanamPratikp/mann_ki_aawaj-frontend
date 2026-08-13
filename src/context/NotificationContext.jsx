@@ -37,8 +37,11 @@ export function NotificationProvider({ children }) {
     if (!currentUser || !currentUser.id) return;
 
     const socket = io(SOCKET_URL, {
-      transports: ['websocket'],
+      transports: ['polling', 'websocket'],
       autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
     });
 
     socket.on('connect', () => {

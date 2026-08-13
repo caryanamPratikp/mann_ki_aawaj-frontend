@@ -64,8 +64,11 @@ export function ChatProvider({ children }) {
     if (!currentUser || isMockMode()) return;
 
     const socket = io(SOCKET_URL, {
-      transports: ['websocket'],
+      transports: ['polling', 'websocket'],
       autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
     });
 
     socketRef.current = socket;
