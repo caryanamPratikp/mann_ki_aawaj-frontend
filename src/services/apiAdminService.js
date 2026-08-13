@@ -330,4 +330,18 @@ export const apiAdminService = {
       throw err;
     }
   },
+
+  // PUT /api/admin/moderation/ai-blocked/{id}/warn
+  async sendWarningForBlockedContent(id, warningLevel, message) {
+    try {
+      const response = await apiClient.put(`/api/admin/moderation/ai-blocked/${id}/warn`, {
+        warningLevel,
+        message,
+      });
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      throw err;
+    }
+  },
 };

@@ -3,6 +3,7 @@ import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { Button } from '../../components/common/Button.jsx';
 import { Search, HelpCircle, Shield, User, MessageSquare, FileText, ChevronDown, ChevronUp, Send, CheckCircle2 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 
 export function HelpSupportPage({ onNavigate }) {
   const { addToast } = useToast();
@@ -17,11 +18,13 @@ export function HelpSupportPage({ onNavigate }) {
   const [submitting, setSubmitting] = useState(false);
   const [ticketSubmitted, setTicketSubmitted] = useState(false);
 
+  const { t } = useLanguage();
+
   const categories = [
-    { title: 'Account & Handle', icon: User, desc: 'Handle selection, email verification, passwords.' },
-    { title: 'Privacy & Security', icon: Shield, desc: 'Identity shielding, search indexing, privacy options.' },
-    { title: 'Posting & Content', icon: FileText, desc: 'Publishing thoughts, voice-to-text, post deletion.' },
-    { title: 'Direct Messaging', icon: MessageSquare, desc: 'Message requests, blocking, safety controls.' },
+    { titleKey: 'accountAndHandle', defaultTitle: 'Account & Handle', icon: User, descKey: 'accountAndHandleDesc', defaultDesc: 'Handle selection, email verification, passwords.' },
+    { titleKey: 'privacyAndSecurity', defaultTitle: 'Privacy & Security', icon: Shield, descKey: 'privacyAndSecurityDesc', defaultDesc: 'Identity shielding, search indexing, privacy options.' },
+    { titleKey: 'postingAndContent', defaultTitle: 'Posting & Content', icon: FileText, descKey: 'postingAndContentDesc', defaultDesc: 'Publishing thoughts, voice-to-text, post deletion.' },
+    { titleKey: 'directMessaging', defaultTitle: 'Direct Messaging', icon: MessageSquare, descKey: 'directMessagingDesc', defaultDesc: 'Message requests, blocking, safety controls.' },
   ];
 
   const faqs = [
@@ -88,9 +91,9 @@ export function HelpSupportPage({ onNavigate }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <HelpCircle size={28} color="#FFD1E8" />
             <div>
-              <h1 style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>Help & Support Center</h1>
+              <h1 style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>{t('helpAndSupportCenter')}</h1>
               <p style={{ fontSize: '13px', color: '#E0C8D6', margin: 0 }}>
-                Find answers, manage privacy, or reach out to our community support team.
+                {t('findAnswersDesc')}
               </p>
             </div>
           </div>
@@ -102,7 +105,7 @@ export function HelpSupportPage({ onNavigate }) {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search help articles (e.g. anonymity, delete post, voice input)..."
+              placeholder={t('searchHelpArticles')}
               style={{
                 width: '100%',
                 padding: '11px 16px 11px 42px',
@@ -132,9 +135,9 @@ export function HelpSupportPage({ onNavigate }) {
                   <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'var(--deep-plum-light)', color: 'var(--deep-plum)' }}>
                     <Icon size={18} />
                   </div>
-                  <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--eclipse)' }}>{cat.title}</h3>
+                  <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--eclipse)' }}>{t(cat.titleKey) || cat.defaultTitle}</h3>
                 </div>
-                <p style={{ fontSize: '12.5px', color: 'var(--hurricane)', margin: 0, lineHeight: 1.4 }}>{cat.desc}</p>
+                <p style={{ fontSize: '12.5px', color: 'var(--hurricane)', margin: 0, lineHeight: 1.4 }}>{t(cat.descKey) || cat.defaultDesc}</p>
               </div>
             );
           })}
@@ -143,7 +146,7 @@ export function HelpSupportPage({ onNavigate }) {
         {/* FAQ Accordion */}
         <div className="mka-card flex-col gap-md">
           <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--eclipse)' }}>
-            Frequently Asked Questions
+            {t('frequentlyAskedQuestions')}
           </h2>
 
           <div className="flex-col gap-xs">

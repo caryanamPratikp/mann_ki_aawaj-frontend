@@ -134,7 +134,7 @@ export const apiTranslationService = {
     try {
       const response = await apiClient.post('/api/v1/translation/translate', {
         text: text.trim(),
-        sourceLanguage: srcSent,
+        sourceLanguage: srcSent || 'auto',
         targetLanguage: tgtCode,
       });
 

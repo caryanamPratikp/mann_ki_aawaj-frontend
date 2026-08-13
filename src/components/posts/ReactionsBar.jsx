@@ -1,18 +1,22 @@
 import React from 'react';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 
 export const REACTION_TYPES = [
-  { key: 'relate', label: 'Relate', emoji: '❤' },
-  { key: 'helpful', label: 'Helpful', emoji: '💡' },
-  { key: 'madeMeThink', label: 'Made Me Think', emoji: '🧠' },
-  { key: 'stayStrong', label: 'Stay Strong', emoji: '💪' },
+  { key: 'RELATE', labelKey: 'relate', defaultLabel: 'Relate', emoji: '❤' },
+  { key: 'AGREE', labelKey: 'agree', defaultLabel: 'Agree', emoji: '🤝' },
+  { key: 'DISAGREE', labelKey: 'disagree', defaultLabel: 'Disagree', emoji: '🤔' },
+  { key: 'INTERESTING', labelKey: 'interesting', defaultLabel: 'Interesting', emoji: '💡' },
+  { key: 'SUPPORT', labelKey: 'support', defaultLabel: 'Support', emoji: '💪' },
 ];
 
 export function ReactionsBar({ reactions = {}, userReaction, onReact, compact = false }) {
+  const { t } = useLanguage();
+
   return (
     <div className="flex-row items-center gap-xs flex-wrap">
       {REACTION_TYPES.map((type) => {
-        const count = reactions[type.key] || 0;
-        const isActive = userReaction === type.key;
+        const count = reactions[type.key] || reactions[type.key.toLowerCase()] || 0;
+        const isActive = userReaction === type.key || userReaction === type.key.toLowerCase();
 
         return (
           <button
@@ -42,7 +46,7 @@ export function ReactionsBar({ reactions = {}, userReaction, onReact, compact = 
             }}
           >
             <span style={{ fontSize: '13px' }}>{type.emoji}</span>
-            <span>{type.label}</span>
+            <span>{t(type.labelKey) || type.defaultLabel}</span>
             {count > 0 && <span style={{ opacity: 0.75, fontWeight: 600 }}>({count})</span>}
           </button>
         );

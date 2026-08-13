@@ -14,10 +14,12 @@ import { useLanguage } from '../../context/LanguageContext.jsx';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
 import { useSpokenLanguage } from '../../hooks/useSpokenLanguage.js';
 import { SpokenLanguageSelector } from '../../components/common/SpokenLanguageSelector.jsx';
-import { PlusSquare, Sparkles, Filter, TrendingUp, MessageSquare, Edit3, Mic, MicOff, Loader2 } from 'lucide-react';
+import { PlusSquare, Sparkles, Filter, TrendingUp, MessageSquare, Edit3, Mic, MicOff, Loader2, Upload, X } from 'lucide-react';
 import { EmptyState } from '../../components/common/EmptyState.jsx';
 import { SUPPORTED_LANGUAGES } from '../../utils/translations.js';
 import { formatDate } from '../../utils/formatDate.js';
+import { apiClient } from '../../services/apiClient.js';
+import { getMediaUrl } from '../../config/env.js';
 
 export function HomePage({ onNavigate }) {
   const { posts, loading, isFetching, createPost } = usePosts();
@@ -25,7 +27,7 @@ export function HomePage({ onNavigate }) {
   const { currentUser } = useAuth();
   const { blockedUsers } = useReports();
   const { addToast } = useToast();
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, t } = useLanguage();
   const [spokenLanguage, setSpokenLanguage] = useSpokenLanguage();
 
   const [activeTab, setActiveTab] = useState('Latest');
@@ -43,7 +45,49 @@ export function HomePage({ onNavigate }) {
   const [postTopic, setPostTopic] = useState('General');
   const [postType, setPostType] = useState('Thought');
   const [postLanguage, setPostLanguage] = useState('EN');
+  const [imageUrl, setImageUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const handleImageFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      addToast(t('imageUploadError') || 'Only valid image files (JPEG, PNG, WEBP) are allowed.', 'error');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      addToast(t('imageSizeError') || 'Image size must be less than 5MB.', 'error');
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await apiClient.post('/api/upload/image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 45000,
+      });
+
+      if (response.data?.success && response.data?.data?.imageUrl) {
+        const uploadedUrl = response.data.data.imageUrl;
+        setImageUrl(uploadedUrl);
+        addToast(t('imageUploadSuccess') || 'Image uploaded & verified by AI safety.', 'success');
+      } else {
+        throw new Error(response.data?.message || 'Failed to upload image');
+      }
+    } catch (err) {
+      console.error(err);
+      const msg = err.response?.data?.message || err.message || 'Image upload failed';
+      addToast(msg, 'error');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   // Voice to text recorder for post creation using dedicated spoken language state
   const { isRecording, isTranscribing, toggleRecording } = useVoiceRecorder((transcribedText) => {
@@ -78,10 +122,7 @@ export function HomePage({ onNavigate }) {
         content: postContent.trim(),
         topic: postTopic,
         postType: postType,
-        language: postLanguage,
-        username: currentUser?.username || '@anonymous',
-        avatarInitials: currentUser?.avatarInitials || 'AN',
-        avatarConfig: currentUser?.avatarConfig,
+        imageUrl: imageUrl.trim() || null,
       });
 
       if (newPost?.id) {
@@ -89,6 +130,7 @@ export function HomePage({ onNavigate }) {
       }
       setPostTitle('');
       setPostContent('');
+      setImageUrl('');
       setIsCreateModalOpen(false);
     } catch (err) {
       console.error(err);
@@ -148,7 +190,7 @@ export function HomePage({ onNavigate }) {
           }}
         >
           <Loader2 size={14} className="spin-animation" />
-          <span>Updating translations in background...</span>
+          <span>{t('updatingTranslations')}</span>
         </div>
       )}
       {/* ── TOP ACTION BAR: Feed Tabs (Left) & Quick Prompt Bar (Right) ── */}
@@ -164,7 +206,7 @@ export function HomePage({ onNavigate }) {
       >
         {/* Feed Tabs */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto' }}>
-          {['Latest', 'Most Helpful', 'Following Topics'].map((tab) => (
+          {[{key: 'Latest', label: t('latest')}, {key: 'Most Helpful', label: t('mostHelpful')}, {key: 'Following Topics', label: t('followingTopics')}].map(({key: tab, label}) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -181,7 +223,7 @@ export function HomePage({ onNavigate }) {
                 whiteSpace: 'nowrap',
               }}
             >
-              {tab}
+              {label}
             </button>
           ))}
         </div>
@@ -211,7 +253,7 @@ export function HomePage({ onNavigate }) {
               size={28}
             />
             <span style={{ fontSize: '12.5px', color: '#7A6E6B', fontWeight: 500 }}>
-              Share an unspoken thought...
+              {t('shareUnspokenThought')}
             </span>
           </div>
 
@@ -262,7 +304,7 @@ export function HomePage({ onNavigate }) {
               gap: '4px',
             }}
           >
-            <Edit3 size={12} /> Post
+            <Edit3 size={12} /> {t('post')}
           </button>
         </div>
       </div>
@@ -313,7 +355,7 @@ export function HomePage({ onNavigate }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <TrendingUp size={16} color="#6F405F" />
               <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#2D1D15', margin: 0 }}>
-                Topics Stream
+                {t('topicsStream')}
               </h3>
             </div>
 
@@ -336,7 +378,7 @@ export function HomePage({ onNavigate }) {
               >
                 {topics.map((topic) => (
                   <option key={topic} value={topic}>
-                    Topic: {topic}
+                    {t('topicPrefix')}{topic}
                   </option>
                 ))}
               </select>
@@ -471,6 +513,15 @@ export function HomePage({ onNavigate }) {
                             <p style={{ fontSize: '12.5px', color: '#4A3E3D', margin: 0, lineHeight: 1.45 }}>
                               {post.content}
                             </p>
+                            {post.imageUrl && (
+                              <div style={{ marginTop: '6px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #EAE6E5' }}>
+                                <img
+                                  src={getMediaUrl(post.imageUrl)}
+                                  alt="Post attachment"
+                                  style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', display: 'block' }}
+                                />
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -480,9 +531,9 @@ export function HomePage({ onNavigate }) {
               ) : (
                 <EmptyState
                   icon={MessageSquare}
-                  title="No thoughts found"
-                  description="Be the first to share an unspoken thought on this topic!"
-                  actionLabel="+ Share Thought"
+                  title={t('noThoughtsFound')}
+                  description={t('firstToShare')}
+                  actionLabel={t('shareThought')}
                   onAction={() => setIsCreateModalOpen(true)}
                 />
               )}
@@ -492,7 +543,7 @@ export function HomePage({ onNavigate }) {
       </div>
 
       {/* ── CREATE POST MODAL OVERLAY ── */}
-      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Create Anonymous Thought">
+      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title={t('createAnonymousThought')}>
         <form onSubmit={handlePublish} className="flex-col gap-sm">
           <div className="flex-row items-center gap-sm" style={{ borderBottom: '1px solid #E1DCDB', paddingBottom: '8px' }}>
             <AvatarThumbnail
@@ -502,13 +553,13 @@ export function HomePage({ onNavigate }) {
               size={32}
             />
             <span style={{ fontSize: '13px', fontWeight: 600, color: '#2D1D15' }}>
-              Posting as <span style={{ color: '#6F405F' }}>{currentUser?.username || '@anonymous'}</span>
+              {t('postingAs')} <span style={{ color: '#6F405F' }}>{currentUser?.username || '@anonymous'}</span>
             </span>
           </div>
 
           <input
             type="text"
-            placeholder="Title / Summary (optional)..."
+            placeholder={t('titlePlaceholder')}
             value={postTitle}
             onChange={(e) => setPostTitle(e.target.value)}
             style={{
@@ -524,10 +575,10 @@ export function HomePage({ onNavigate }) {
               rows={4}
               placeholder={
                 isRecording
-                  ? 'Recording spoken thought...'
+                  ? t('recordingSpokenThought')
                   : isTranscribing
-                  ? 'Transcribing audio to text...'
-                  : 'Share your unspoken thoughts freely...'
+                  ? t('transcribingAudio')
+                  : t('shareThoughtsFreely')
               }
               value={postContent}
               onChange={(e) => setPostContent(e.target.value)}
@@ -577,51 +628,133 @@ export function HomePage({ onNavigate }) {
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '11px', fontWeight: 700, color: '#6F405F', display: 'block', marginBottom: '4px' }}>
-                Topic:
+                {t('topicLabel')}
               </label>
               <select
                 value={postTopic}
                 onChange={(e) => setPostTopic(e.target.value)}
                 style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #D4CECC', fontSize: '12px' }}
               >
-                {topics.filter(t => t !== 'All').map(t => (
-                  <option key={t} value={t}>{t}</option>
+                {topics.filter(topic => topic !== 'All').map(topic => (
+                  <option key={topic} value={topic}>{topic}</option>
                 ))}
               </select>
             </div>
 
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '11px', fontWeight: 700, color: '#6F405F', display: 'block', marginBottom: '4px' }}>
-                Post Type:
+                {t('postTypeLabel')}
               </label>
               <select
                 value={postType}
                 onChange={(e) => setPostType(e.target.value)}
                 style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #D4CECC', fontSize: '12px' }}
               >
-                {postTypes.filter(t => t !== 'All').map(t => (
-                  <option key={t} value={t}>{t}</option>
+                {postTypes.filter(pType => pType !== 'All').map(pType => (
+                  <option key={pType} value={pType}>{pType}</option>
                 ))}
               </select>
             </div>
           </div>
 
+          {/* File Upload Field for Image */}
+          <div style={{ marginTop: '4px' }}>
+            <label style={{ fontSize: '11px', fontWeight: 700, color: '#6F405F', display: 'block', marginBottom: '4px' }}>
+              {t('uploadImage') || 'Upload Image'}
+            </label>
+
+            {imageUrl ? (
+              <div style={{ position: 'relative', display: 'inline-block', width: '100%', maxWidth: '280px' }}>
+                <img
+                  src={getMediaUrl(imageUrl)}
+                  alt="Uploaded attachment"
+                  style={{ width: '100%', maxHeight: '160px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #D4CECC' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setImageUrl('')}
+                  style={{
+                    position: 'absolute',
+                    top: '6px',
+                    right: '6px',
+                    background: 'rgba(0,0,0,0.65)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '24px',
+                    height: '24px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <div
+                style={{
+                  border: '1.5px dashed #D4CECC',
+                  borderRadius: '8px',
+                  padding: '10px',
+                  textAlign: 'center',
+                  background: '#FFFDFB',
+                  cursor: 'pointer',
+                  position: 'relative',
+                }}
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageFileChange}
+                  disabled={uploadingImage}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    opacity: 0,
+                    cursor: uploadingImage ? 'wait' : 'pointer',
+                  }}
+                />
+                {uploadingImage ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#6F405F', fontSize: '12px', fontWeight: 600 }}>
+                    <Loader2 size={16} className="spin-animation" />
+                    <span>{t('uploadingImage') || 'Moderating & Uploading Image...'}</span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+                    <Upload size={18} style={{ color: '#8C8385' }} />
+                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#6F405F' }}>
+                      {t('chooseImage') || 'Choose Image File'}
+                    </span>
+                    <span style={{ fontSize: '10.5px', color: '#8C8385' }}>
+                      PNG, JPG, WEBP (Max 5MB) • Verified by AI Safety
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || uploadingImage}
             style={{
               padding: '10px',
               borderRadius: '8px',
               border: 'none',
-              backgroundColor: '#6F405F',
+              backgroundColor: submitting || uploadingImage ? '#A0959A' : '#6F405F',
               color: '#FFFFFF',
               fontWeight: 700,
               fontSize: '14px',
-              cursor: 'pointer',
+              cursor: submitting || uploadingImage ? 'default' : 'pointer',
               marginTop: '10px',
             }}
           >
-            {submitting ? 'Publishing...' : 'Publish Anonymously'}
+            {submitting ? t('publishing') : t('publishAnonymously')}
           </button>
         </form>
       </Modal>

@@ -1,8 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiChatService } from '../services/apiChatService.js';
+import { mockChatService } from '../services/mockChatService.js';
 import { useAuth } from './AuthContext.jsx';
 import { useToast } from './ToastContext.jsx';
-import { useQueryClient } from '@tanstack/react-query';
+import { FloatingChatToast } from '../components/common/FloatingChatToast.jsx';
+import { formatLastSeen } from '../utils/formatLastSeen.js';
+
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '../config/env.js';
 
@@ -14,46 +18,51 @@ const isMockMode = () => {
 };
 
 export function ChatProvider({ children }) {
-  const [conversations, setConversations] = useState([]);
-  const [activeConversation, setActiveConversation] = useState(null);
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const queryClient = useQueryClient();
+
+  const [activeConversation, setActiveConversation] = useState(null);
+  const [onlineUsers, setOnlineUsers] = useState({});
+  const [floatingToasts, setFloatingToasts] = useState([]);
   const socketRef = useRef(null);
+  const activeConvRef = useRef(activeConversation);
 
-  const refreshConversations = useCallback(async () => {
-    if (!currentUser) {
-      setConversations([]);
-      return;
-    }
-    try {
-      const list = await apiChatService.getConversations();
-      setConversations(Array.isArray(list) ? list : []);
-    } catch (err) {
-      setConversations([]);
-    }
-  }, [currentUser]);
-
-  // Periodic polling for conversations sidebar
   useEffect(() => {
-    refreshConversations();
-    const interval = setInterval(() => {
-      refreshConversations();
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [refreshConversations]);
+    activeConvRef.current = activeConversation;
+  }, [activeConversation]);
 
-  // Socket.IO real-time connection and message listeners
+  // TanStack Query for background conversations auto-sync
+  const { data: conversations = [], refetch: refreshConversations } = useQuery({
+    queryKey: ['conversations'],
+    queryFn: async () => {
+      const data = await apiChatService.getConversations();
+      return data || [];
+    },
+    enabled: Boolean(currentUser),
+    refetchInterval: 3000,
+    staleTime: 1000,
+  });
+
+  const dismissFloatingToast = useCallback((toastId) => {
+    setFloatingToasts((prev) => prev.filter((t) => t.toastId !== toastId));
+  }, []);
+
+  const addFloatingToast = useCallback((msg) => {
+    const toastId = `${msg.id || Date.now()}_${Math.random()}`;
+    const newToast = { ...msg, toastId };
+
+    setFloatingToasts((prev) => [newToast, ...prev.filter((t) => t.roomId !== msg.roomId)]);
+
+    setTimeout(() => {
+      dismissFloatingToast(toastId);
+    }, 6000);
+  }, [dismissFloatingToast]);
+
+  // Global Real-time Socket.IO Connection & Presence Heartbeat
   useEffect(() => {
-    if (!currentUser || isMockMode()) {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
-      return;
-    }
+    if (!currentUser || isMockMode()) return;
 
-    // Connect to environment-configured Socket.IO server
     const socket = io(SOCKET_URL, {
       transports: ['websocket'],
       autoConnect: true,
@@ -61,70 +70,92 @@ export function ChatProvider({ children }) {
 
     socketRef.current = socket;
 
+    const sendHeartbeat = () => {
+      if (socket.connected && currentUser?.id) {
+        socket.emit('presence_heartbeat', {
+          userId: currentUser.id,
+          username: currentUser.username,
+        });
+      }
+    };
+
     socket.on('connect', () => {
-      console.log('[Socket] Connected as', currentUser.username);
+      console.log('[Socket] Connected as', currentUser.username, 'ID:', currentUser.id);
       if (currentUser?.id) {
-        console.log('[Socket] Joining personal user room:', currentUser.id);
         socket.emit('join_user_room', String(currentUser.id));
+        sendHeartbeat();
       }
     });
 
     socket.on('receive_message', (msg) => {
       console.log('[Socket] Received message:', msg);
       
-      // Invalidate TanStack query cache for messages of this room to update UI instantly
       queryClient.invalidateQueries({ queryKey: ['messages', msg.roomId] });
-      
-      // Refresh conversations list to update sidebar message preview
-      refreshConversations();
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
 
-      // Show real-time message notification if from another user
-      const cleanSelf = currentUser?.username ? (currentUser.username.startsWith('@') ? currentUser.username.toLowerCase() : `@${currentUser.username.toLowerCase()}`) : '';
-      const cleanSender = msg.senderUsername ? (msg.senderUsername.startsWith('@') ? msg.senderUsername.toLowerCase() : `@${msg.senderUsername.toLowerCase()}`) : '';
-      if (cleanSender && cleanSender !== cleanSelf) {
-        addToast(`New message from ${msg.senderUsername}: ${msg.content || msg.text || ''}`, 'info');
+      const cleanSelf = currentUser?.username
+        ? (currentUser.username.startsWith('@') ? currentUser.username.toLowerCase() : `@${currentUser.username.toLowerCase()}`)
+        : '';
+      const cleanSender = msg.senderUsername
+        ? (msg.senderUsername.startsWith('@') ? msg.senderUsername.toLowerCase() : `@${msg.senderUsername.toLowerCase()}`)
+        : '';
+
+      const isFromOther = cleanSender && cleanSender !== cleanSelf;
+      const isViewingExactChat = String(activeConvRef.current?.id) === String(msg.roomId) && document.visibilityState === 'visible';
+
+      if (isFromOther && !isViewingExactChat) {
+        addFloatingToast(msg);
+      }
+    });
+
+    socket.on('user_presence_changed', (presence) => {
+      console.log('[Socket] Presence changed:', presence);
+      if (presence && presence.username) {
+        const cleanKey = presence.username.toLowerCase().replace('@', '');
+        setOnlineUsers((prev) => ({
+          ...prev,
+          [cleanKey]: {
+            isOnline: Boolean(presence.isOnline || presence.status === 'ONLINE'),
+            lastSeen: presence.lastSeen || new Date().toISOString(),
+            status: presence.status || (presence.isOnline ? 'ONLINE' : 'OFFLINE'),
+          },
+        }));
       }
     });
 
     socket.on('room_status_change', (updatedRoom) => {
-      console.log('[Socket] Room status changed:', updatedRoom);
-      
-      // Invalidate room message history
       queryClient.invalidateQueries({ queryKey: ['messages', updatedRoom.id] });
-      
-      // Refresh conversations sidebar
-      refreshConversations();
-      
-      // Update activeConversation details locally
-      setActiveConversation((prev) => {
-        if (prev && prev.id === updatedRoom.id) {
-          return {
-            ...prev,
-            requestStatus: updatedRoom.requestStatus,
-            requestSenderId: updatedRoom.requestSenderId,
-          };
-        }
-        return prev;
-      });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
     });
 
+    // Send heartbeat every 25 seconds
+    const heartbeatInterval = setInterval(sendHeartbeat, 25000);
+
+    // Browser Visibility API
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        sendHeartbeat();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
+      clearInterval(heartbeatInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [currentUser, queryClient, refreshConversations, addToast]);
+  }, [currentUser, queryClient, addFloatingToast]);
 
-  // Join/leave room rooms via socket
+  // Join/leave active chat room channels via socket
   useEffect(() => {
     const socket = socketRef.current;
     if (!socket || !activeConversation?.id || isMockMode()) return;
 
     const roomId = activeConversation.id;
-    console.log('[Socket] Joining room:', roomId);
     socket.emit('join_room', String(roomId));
 
     return () => {
-      console.log('[Socket] Leaving room:', roomId);
       socket.emit('leave_room', String(roomId));
     };
   }, [activeConversation?.id]);
@@ -142,60 +173,84 @@ export function ChatProvider({ children }) {
   }, [refreshConversations, addToast, queryClient]);
 
   const selectConversation = useCallback(async (convId) => {
-    const conv = conversations.find(c => c.id === convId);
+    const conv = conversations.find(c => String(c.id) === String(convId));
     if (conv) {
       setActiveConversation(conv);
       queryClient.invalidateQueries({ queryKey: ['messages', convId] });
     }
   }, [conversations, queryClient]);
 
-  const sendMessage = useCallback(async (text) => {
-    if (!activeConversation) return;
+  const sendMessage = useCallback(async (roomId, content) => {
     try {
-      const otherUser = activeConversation.otherParticipantUsername
-        || activeConversation.participant2Username
-        || (Array.isArray(activeConversation.participants) ? activeConversation.participants.find(p => p.toLowerCase() !== currentUser?.username?.toLowerCase()) : null);
-
-      const msg = await apiChatService.sendMessage(activeConversation.id, text, otherUser);
-      queryClient.invalidateQueries({ queryKey: ['messages', activeConversation.id] });
+      const sent = await apiChatService.sendMessage(roomId, content);
+      queryClient.invalidateQueries({ queryKey: ['messages', roomId] });
       await refreshConversations();
-      return msg;
+      return sent;
     } catch (err) {
       addToast(err?.message || 'Failed to send message.', 'error');
-    }
-  }, [activeConversation, currentUser, refreshConversations, addToast, queryClient]);
-
-  const acceptChatRequest = useCallback(async (conversationId) => {
-    try {
-      await apiChatService.acceptChatRequest(conversationId);
-      addToast('Chat request accepted!', 'success');
-      await refreshConversations();
-      
-      setActiveConversation(prev => {
-        if (prev && prev.id === conversationId) {
-          return { ...prev, requestStatus: 'ACCEPTED' };
-        }
-        return prev;
-      });
-      queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
-    } catch (err) {
-      addToast('Failed to accept request.', 'error');
+      throw err;
     }
   }, [refreshConversations, addToast, queryClient]);
 
-  const declineChatRequest = useCallback(async (conversationId) => {
+  const acceptChatRequest = useCallback(async (roomId) => {
     try {
-      await apiChatService.declineChatRequest(conversationId);
-      addToast('Chat request declined.', 'info');
+      const updated = await apiChatService.acceptRequest(roomId);
+      setActiveConversation(updated);
       await refreshConversations();
-      if (activeConversation?.id === conversationId) {
-        setActiveConversation(null);
-      }
-      queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
+      addToast('Chat request accepted.', 'success');
+      return updated;
     } catch (err) {
-      addToast('Failed to decline request.', 'error');
+      addToast('Failed to accept chat request.', 'error');
     }
-  }, [activeConversation, refreshConversations, addToast, queryClient]);
+  }, [refreshConversations, addToast]);
+
+  const declineChatRequest = useCallback(async (roomId) => {
+    try {
+      await apiChatService.declineRequest(roomId);
+      setActiveConversation(null);
+      await refreshConversations();
+      addToast('Chat request declined.', 'info');
+    } catch (err) {
+      addToast('Failed to decline chat request.', 'error');
+    }
+  }, [refreshConversations, addToast]);
+
+  const getUserPresence = useCallback((username, fallbackOnline = true, fallbackLastSeen = null, t = null) => {
+    if (!username) return { isOnline: false, statusText: t ? t('offline', 'Offline') : 'Offline' };
+    const cleanU = username.trim().toLowerCase().replace('@', '');
+    const entry = onlineUsers[cleanU] || onlineUsers[`@${cleanU}`];
+    
+    if (entry) {
+      return {
+        isOnline: entry.isOnline,
+        statusText: formatLastSeen(entry, t),
+      };
+    }
+    
+    // Fallback based on backend API response or default active state
+    const presenceObj = {
+      isOnline: Boolean(fallbackOnline),
+      lastSeen: fallbackLastSeen,
+    };
+    return {
+      isOnline: Boolean(fallbackOnline),
+      statusText: formatLastSeen(presenceObj, t),
+    };
+  }, [onlineUsers]);
+
+  const hasUnreadMessages = conversations.some(conv => {
+    const isPrimary = conv.requestStatus === 'ACCEPTED' || (conv.requestStatus === 'PENDING' && conv.requestSender !== currentUser?.username);
+    return isPrimary && (conv.unreadCount > 0 || conv.hasUnread);
+  });
+
+  const handleViewFloatingToast = useCallback((toastNotif) => {
+    dismissFloatingToast(toastNotif.toastId);
+    selectConversation(toastNotif.roomId);
+    if (window.location.pathname !== '/chat') {
+      window.history.pushState({}, '', '/chat');
+      window.dispatchEvent(new Event('popstate'));
+    }
+  }, [dismissFloatingToast, selectConversation]);
 
   return (
     <ChatContext.Provider value={{
@@ -208,8 +263,16 @@ export function ChatProvider({ children }) {
       sendMessage,
       acceptChatRequest,
       declineChatRequest,
+      hasUnreadMessages,
+      onlineUsers,
+      getUserPresence,
     }}>
       {children}
+      <FloatingChatToast
+        notifications={floatingToasts}
+        onDismiss={dismissFloatingToast}
+        onView={handleViewFloatingToast}
+      />
     </ChatContext.Provider>
   );
 }

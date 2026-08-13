@@ -2,10 +2,13 @@ import React from 'react';
 import { MessageSquare, FileText, Bookmark, ShieldAlert, Settings, HelpCircle, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
+import { useChat } from '../../context/ChatContext.jsx';
 
 export function LeftSidebar({ activeRoute, onNavigate }) {
   const { currentUser, logout } = useAuth();
   const { t } = useLanguage();
+  const chatContext = useChat();
+  const hasUnreadMessages = chatContext?.hasUnreadMessages || false;
 
   const menuItems = [
     { label: t('messages'), icon: MessageSquare, route: '/chat' },
@@ -33,7 +36,7 @@ export function LeftSidebar({ activeRoute, onNavigate }) {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <div style={{ padding: '4px 10px 8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--hurricane)', fontWeight: 700 }}>
-            Personal Space
+            {t('personalSpace')}
           </div>
 
           {menuItems.map((item, idx) => {
@@ -63,7 +66,20 @@ export function LeftSidebar({ activeRoute, onNavigate }) {
                 }}
               >
                 <Icon size={18} style={{ color: isActive ? 'var(--deep-plum)' : 'var(--hurricane)' }} />
-                <span>{item.label}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {item.label}
+                  {item.route === '/chat' && hasUnreadMessages && (
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        width: '7px',
+                        height: '7px',
+                        borderRadius: '50%',
+                        backgroundColor: 'var(--error, #EF4444)',
+                      }}
+                    />
+                  )}
+                </span>
               </button>
             );
           })}

@@ -85,7 +85,6 @@ export const apiPostService = {
         topic: toBackendTopic(postData.topic),
         type: toBackendPostType(postData.postType || postData.type, Boolean(postData.imageUrl)),
         imageUrl: postData.imageUrl || null,
-        originalLanguage: postData.originalLanguage || postData.language || 'EN',
       };
       const response = await apiClient.post('/api/posts', payload);
       return response.data;

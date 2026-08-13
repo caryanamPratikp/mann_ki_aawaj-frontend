@@ -5,6 +5,7 @@ import { mockChatService } from '../../services/mockChatService.js';
 import { MessageSquare, Inbox, Shield, Check, Clock } from 'lucide-react';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useChat } from '../../context/ChatContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 
 const normalizeUser = (u) => {
   if (!u) return '';
@@ -26,7 +27,8 @@ const getOtherUsername = (conv, cleanSelf) => {
 
 export function ConversationList({ conversations = [], activeConvId, onSelectConversation, currentUserUsername }) {
   const { addToast } = useToast();
-  const { acceptChatRequest, declineChatRequest } = useChat();
+  const { acceptChatRequest, declineChatRequest, getUserPresence } = useChat();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('chats'); // 'chats' | 'requests'
 
   const cleanSelf = currentUserUsername ? normalizeUser(currentUserUsername) : '';
@@ -42,6 +44,8 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
     if (c.requestStatus === 'PENDING' && normalizeUser(c.requestSender) === cleanSelf) return true;
     return false;
   });
+
+  const totalUnreadMessages = primaryChats.reduce((sum, conv) => sum + (conv.unreadCount || (conv.hasUnread ? 1 : 0)), 0);
 
   const handleAccept = async (e, convId) => {
     e.stopPropagation();
@@ -88,7 +92,21 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
             gap: '6px',
           }}
         >
-          <span>Messages</span>
+          <span>{t('messagesTab')}</span>
+          {totalUnreadMessages > 0 && (
+            <span
+              style={{
+                fontSize: '10px',
+                fontWeight: 800,
+                background: '#EF4444',
+                color: '#ffffff',
+                padding: '1px 6px',
+                borderRadius: '10px',
+              }}
+            >
+              {totalUnreadMessages}
+            </span>
+          )}
         </button>
 
         <button
@@ -112,7 +130,7 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
             gap: '6px',
           }}
         >
-          <span>Requests</span>
+          <span>{t('requestsTab')}</span>
           {incomingRequests.length > 0 && (
             <span
               style={{
@@ -136,14 +154,19 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
           {!primaryChats.length ? (
             <div className="p-md secondary-text text-center" style={{ padding: '32px 16px' }}>
               <MessageSquare size={28} style={{ color: 'var(--hurricane)', margin: '0 auto 8px auto' }} />
-              No active conversations yet. Visit member profiles to start an anonymous chat!
+              {t('noActiveConversations')}
             </div>
           ) : (
             primaryChats.map((conv) => {
               const otherUsername = getOtherUsername(conv, cleanSelf);
               const isActive = conv.id === activeConvId;
               const isSentPending = conv.requestStatus === 'PENDING' && normalizeUser(conv.requestSender) === cleanSelf;
-              const status = (mockChatService.getUserRealtimeStatus && mockChatService.getUserRealtimeStatus(otherUsername)) || { isOnline: true, statusText: 'Active now' };
+              const status = getUserPresence
+                ? getUserPresence(otherUsername, conv.otherParticipantIsOnline, conv.otherParticipantLastSeen, t)
+                : { isOnline: true, statusText: t('online', 'Online') };
+
+              const hasUnread = Boolean(conv.hasUnread || (conv.unreadCount && conv.unreadCount > 0));
+              const unreadCountVal = conv.unreadCount || (conv.hasUnread ? 1 : 0);
 
               return (
                 <button
@@ -154,11 +177,18 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
                     width: '100%',
                     padding: '10px 12px',
                     borderRadius: 'var(--radius-md)',
-                    background: isActive ? 'var(--deep-plum-light)' : 'transparent',
-                    border: isActive ? '1.5px solid var(--deep-plum)' : '1px solid transparent',
+                    background: isActive
+                      ? 'var(--deep-plum-light)'
+                      : (hasUnread ? '#FFF0F5' : 'transparent'),
+                    border: isActive
+                      ? '1.5px solid var(--deep-plum)'
+                      : (hasUnread ? '1.5px solid #6F405F' : '1px solid transparent'),
+                    borderLeft: hasUnread
+                      ? '4px solid #6F405F'
+                      : (isActive ? '4px solid var(--deep-plum)' : '1px solid transparent'),
                     cursor: 'pointer',
                     textAlign: 'left',
-                    transition: 'background var(--transition-fast)',
+                    transition: 'all 0.2s ease',
                   }}
                 >
                   <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -179,21 +209,40 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
 
                   <div className="flex-col" style={{ flex: 1, minWidth: 0 }}>
                     <div className="flex-row justify-between items-center">
-                      <span className="bold" style={{ fontSize: '13.5px', color: 'var(--eclipse)' }}>
-                        {otherUsername}
-                      </span>
-                      <span className="caption-text" style={{ fontSize: '11px' }}>{formatDate(conv.updatedAt)}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '14px', fontWeight: hasUnread ? 900 : 700, color: hasUnread ? '#6F405F' : 'var(--eclipse)' }}>
+                          {otherUsername}
+                        </span>
+                        {hasUnread && (
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 900,
+                              backgroundColor: '#B33A3A',
+                              color: '#FFFFFF',
+                              borderRadius: '12px',
+                              padding: '2px 8px',
+                              lineHeight: '1.2',
+                              boxShadow: '0 2px 6px rgba(179,58,58,0.35)',
+                            }}
+                          >
+                            {unreadCountVal} new
+                          </span>
+                        )}
+                      </div>
+                      <span className="caption-text" style={{ fontSize: '11px', fontWeight: hasUnread ? 700 : 400 }}>{formatDate(conv.updatedAt)}</span>
                     </div>
 
                     {isSentPending ? (
                       <span style={{ fontSize: '11.5px', color: 'var(--deep-plum)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
-                        <Clock size={11} /> Request Sent ⏳
+                        <Clock size={11} /> {t('requestSent')} ⏳
                       </span>
                     ) : (
                       <p
-                        className="secondary-text"
                         style={{
-                          fontSize: '12px',
+                          fontSize: '12.5px',
+                          fontWeight: hasUnread ? 800 : 400,
+                          color: hasUnread ? '#2D1D15' : 'var(--hurricane)',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -218,7 +267,7 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
           {!incomingRequests.length ? (
             <div className="p-md secondary-text text-center" style={{ padding: '32px 16px' }}>
               <Inbox size={28} style={{ color: 'var(--hurricane)', margin: '0 auto 8px auto' }} />
-              No pending message requests.
+              {t('noPendingRequests')}
             </div>
           ) : (
             incomingRequests.map((conv) => {
@@ -248,14 +297,14 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
                           {otherUsername}
                         </span>
                         <span style={{ fontSize: '11px', color: 'var(--hurricane)', fontWeight: 600 }}>
-                          Chat Request
+                          {t('chatRequest')}
                         </span>
                       </div>
                     </div>
                   </div>
 
                   <p style={{ fontSize: '12px', color: 'var(--eclipse)', margin: '2px 0 4px 0', fontStyle: 'italic' }}>
-                    "{otherUsername} wants to chat with you"
+                    "{otherUsername} {t('wantsToChat')}"
                   </p>
 
                   <div style={{ display: 'flex', gap: '6px' }}>
@@ -278,7 +327,7 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
                         gap: '4px',
                       }}
                     >
-                      <Check size={13} /> Accept
+                      <Check size={13} /> {t('accept')}
                     </button>
 
                     <button
@@ -295,7 +344,7 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
                         cursor: 'pointer',
                       }}
                     >
-                      Decline
+                      {t('decline')}
                     </button>
                   </div>
                 </div>

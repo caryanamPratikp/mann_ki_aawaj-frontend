@@ -45,7 +45,7 @@ export function MyPostsPage({ onNavigate }) {
       <div className="flex-col gap-md">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
           <div>
-            <h1 className="page-heading">My Published Posts ({myPosts.length})</h1>
+            <h1 className="page-heading">My Thoughts ({myPosts.length})</h1>
             <p className="secondary-text">Manage your published thoughts, confessions, and questions.</p>
           </div>
           <button

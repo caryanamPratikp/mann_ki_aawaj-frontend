@@ -9,6 +9,7 @@ import { usePosts } from '../../context/PostContext.jsx';
 import { useComments } from '../../context/CommentContext.jsx';
 import { useReports } from '../../context/ReportContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
+import { getMediaUrl } from '../../config/env.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ReportModal } from '../reports/ReportModal.jsx';
 
@@ -17,7 +18,7 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false 
   const { commentsByPost, fetchComments } = useComments();
   const { currentUser } = useAuth();
   const { blockUser } = useReports();
-  const { currentLanguage, translateText, translateTextAsync } = useLanguage();
+  const { currentLanguage, translateText, translateTextAsync, t } = useLanguage();
 
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -49,6 +50,10 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false 
   }, [currentLanguage, post.originalContent, post.content, post.description, post.title]);
 
   const isSaved = savedPostIds.includes(post.id);
+  const isOwner = Boolean(
+    post.isOwnPost ||
+    (currentUser?.id && (post.userId === currentUser?.id || post.authorId === currentUser?.id))
+  );
   const isTranslated = Boolean(
     !manualToggle && 
     (dynamicTranslation || post.isTranslated || (post.originalLanguage && post.displayLanguage && post.originalLanguage.toLowerCase() !== post.displayLanguage.toLowerCase()))
@@ -127,7 +132,7 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false 
                 onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
                 onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
               >
-                {post.username}
+                {isOwner ? 'My Thoughts' : post.username}
               </button>
               <span
                 style={{
@@ -186,15 +191,7 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false 
 
           <PostMenu
             isSaved={isSaved}
-            isOwner={
-              Boolean(
-                post.isOwnPost ||
-                post.isOwner ||
-                (currentUser?.id && post.userId === currentUser?.id) ||
-                ((currentUser?.username || '').replace(/^@/, '').toLowerCase() === (post.username || '').replace(/^@/, '').toLowerCase()) ||
-                (post.username === '@anonymous' || post.username === 'anonymous')
-              )
-            }
+            isOwner={isOwner}
             onDelete={async () => {
               try {
                 await deletePost(post.id);
@@ -229,6 +226,15 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false 
         >
           {displayContent}
         </p>
+        {post.imageUrl && (
+          <div style={{ marginTop: '8px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #EAE6E5' }}>
+            <img
+              src={getMediaUrl(post.imageUrl)}
+              alt="Post attachment"
+              style={{ width: '100%', maxHeight: '320px', objectFit: 'cover', display: 'block' }}
+            />
+          </div>
+        )}
       </div>
 
       {/* ── REACTIONS BAR ── */}
@@ -253,7 +259,7 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false 
           {postComments.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#8C8385', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                LATEST COMMENTS ({postComments.length}):
+                {t('latestComments')} ({postComments.length}):
               </div>
               {postComments.slice(0, 2).map((c) => (
                 <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px' }}>

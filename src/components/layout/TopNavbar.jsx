@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Home, Compass, Search, PlusSquare, Bell, User as UserIcon, Menu, MessageSquare, Globe } from 'lucide-react';
+import { Home, Compass, Search, PlusSquare, Bell, User as UserIcon, Menu, MessageSquare } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useNotifications } from '../../context/NotificationContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
+import { useChat } from '../../context/ChatContext.jsx';
 import { InitialAvatar } from '../profile/InitialAvatar.jsx';
 import { Tooltip } from '../common/Tooltip.jsx';
 import { Drawer } from '../common/Drawer.jsx';
@@ -10,21 +11,13 @@ import { Drawer } from '../common/Drawer.jsx';
 export function TopNavbar({ activeRoute, onNavigate }) {
   const { currentUser, logout } = useAuth();
   const { unreadCount } = useNotifications();
-  const { currentLanguage, changeLanguage, t, supportedLanguages } = useLanguage();
+  const { t } = useLanguage();
+  const chatContext = useChat();
+  const hasUnreadMessages = chatContext?.hasUnreadMessages || false;
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
-  const [isChangingLang, setIsChangingLang] = useState(false);
 
-  const handleLanguageChange = async (newLang) => {
-    if (isChangingLang) return;
-    setIsChangingLang(true);
-    try {
-      await changeLanguage(newLang);
-    } finally {
-      setIsChangingLang(false);
-    }
-  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -115,35 +108,8 @@ export function TopNavbar({ activeRoute, onNavigate }) {
             </div>
           </form>
 
-          {/* Main Top Nav Icons & Direct Navbar Language Selector */}
+          {/* Main Top Nav Icons */}
           <div className="flex-row items-center gap-md">
-            {/* Direct Language Selector on Navbar */}
-            <div className="flex-row items-center gap-xs" style={{ background: 'var(--soft-white)', padding: '4px 8px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-light)' }}>
-              <Globe size={15} style={{ color: isChangingLang ? 'var(--warning)' : 'var(--deep-plum)' }} />
-              <select
-                value={currentLanguage}
-                disabled={isChangingLang}
-                onChange={(e) => handleLanguageChange(e.target.value)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--eclipse)',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  cursor: isChangingLang ? 'wait' : 'pointer',
-                  outline: 'none',
-                  opacity: isChangingLang ? 0.6 : 1,
-                }}
-                aria-label="Language selector"
-              >
-                {supportedLanguages.map((lang) => (
-                  <option key={lang.code} value={lang.code}>
-                    {lang.native} ({lang.label || lang.code})
-                  </option>
-                ))}
-              </select>
-            </div>
-
             <Tooltip text={t('home')} position="bottom">
               <button
                 onClick={() => onNavigate('/home')}
@@ -180,9 +146,24 @@ export function TopNavbar({ activeRoute, onNavigate }) {
                   borderRadius: 'var(--radius-md)',
                   color: activeRoute?.startsWith('/chat') ? 'var(--deep-plum)' : 'var(--eclipse)',
                   background: activeRoute?.startsWith('/chat') ? 'var(--deep-plum-light)' : 'transparent',
+                  position: 'relative',
                 }}
               >
                 <MessageSquare size={22} />
+                {hasUnreadMessages && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: '4px',
+                      right: '4px',
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--error, #EF4444)',
+                      border: '1.5px solid var(--pure-white, #FFFFFF)',
+                    }}
+                  />
+                )}
               </button>
             </Tooltip>
 

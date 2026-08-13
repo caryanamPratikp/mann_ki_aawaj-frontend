@@ -72,22 +72,31 @@ export function mapPost(post) {
 
   const formattedUname = resolveUsername(post);
 
+  let reactionsMap = {};
+  if (post.reactionCounts && typeof post.reactionCounts === 'object') {
+    reactionsMap = post.reactionCounts;
+  } else if (post.reactions && typeof post.reactions === 'object') {
+    reactionsMap = post.reactions;
+  } else {
+    reactionsMap = { RELATE: post.likeCount || 0 };
+  }
+
   return {
     ...post,
     id: post.id || post.postId || `post_${Date.now()}`,
-    title: post.title || '',
+    userId: post.userId || post.authorId || post.user?.id || null,
+    title: post.translatedTitle || post.title || '',
+    originalTitle: post.title || '',
     topic: post.topic || post.category || 'General',
     postType: post.postType || 'Thought',
     originalContent: post.originalContent || post.content || '',
     translatedContent: post.translatedContent || post.originalContent || post.content || '',
-    displayLanguage: post.displayLanguage || post.originalLanguage || 'EN',
     content: post.translatedContent || post.originalContent || post.content || '',
     username: formattedUname,
     avatarInitials: post.avatarInitials || formattedUname.replace('@', '').slice(0, 2).toUpperCase(),
     avatarConfig: post.authorAvatar || post.avatarConfig || null,
-    language: post.originalLanguage || post.displayLanguage || post.language || 'EN',
-    reactions: post.reactions || { relate: post.likeCount || 0 },
-    userReaction: post.userReaction || (post.isLikedByCurrentUser ? 'relate' : null),
+    reactions: reactionsMap,
+    userReaction: post.userReaction || null,
     status: post.status || 'PUBLISHED',
     createdAt: post.createdAt || new Date().toISOString(),
   };

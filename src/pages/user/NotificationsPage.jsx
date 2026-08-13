@@ -8,27 +8,50 @@ import { EmptyState } from '../../components/common/EmptyState.jsx';
 import { Bell, Check, CheckCheck, Trash2, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 
-function NotificationItemText({ message, currentLanguage, translateTextAsync }) {
+function NotificationItemText({ message, currentLanguage, translateTextAsync, t }) {
   const [text, setText] = useState(message);
 
   useEffect(() => {
-    if (currentLanguage !== 'English' && message) {
-      let isMounted = true;
+    if (!message) return;
+    let isMounted = true;
+
+    if (message.startsWith('@')) {
+      const spaceIdx = message.indexOf(' ');
+      if (spaceIdx > 0) {
+        const username = message.substring(0, spaceIdx);
+        const actionText = message.substring(spaceIdx + 1);
+
+        if (translateTextAsync && currentLanguage !== 'English') {
+          translateTextAsync(actionText, currentLanguage)
+            .then(translatedAction => {
+              if (isMounted) setText(`${username} ${translatedAction}`);
+            })
+            .catch(() => {
+              if (isMounted) setText(message);
+            });
+          return () => { isMounted = false; };
+        }
+      }
+    } else if (translateTextAsync && currentLanguage !== 'English') {
       translateTextAsync(message, currentLanguage)
-        .then(tText => {
-          if (isMounted) setText(tText);
+        .then(translated => {
+          if (isMounted) setText(translated);
         })
-        .catch(err => console.error(err));
+        .catch(() => {
+          if (isMounted) setText(message);
+        });
       return () => { isMounted = false; };
     }
-  }, [message, currentLanguage]);
+
+    setText(message);
+  }, [message, currentLanguage, translateTextAsync]);
 
   return <span>{text}</span>;
 }
 
 export function NotificationsPage({ onNavigate }) {
   const { notifications, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
-  const { currentLanguage, translateTextAsync } = useLanguage();
+  const { currentLanguage, translateTextAsync, t } = useLanguage();
   const [filterUnread, setFilterUnread] = useState(false);
 
   const displayList = filterUnread ? notifications.filter((n) => !n.isRead) : notifications;
@@ -38,8 +61,7 @@ export function NotificationsPage({ onNavigate }) {
       <div className="flex-col gap-md">
         <div className="flex-row justify-between items-center flex-wrap gap-sm">
           <div>
-            <h1 className="page-heading">Notifications</h1>
-            <p className="secondary-text">Stay updated on comments, replies, reactions, & moderation updates.</p>
+            <h1 className="page-heading">{t('notifications')}</h1>
           </div>
 
           <div className="flex-row items-center gap-sm">
@@ -58,8 +80,7 @@ export function NotificationsPage({ onNavigate }) {
 
         {displayList.length === 0 ? (
           <EmptyState
-            title="No Notifications"
-            description="You have no unread alerts or notifications at this time."
+            title={t('noNotifications')}
             icon={Bell}
           />
         ) : (
@@ -78,26 +99,38 @@ export function NotificationsPage({ onNavigate }) {
                   <InitialAvatar username={item.actorUsername} initials={item.actorInitials} size={36} />
                   <div className="flex-col gap-xs">
                     <p className="body-text" style={{ fontSize: '14px', color: 'var(--eclipse)' }}>
-                      <NotificationItemText message={item.message} currentLanguage={currentLanguage} translateTextAsync={translateTextAsync} />
+                      <NotificationItemText message={item.message} currentLanguage={currentLanguage} translateTextAsync={translateTextAsync} t={t} />
                     </p>
                     <span className="caption-text">{formatDate(item.createdAt)}</span>
                   </div>
                 </div>
 
                 <div className="flex-row items-center gap-xs">
-                  {item.targetPostId && (
+                  {(item.targetPostId || item.targetId) ? (
                     <button
                       onClick={() => {
                         markAsRead(item.id);
-                        onNavigate(`/post/${item.targetPostId}`);
+                        onNavigate(`/post/${item.targetPostId || item.targetId}`);
                       }}
                       className="flex-row items-center gap-xs secondary-text"
                       style={{ fontSize: '13px', color: 'var(--deep-plum)', fontWeight: 500 }}
+                      title="View Post"
                     >
-                      <span>View</span>
-                      <ArrowRight size={14} />
+                      <ArrowRight size={16} />
                     </button>
-                  )}
+                  ) : item.type === 'CHAT_MESSAGE' || item.type === 'CHAT_REQUEST' ? (
+                    <button
+                      onClick={() => {
+                        markAsRead(item.id);
+                        onNavigate('/chat');
+                      }}
+                      className="flex-row items-center gap-xs secondary-text"
+                      style={{ fontSize: '13px', color: 'var(--deep-plum)', fontWeight: 500 }}
+                      title="Open Chat"
+                    >
+                      <ArrowRight size={16} />
+                    </button>
+                  ) : null}
 
                   {!item.isRead && (
                     <button onClick={() => markAsRead(item.id)} style={{ color: 'var(--hurricane)', padding: '4px' }}>

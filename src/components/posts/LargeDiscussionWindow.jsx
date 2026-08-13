@@ -7,11 +7,12 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
 import { useComments } from '../../context/CommentContext.jsx';
+import { getMediaUrl } from '../../config/env.js';
 
 export function LargeDiscussionWindow({ post, comments: passedComments, onAddComment, onReactComment, onNavigate }) {
   const { currentUser } = useAuth();
   const { createReply } = useComments();
-  const { currentLanguage, translateTextAsync } = useLanguage();
+  const { currentLanguage, translateTextAsync, t } = useLanguage();
   const [commentText, setCommentText] = useState('');
   const [pinnedCommentId, setPinnedCommentId] = useState(null);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -57,7 +58,7 @@ export function LargeDiscussionWindow({ post, comments: passedComments, onAddCom
       >
         <MessageSquare size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
         <p style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>
-          Select a post from the topic stream to join the discussion.
+          {t('selectPostPrompt')}
         </p>
       </div>
     );
@@ -187,6 +188,22 @@ export function LargeDiscussionWindow({ post, comments: passedComments, onAddCom
       {/* ── EXPANDABLE DISCUSSION BODY ── */}
       {isExpanded && (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          {/* Main Post Body Content & Image Attachment */}
+          <div style={{ padding: '12px 18px', borderBottom: '1px solid #EDE8E6', backgroundColor: '#FFFDFB' }}>
+            <p style={{ fontSize: '13.5px', color: '#2D1D15', margin: 0, lineHeight: 1.45, whiteSpace: 'pre-line' }}>
+              {post.content}
+            </p>
+            {post.imageUrl && (
+              <div style={{ marginTop: '10px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #EDE8E6', maxWidth: '360px' }}>
+                <img
+                  src={getMediaUrl(post.imageUrl)}
+                  alt="Post attachment"
+                  style={{ width: '100%', maxHeight: '260px', objectFit: 'cover', display: 'block' }}
+                />
+              </div>
+            )}
+          </div>
+
           {/* ── LIVE COMMENT COMPOSER (Sticky on Top) ── */}
           <form
             onSubmit={handleSubmit}

@@ -1,3 +1,6 @@
+/**
+ * Formats timestamps explicitly in Indian Standard Time (IST - Asia/Kolkata, Pune timezone)
+ */
 export function formatDate(dateString) {
   if (!dateString) return 'Just now';
   const date = new Date(dateString);
@@ -9,18 +12,38 @@ export function formatDate(dateString) {
   const diffMin = Math.floor(diffSec / 60);
   const diffHour = Math.floor(diffMin / 60);
 
-  if (diffSec < 60) return 'Just now';
-  if (diffMin < 60) return diffMin === 1 ? '1 min ago' : `${diffMin} mins ago`;
-  if (diffHour < 24) return diffHour === 1 ? '1 hour ago' : `${diffHour} hours ago`;
+  if (diffSec < 45) return 'Just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHour < 24) return `${diffHour}h ago`;
 
-  // 24+ hours passed: show the actual formatted date & time (e.g., "Jul 28, 10:45 AM")
-  const timeFormatted = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  // Explicit Pune (Asia/Kolkata) timezone formatting
+  const timeFormatted = date.toLocaleTimeString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+
   const isSameYear = date.getFullYear() === now.getFullYear();
-  const dateFormatted = date.toLocaleDateString('en-US', {
+  const dateFormatted = date.toLocaleDateString('en-IN', {
+    timeZone: 'Asia/Kolkata',
     month: 'short',
     day: 'numeric',
     year: isSameYear ? undefined : 'numeric',
   });
 
   return `${dateFormatted}, ${timeFormatted}`;
+}
+
+export function formatTimePune(dateString) {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+
+  return date.toLocaleTimeString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
 }

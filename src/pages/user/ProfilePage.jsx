@@ -12,6 +12,7 @@ import { Edit3, Trash2, Calendar, Globe, Heart, MessageSquare, AlertTriangle, Ch
 import { formatDate } from '../../utils/formatDate.js';
 import { EmptyState } from '../../components/common/EmptyState.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
+import { SUPPORTED_LANGUAGES } from '../../utils/translations.js';
 import { editProfileSchema } from '../../utils/validationSchemas.js';
 
 const AVATAR_COLORS = [
@@ -29,7 +30,7 @@ import { AvatarStudioModal } from '../../components/avatar/AvatarStudioModal.jsx
 export function ProfilePage({ username, onNavigate }) {
   const { currentUser, logout } = useAuth();
   const { posts } = usePosts();
-  const { t } = useLanguage();
+  const { t, changeLanguage, currentLanguage, supportedLanguages } = useLanguage();
   const { addToast } = useToast();
 
   const [activeTab, setActiveTab] = useState('Posts');
@@ -46,9 +47,11 @@ export function ProfilePage({ username, onNavigate }) {
   const [editUsername, setEditUsername] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editAvatar, setEditAvatar] = useState(AVATAR_COLORS[0].hex);
+  const [editPreferredLanguage, setEditPreferredLanguage] = useState('EN');
   const [editErrors, setEditErrors] = useState({});
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingProfile, setDeletingProfile] = useState(false);
+  const [isChangingLang, setIsChangingLang] = useState(false);
 
   const targetUsername = username
     ? (username.startsWith('@') ? username.slice(1) : username)
@@ -69,6 +72,7 @@ export function ProfilePage({ username, onNavigate }) {
             setEditUsername(res.data.username || currentUser?.username || '');
             setEditBio(res.data.bio || '');
             if (res.data.avatar) setEditAvatar(res.data.avatar);
+            if (res.data.preferredLanguage) setEditPreferredLanguage(res.data.preferredLanguage);
           } else if (isMounted) {
             setProfileData({
               username: currentUser?.username || '@user',
@@ -136,6 +140,7 @@ export function ProfilePage({ username, onNavigate }) {
         username: cleanUname,
         bio: editBio.trim(),
         avatar: editAvatar,
+        preferredLanguage: editPreferredLanguage,
       };
 
       // Try PUT first, fallback to POST if profile didn't exist yet
@@ -144,6 +149,10 @@ export function ProfilePage({ username, onNavigate }) {
         res = await apiProfileService.updateProfile(payload);
       } catch (putErr) {
         res = await apiProfileService.createProfile(payload).catch(() => null);
+      }
+
+      if (changeLanguage && editPreferredLanguage) {
+        await changeLanguage(editPreferredLanguage);
       }
 
       addToast('Profile updated successfully!', 'success');
@@ -272,27 +281,68 @@ export function ProfilePage({ username, onNavigate }) {
               {profileData.bio}
             </p>
           )}
+
+          {/* Preferred Language Selector — visible only for own profile */}
+          {isSelf && (
+            <div className="flex-row items-center gap-sm" style={{ marginTop: '4px' }}>
+              <Globe size={15} style={{ color: isChangingLang ? 'var(--warning)' : 'var(--deep-plum)' }} />
+              <select
+                value={currentLanguage}
+                disabled={isChangingLang}
+                onChange={async (e) => {
+                  setIsChangingLang(true);
+                  try {
+                    await changeLanguage(e.target.value);
+                  } finally {
+                    setIsChangingLang(false);
+                  }
+                }}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-pill)',
+                  border: '1px solid var(--border-light)',
+                  background: 'var(--soft-white)',
+                  color: 'var(--eclipse)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: isChangingLang ? 'wait' : 'pointer',
+                  outline: 'none',
+                  opacity: isChangingLang ? 0.6 : 1,
+                }}
+                aria-label="Preferred Language"
+              >
+                {supportedLanguages.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.native} ({lang.label || lang.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Profile Tabs */}
         <div className="flex-row items-center gap-xs border-b" style={{ borderBottom: '1px solid var(--border-light)' }}>
-          {['Posts', 'About'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              style={{
-                padding: '10px 16px',
-                fontSize: '14px',
-                fontWeight: activeTab === tab ? 600 : 400,
-                color: activeTab === tab ? 'var(--deep-plum)' : 'var(--hurricane)',
-                borderBottom: activeTab === tab ? '2px solid var(--deep-plum)' : '2px solid transparent',
-                background: 'transparent',
-                cursor: 'pointer',
-              }}
-            >
-              {tab}
-            </button>
-          ))}
+          {[(isSelf ? 'My Thoughts' : 'Thoughts'), 'About'].map((tab) => {
+            const isTabActive = activeTab === 'Posts' ? (tab === 'My Thoughts' || tab === 'Thoughts') : (activeTab === tab);
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab === 'About' ? 'About' : 'Posts')}
+                style={{
+                  padding: '10px 16px',
+                  fontSize: '14px',
+                  fontWeight: isTabActive ? 600 : 400,
+                  color: isTabActive ? 'var(--deep-plum)' : 'var(--hurricane)',
+                  borderBottom: isTabActive ? '2px solid var(--deep-plum)' : '2px solid transparent',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                }}
+              >
+                {tab}
+              </button>
+            );
+          })}
         </div>
 
         {/* Tab Content */}
@@ -399,6 +449,32 @@ export function ProfilePage({ username, onNavigate }) {
               }}
             />
             {editErrors.bio && <span style={{ fontSize: '12px', color: 'var(--error)' }}>{editErrors.bio}</span>}
+          </div>
+
+          {/* Preferred Language */}
+          <div className="flex-col gap-xs">
+            <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--eclipse)' }}>
+              Preferred Language
+            </label>
+            <select
+              value={editPreferredLanguage}
+              onChange={(e) => setEditPreferredLanguage(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-light)',
+                fontSize: '14px',
+                background: 'var(--pure-white)',
+                cursor: 'pointer',
+              }}
+            >
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.native} ({lang.label || lang.code})
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Modal Actions */}

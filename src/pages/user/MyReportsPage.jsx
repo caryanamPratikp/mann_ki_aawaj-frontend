@@ -6,23 +6,25 @@ import { ShieldAlert } from 'lucide-react';
 import { EmptyState } from '../../components/common/EmptyState.jsx';
 import { Modal } from '../../components/common/Modal.jsx';
 import { ReportStatusBadge } from '../../components/reports/ReportStatusBadge.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 
 export function MyReportsPage({ onNavigate }) {
   const { myReports } = useReports();
+  const { t } = useLanguage();
   const [selectedReport, setSelectedReport] = useState(null);
 
   return (
     <UserLayout activeRoute="/my-reports" onNavigate={onNavigate}>
       <div className="flex-col gap-md">
         <div>
-          <h1 className="page-heading">My Content Reports</h1>
-          <p className="secondary-text">Track status updates on content you have submitted for safety review.</p>
+          <h1 className="page-heading">{t('myContentReports')}</h1>
+          <p className="secondary-text">{t('trackReportsDesc')}</p>
         </div>
 
         {myReports.length === 0 ? (
           <EmptyState
-            title="No Active Reports"
-            description="You haven't submitted any reports. If you encounter harmful content or hate speech, use the report menu on any post, comment, or reply."
+            title={t('noActiveReports')}
+            description={t('noActiveReportsDesc')}
             icon={ShieldAlert}
           />
         ) : (

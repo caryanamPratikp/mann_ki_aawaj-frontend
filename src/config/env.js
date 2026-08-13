@@ -48,3 +48,15 @@ if (currentEnvMode === ENV_MODES.PRODUCTION) {
 export const API_BASE_URL = selectedApiUrl;
 export const SOCKET_URL = selectedSocketUrl;
 export const ENVIRONMENT = currentEnvMode;
+
+/**
+ * Resolves media URLs (e.g. /uploads/filename.jpg) against API_BASE_URL
+ */
+export const getMediaUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  return `${API_BASE_URL}${cleanUrl}`;
+};

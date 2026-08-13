@@ -8,8 +8,12 @@ import { ArrowLeft, Lock, ShieldAlert, Eye, EyeOff, KeyRound, Edit2, Smartphone,
 import { apiUserService } from '../../services/apiUserService.js';
 
 export function AccountSettingsPage({ onNavigate }) {
-  const { currentUser, updateProfile } = useAuth();
+  const { currentUser, updateProfile, logout } = useAuth();
   const { addToast } = useToast();
+
+  // Delete Account State
+  const [deleteAccountModalOpen, setDeleteAccountModalOpen] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   // Password Modal State
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
@@ -90,6 +94,22 @@ export function AccountSettingsPage({ onNavigate }) {
       setConfirmPassword('');
     } finally {
       setUpdating(false);
+    }
+  };
+  // Account Deactivation Handler
+  const handleDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      await apiUserService.deactivateAccount();
+      addToast('Your account has been deactivated (soft-deleted). It will be permanently removed in 30 days.', 'success');
+      logout();
+      onNavigate('/login');
+    } catch (err) {
+      console.error(err);
+      addToast(err.message || 'Failed to deactivate account.', 'error');
+    } finally {
+      setDeletingAccount(false);
+      setDeleteAccountModalOpen(false);
     }
   };
 
@@ -255,7 +275,12 @@ export function AccountSettingsPage({ onNavigate }) {
             >
               Change Password
             </Button>
-            <Button variant="danger" size="sm" icon={ShieldAlert}>
+            <Button
+              variant="danger"
+              size="sm"
+              icon={ShieldAlert}
+              onClick={() => setDeleteAccountModalOpen(true)}
+            >
               Delete Account
             </Button>
           </div>
@@ -568,6 +593,37 @@ export function AccountSettingsPage({ onNavigate }) {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* ── DELETE ACCOUNT MODAL ── */}
+      <Modal
+        isOpen={deleteAccountModalOpen}
+        onClose={() => setDeleteAccountModalOpen(false)}
+        title="Confirm Account Deactivation"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ padding: '12px 14px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.05)', borderLeft: '3px solid var(--error, #EF4444)', color: 'var(--error, #EF4444)', fontSize: '13.5px' }}>
+            <span style={{ fontWeight: 700 }}>Warning:</span> Deactivating your account is soft-deleted immediately. You will be logged out and your data will not be visible on the platform. However, your data is retained for 30 days, after which it is permanently purged from the database.
+          </div>
+          <p style={{ fontSize: '14px', color: 'var(--eclipse, #1C1917)', margin: 0 }}>
+            Are you sure you want to deactivate your account?
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setDeleteAccountModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              disabled={deletingAccount}
+              onClick={handleDeleteAccount}
+              icon={ShieldAlert}
+            >
+              {deletingAccount ? 'Deactivating...' : 'Confirm Deactivation'}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </UserLayout>
   );

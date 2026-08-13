@@ -7,6 +7,8 @@ import { apiProfileService } from '../../services/apiProfileService.js';
 import { generateUsernameSuggestions } from '../../utils/generateUsername.js';
 import { InitialAvatar } from '../../components/profile/InitialAvatar.jsx';
 import { RefreshCw, CheckCircle2, ArrowRight, ArrowLeft, Sparkles, Check } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext.jsx';
+import { SUPPORTED_LANGUAGES } from '../../utils/translations.js';
 
 const AVATAR_COLORS = [
   { id: 'plum', hex: '#6F405F', name: 'Deep Plum' },
@@ -27,6 +29,7 @@ const profileSchema = z.object({
 export function ProfileSetupWizardPage({ onNavigate }) {
   const { currentUser, updateProfile } = useAuth();
   const { addToast } = useToast();
+  const { changeLanguage } = useLanguage();
 
   const [step, setStep] = useState(2); // 1: Avatar (skipped), 2: Username, 3: Bio
 
@@ -36,6 +39,7 @@ export function ProfileSetupWizardPage({ onNavigate }) {
   const [suggestions, setSuggestions] = useState([]);
   const [spinning, setSpinning] = useState(false);
   const [bio, setBio] = useState('');
+  const [preferredLanguage, setPreferredLanguage] = useState('EN');
   const [submitting, setSubmitting] = useState(false);
 
   // Field validation errors
@@ -121,6 +125,7 @@ export function ProfileSetupWizardPage({ onNavigate }) {
         username: cleanUname,
         bio: bio.trim(),
         avatar: selectedColor,
+        preferredLanguage: preferredLanguage,
       };
 
       // Call POST /api/profile
@@ -128,6 +133,11 @@ export function ProfileSetupWizardPage({ onNavigate }) {
         console.warn('[ProfileSetup] Backend POST /api/profile notice:', apiErr);
         return { success: true, data: payload };
       });
+
+      // Instantly change active UI translation
+      if (changeLanguage) {
+        await changeLanguage(preferredLanguage);
+      }
 
       const profileData = res?.data || payload;
       const formattedUsername = cleanUname.startsWith('@') ? cleanUname : `@${cleanUname}`;
@@ -433,6 +443,33 @@ export function ProfileSetupWizardPage({ onNavigate }) {
               {errors.bio && (
                 <span style={{ fontSize: '11px', color: 'var(--error)' }}>{errors.bio}</span>
               )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--eclipse)' }}>
+                Preferred Language *
+              </label>
+              <select
+                value={preferredLanguage}
+                onChange={(e) => setPreferredLanguage(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  border: '1.5px solid var(--border-light)',
+                  fontSize: '13.5px',
+                  color: 'var(--eclipse)',
+                  background: 'var(--pure-white)',
+                  outline: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                {SUPPORTED_LANGUAGES.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.native} ({lang.label || lang.code})
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>

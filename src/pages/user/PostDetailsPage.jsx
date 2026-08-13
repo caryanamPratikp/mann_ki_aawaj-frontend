@@ -6,14 +6,65 @@ import { CommentList } from '../../components/comments/CommentList.jsx';
 import { usePosts } from '../../context/PostContext.jsx';
 import { useComments } from '../../context/CommentContext.jsx';
 import { Button } from '../../components/common/Button.jsx';
-import { ArrowLeft, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { EmptyState } from '../../components/common/EmptyState.jsx';
+import { apiPostService } from '../../services/apiPostService.js';
+import { mapPost } from '../../services/apiMappers.js';
 
 export function PostDetailsPage({ postId, onNavigate }) {
   const { posts } = usePosts();
   const { createComment } = useComments();
+  const [fetchedPost, setFetchedPost] = useState(null);
+  const [loadingPost, setLoadingPost] = useState(true);
 
-  const post = posts.find((p) => p.id === postId);
+  const matchedPost = posts.find((p) => String(p.id) === String(postId));
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (matchedPost) {
+      setFetchedPost(matchedPost);
+      setLoadingPost(false);
+      return;
+    }
+
+    async function fetchPost() {
+      try {
+        setLoadingPost(true);
+        const res = await apiPostService.getPostById(postId);
+        if (isMounted && res?.data) {
+          setFetchedPost(mapPost(res.data));
+        } else if (isMounted && res && !res.data) {
+          setFetchedPost(mapPost(res));
+        }
+      } catch (err) {
+        console.error('Failed to fetch single post:', err);
+      } finally {
+        if (isMounted) setLoadingPost(false);
+      }
+    }
+
+    if (postId) {
+      fetchPost();
+    } else {
+      setLoadingPost(false);
+    }
+
+    return () => { isMounted = false; };
+  }, [postId, matchedPost]);
+
+  const post = matchedPost || fetchedPost;
+
+  if (loadingPost) {
+    return (
+      <UserLayout activeRoute={`/post/${postId}`} onNavigate={onNavigate}>
+        <div className="flex-col items-center justify-center p-xl gap-md" style={{ padding: '60px 0' }}>
+          <Loader2 size={32} className="spin-animation" style={{ color: 'var(--deep-plum)' }} />
+          <span style={{ fontSize: '14px', color: 'var(--hurricane)' }}>Loading post details...</span>
+        </div>
+      </UserLayout>
+    );
+  }
 
   if (!post) {
     return (

@@ -1,27 +1,35 @@
 import React from 'react';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 import { Shield, Lock, User, ChevronRight } from 'lucide-react';
 
 export function SettingsPage({ onNavigate }) {
   const { currentUser } = useAuth();
+  const { t } = useLanguage();
 
   const sections = [
     {
-      title: 'Account Settings',
-      description: 'Private full name, mobile number, email, and password.',
+      titleKey: 'accountSettings',
+      defaultTitle: 'Account Settings',
+      descKey: 'accountSettingsDesc',
+      defaultDesc: 'Private full name, mobile number, email, and password.',
       icon: User,
       route: '/settings/account',
     },
     {
-      title: 'Privacy Settings',
-      description: 'Comment permissions, activity visibility, sensitive content.',
+      titleKey: 'privacySettings',
+      defaultTitle: 'Privacy Settings',
+      descKey: 'privacySettingsDesc',
+      defaultDesc: 'Comment permissions, activity visibility, sensitive content.',
       icon: Lock,
       route: '/settings/privacy',
     },
     {
-      title: 'Safety & Moderation',
-      description: 'Blocked users list, reports tracking, guidelines.',
+      titleKey: 'safetyAndModeration',
+      defaultTitle: 'Safety & Moderation',
+      descKey: 'safetyAndModerationDesc',
+      defaultDesc: 'Blocked users list, reports tracking, guidelines.',
       icon: Shield,
       route: '/settings/safety',
     },
@@ -31,8 +39,8 @@ export function SettingsPage({ onNavigate }) {
     <UserLayout activeRoute="/settings" onNavigate={onNavigate}>
       <div className="flex-col gap-md">
         <div>
-          <h1 className="page-heading">Settings & Preferences</h1>
-          <p className="secondary-text">Manage your private identity, safety preferences, and notifications.</p>
+          <h1 className="page-heading">{t('settingsAndPreferences')}</h1>
+          <p className="secondary-text">{t('manageIdentitySafety')}</p>
         </div>
 
         <div className="flex-col gap-md">
@@ -62,10 +70,10 @@ export function SettingsPage({ onNavigate }) {
                   </div>
                   <div className="flex-col">
                     <h3 className="card-heading" style={{ fontSize: '17px' }}>
-                      {sec.title}
+                      {t(sec.titleKey) || sec.defaultTitle}
                     </h3>
                     <p className="secondary-text" style={{ fontSize: '13px' }}>
-                      {sec.description}
+                      {t(sec.descKey) || sec.defaultDesc}
                     </p>
                   </div>
                 </div>

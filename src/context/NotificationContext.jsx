@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { apiNotificationService } from '../services/apiNotificationService.js';
 import { mapNotification } from '../services/apiMappers.js';
 import { useAuth } from './AuthContext.jsx';
+import { useToast } from './ToastContext.jsx';
 
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '../config/env.js';
@@ -11,6 +12,7 @@ const NotificationContext = createContext(null);
 export function NotificationProvider({ children }) {
   const [notifications, setNotifications] = useState([]);
   const { currentUser } = useAuth();
+  const { addToast } = useToast();
 
   const refreshNotifications = useCallback(async () => {
     if (!currentUser) { setNotifications([]); return; }
@@ -46,6 +48,7 @@ export function NotificationProvider({ children }) {
     socket.on('new_notification', (newNotif) => {
       console.log('[NotificationSocket] Received real-time notification:', newNotif);
       refreshNotifications();
+      addToast(newNotif.message || 'You have a new notification', 'info');
     });
 
     return () => {

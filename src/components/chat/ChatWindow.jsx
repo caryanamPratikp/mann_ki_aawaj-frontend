@@ -1,46 +1,36 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext.jsx';
+import { mockChatService } from '../../services/mockChatService.js';
 
 function ChatMessageItem({ msg, isMine, currentLanguage, translateTextAsync }) {
   const originalText = msg.text || msg.content || '';
   const [displayText, setDisplayText] = useState(originalText);
-  const [isTranslated, setIsTranslated] = useState(false);
 
   useEffect(() => {
-    if (!isMine && originalText && translateTextAsync) {
+    if (originalText && translateTextAsync) {
       let isMounted = true;
       translateTextAsync(originalText, currentLanguage)
         .then(tText => {
-          if (isMounted && tText && tText !== originalText) {
+          if (isMounted && tText) {
             setDisplayText(tText);
-            setIsTranslated(true);
           } else if (isMounted) {
             setDisplayText(originalText);
-            setIsTranslated(false);
           }
         })
         .catch(err => {
-          console.error(err);
           if (isMounted) {
             setDisplayText(originalText);
-            setIsTranslated(false);
           }
         });
       return () => { isMounted = false; };
     } else {
       setDisplayText(originalText);
-      setIsTranslated(false);
     }
   }, [originalText, currentLanguage, isMine, translateTextAsync]);
 
   return (
     <div style={{ wordBreak: 'break-word' }}>
       {displayText}
-      {isTranslated && (
-        <span style={{ fontSize: '10px', opacity: 0.8, marginLeft: '6px', fontStyle: 'italic', display: 'inline-block' }}>
-          🌐 translated
-        </span>
-      )}
     </div>
   );
 }
@@ -56,12 +46,19 @@ import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
 import { useSpokenLanguage } from '../../hooks/useSpokenLanguage.js';
 import { SpokenLanguageSelector } from '../common/SpokenLanguageSelector.jsx';
 
+import { useChat } from '../../context/ChatContext.jsx';
+
 export function ChatWindow({ conversation, currentUserUsername, onSendMessage, onNavigate, onAcceptRequest, onDeclineRequest }) {
-  const { currentLanguage, translateTextAsync } = useLanguage();
+  const { currentLanguage, translateTextAsync, t } = useLanguage();
+  const { getUserPresence } = useChat();
   const [spokenLanguage, setSpokenLanguage] = useSpokenLanguage();
   const [inputText, setInputText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const messagesEndRef = useRef(null);
 
   // Voice to text recorder for direct messaging using dedicated spoken language state
@@ -75,6 +72,10 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
         p => p.toLowerCase() !== currentUserUsername?.toLowerCase()
       ) : null)
     || 'User';
+
+  const userStatus = getUserPresence
+    ? getUserPresence(otherUsername, conversation?.otherParticipantIsOnline, conversation?.otherParticipantLastSeen, t)
+    : { isOnline: true, statusText: t('online', 'Online') };
 
   const isPendingRequest = conversation?.requestStatus === 'PENDING';
   
@@ -94,40 +95,38 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
   const cleanSender = requestSenderUsername ? (requestSenderUsername.startsWith('@') ? requestSenderUsername.toLowerCase() : `@${requestSenderUsername.toLowerCase()}`) : '';
   const isRecipientOfRequest = isPendingRequest && cleanSender !== cleanSelf;
 
-  // TanStack Query for Realtime Messages (Polling every 5s)
+  // TanStack Query for Realtime Messages (invalidated via Socket.IO events)
   const { data: messages = [] } = useQuery({
     queryKey: ['messages', conversation?.id],
     queryFn: () => (conversation ? apiChatService.getMessages(conversation.id) : []),
-    enabled: !!conversation,
-    refetchInterval: 5000,
+    enabled: Boolean(conversation?.id),
+    staleTime: 1000,
   });
 
-  // TanStack Query for Realtime User Status ("Online" / "Last seen today at 12:30 PM")
-  const { data: userStatus } = useQuery({
-    queryKey: ['userStatus', otherUsername],
-    queryFn: () => apiChatService.getUserRealtimeStatus(otherUsername),
-    enabled: !!conversation && !!otherUsername,
-    refetchInterval: 5000,
-  });
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollToBottom();
   }, [messages]);
 
   const modCheck = moderationCheck(inputText);
   const isBlocked = modCheck.status === 'BLOCKED';
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
-    if (!inputText.trim() || isBlocked) return;
+    if (!inputText.trim() || submitting || !conversation || isBlocked) return;
 
+    const textToSend = inputText.trim();
+    setInputText('');
     setSubmitting(true);
+
     try {
-      onSendMessage(inputText.trim());
-      setInputText('');
-      setShowEmojis(false);
+      await onSendMessage(conversation.id, textToSend);
     } catch (err) {
       console.error(err);
+      setInputText(textToSend);
     } finally {
       setSubmitting(false);
     }
@@ -135,15 +134,34 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
 
   if (!conversation) {
     return (
-      <div className="mka-card flex-col items-center justify-center text-center p-lg" style={{ height: '100%', background: 'var(--pure-white)' }}>
-        <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--soft-white)', display: 'flex', alignItems: 'center', justifycontent: 'center', margin: '0 auto 16px auto', color: 'var(--deep-plum)' }}>
+      <div
+        className="mka-card flex-col items-center justify-center text-center p-xl"
+        style={{
+          height: '100%',
+          background: 'var(--pure-white)',
+          borderRadius: 'var(--radius-lg)',
+        }}
+      >
+        <div
+          style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            background: 'var(--deep-plum-light)',
+            color: 'var(--deep-plum)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '12px',
+          }}
+        >
           <MessageSquare size={32} />
         </div>
         <h3 className="card-heading" style={{ fontSize: '20px', color: 'var(--eclipse)' }}>
-          Select or start a conversation
+          {t('selectOrStartChat')}
         </h3>
         <p className="secondary-text" style={{ maxWidth: '360px', marginTop: '6px' }}>
-          Choose an existing chat from the left or visit any member profile to start an end-to-end shielded 1-on-1 conversation.
+          {t('chooseExistingChat')}
         </p>
       </div>
     );
@@ -184,15 +202,185 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
           </div>
         </button>
 
-        <div className="flex-row items-center gap-sm">
-          <button style={{ padding: '6px', color: 'var(--hurricane)', background: 'none', border: 'none', cursor: 'pointer' }} title="Search messages">
+        <div className="flex-row items-center gap-sm" style={{ position: 'relative' }}>
+          <button
+            type="button"
+            onClick={() => {
+              setIsSearchOpen(!isSearchOpen);
+              if (isSearchOpen) setSearchQuery('');
+            }}
+            style={{ padding: '6px', color: isSearchOpen ? 'var(--deep-plum)' : 'var(--hurricane)', background: 'none', border: 'none', cursor: 'pointer' }}
+            title="Search text in chat"
+          >
             <Search size={18} />
           </button>
-          <button style={{ padding: '6px', color: 'var(--hurricane)', background: 'none', border: 'none', cursor: 'pointer' }} title="More options">
+          
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            style={{ padding: '6px', color: isMenuOpen ? 'var(--deep-plum)' : 'var(--hurricane)', background: 'none', border: 'none', cursor: 'pointer' }}
+            title="More options"
+          >
             <MoreVertical size={18} />
           </button>
+
+          {/* Three dots dropdown menu */}
+          {isMenuOpen && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '36px',
+                right: '0',
+                backgroundColor: '#FFFFFF',
+                borderRadius: '12px',
+                boxShadow: '0 4px 18px rgba(0,0,0,0.15)',
+                border: '1px solid var(--border-light)',
+                padding: '6px 0',
+                width: '180px',
+                zIndex: 100,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  onNavigate && onNavigate(`/profile/${otherUsername.replace('@', '')}`);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '8px 16px',
+                  textAlign: 'left',
+                  fontSize: '13px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--eclipse)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                👤 View Profile
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  setIsSearchOpen(true);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '8px 16px',
+                  textAlign: 'left',
+                  fontSize: '13px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--eclipse)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                🔍 Search in Chat
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  setIsMuted(!isMuted);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '8px 16px',
+                  textAlign: 'left',
+                  fontSize: '13px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--eclipse)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                {isMuted ? '🔔 Unmute Chat' : '🔕 Mute Chat'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  alert(`Report filed for ${otherUsername}`);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '8px 16px',
+                  textAlign: 'left',
+                  fontSize: '13px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#B33A3A',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                🚩 Report User
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* In-Chat Search Bar */}
+      {isSearchOpen && (
+        <div
+          style={{
+            padding: '8px 16px',
+            background: 'var(--soft-white)',
+            borderBottom: '1px solid var(--border-light)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <Search size={16} color="var(--hurricane)" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search text in conversation..."
+            style={{
+              flex: 1,
+              padding: '6px 12px',
+              borderRadius: '20px',
+              border: '1px solid var(--border-light)',
+              fontSize: '13px',
+              outline: 'none',
+            }}
+            autoFocus
+          />
+          {searchQuery && (
+            <span style={{ fontSize: '11px', color: 'var(--hurricane)', fontWeight: 600 }}>
+              {messages.filter(m => (m.content || m.text || '').toLowerCase().includes(searchQuery.trim().toLowerCase())).length} match(es)
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setSearchQuery('');
+              setIsSearchOpen(false);
+            }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--hurricane)' }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Messages Area */}
       <div
@@ -206,7 +394,10 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
           backgroundSize: '16px 16px',
         }}
       >
-        {messages.map((msg) => {
+        {(searchQuery.trim()
+          ? messages.filter(m => (m.content || m.text || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))
+          : messages
+        ).map((msg) => {
           const isMine = msg.senderUsername?.toLowerCase() === currentUserUsername?.toLowerCase();
           const isRead = msg.status === 'READ' || msg.isRead === true || conversation?.requestStatus === 'ACCEPTED';
           const isDelivered = msg.status === 'DELIVERED';
@@ -352,7 +543,7 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
                   ? 'Recording message...'
                   : isTranscribing
                   ? 'Transcribing voice message...'
-                  : 'Type a message...'
+                  : t('typeMessage')
               }
               disabled={submitting}
               style={{

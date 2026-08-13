@@ -49,6 +49,7 @@ export const apiChatService = {
           ? apiRoom.participant1Username
           : (apiRoom.requestSenderId === apiRoom.participant2Id ? apiRoom.participant2Username : null);
 
+        const unreadCount = apiRoom.unreadCount || (apiRoom.hasUnread ? 1 : 0);
         return {
           id: apiRoom.id,
           participants: [p1, p2],
@@ -56,6 +57,9 @@ export const apiChatService = {
           otherParticipantAvatar: apiRoom.otherParticipantAvatar,
           otherParticipantId: apiRoom.otherParticipantId,
           lastMessage: apiRoom.lastMessage?.content || 'Chat room active',
+          lastMessageObj: apiRoom.lastMessage,
+          hasUnread: Boolean(apiRoom.hasUnread || unreadCount > 0),
+          unreadCount: unreadCount,
           updatedAt: apiRoom.updatedAt || new Date().toISOString(),
           requestStatus: apiRoom.requestStatus || 'ACCEPTED',
           requestSenderId: apiRoom.requestSenderId,
