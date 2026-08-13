@@ -18,7 +18,7 @@ const sanitizeUrl = (url) => {
 const currentEnvMode = (import.meta.env.VITE_ENVIRONMENT || 'local').trim().toLowerCase();
 
 const prodApiUrl = sanitizeUrl(import.meta.env.VITE_PRODUCTION_URL) || 'https://api.awaazmanki.com';
-const prodSocketUrl = sanitizeUrl(import.meta.env.VITE_PRODUCTION_SOCKET_URL) || 'https://socketapi.awaazmanki.com';
+const prodSocketUrl = sanitizeUrl(import.meta.env.VITE_PRODUCTION_SOCKET_URL) || 'https://api.awaazmanki.com';
 
 const localApiUrl = sanitizeUrl(import.meta.env.VITE_LOCAL_URL) || 'http://localhost:8080';
 const localSocketUrl = sanitizeUrl(import.meta.env.VITE_LOCAL_SOCKET_URL) || 'http://localhost:8085';
