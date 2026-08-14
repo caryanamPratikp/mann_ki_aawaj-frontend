@@ -56,7 +56,8 @@ export function PostProvider({ children }) {
       addToast('Thought published successfully!', 'success');
       return newPost;
     } catch (err) {
-      addToast(err.message || 'Failed to publish post to database', 'error');
+      const errorMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to publish post to database';
+      addToast(errorMsg, 'error');
       throw err;
     }
   };
@@ -69,7 +70,8 @@ export function PostProvider({ children }) {
       addToast('Post updated in database.', 'info');
       return updated;
     } catch (err) {
-      addToast(err.message || 'Failed to update post', 'error');
+      const errorMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to update post';
+      addToast(errorMsg, 'error');
     }
   };
 

@@ -51,7 +51,8 @@ export function NotificationProvider({ children }) {
     socket.on('new_notification', (newNotif) => {
       console.log('[NotificationSocket] Received real-time notification:', newNotif);
       refreshNotifications();
-      addToast(newNotif.message || 'You have a new notification', 'info');
+      const notifMsg = newNotif?.message || newNotif?.content || newNotif?.title || 'You have a new notification';
+      addToast(notifMsg, 'info', 5000);
     });
 
     return () => {

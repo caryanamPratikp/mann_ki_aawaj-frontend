@@ -54,12 +54,10 @@ export function AdminBlockedContentPage({ onNavigate }) {
         size: 10,
       });
 
-      if (res?.success && res?.data) {
-        setFootprints(res.data.content || []);
-        setTotalPages(res.data.totalPages || 1);
-      } else {
-        setFootprints([]);
-      }
+      const rawData = res?.data || res;
+      const list = rawData?.content || (Array.isArray(rawData) ? rawData : (Array.isArray(res) ? res : []));
+      setFootprints(list);
+      setTotalPages(rawData?.totalPages || 1);
     } catch (err) {
       console.error('Failed to load blocked footprints:', err);
       addToast('Could not fetch blocked content footprints', 'error');

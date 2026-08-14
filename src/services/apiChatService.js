@@ -116,18 +116,14 @@ export const apiChatService = {
         const { apiProfileService } = await import('./apiProfileService.js');
         const cleanHandle = recipientUsername.replace('@', '');
         const pRes = await apiProfileService.getPublicProfile(cleanHandle);
-        if (pRes?.data?.userId) {
-          resolvedId = pRes.data.userId;
-        } else if (pRes?.userId) {
-          resolvedId = pRes.userId;
-        }
+        resolvedId = pRes?.data?.userId || pRes?.data?.id || pRes?.userId || pRes?.id;
       } catch (e) {
         console.warn('[Chat] Failed to resolve targetUserId for handle:', recipientUsername, e);
       }
     }
 
-    if (!resolvedId) {
-      throw new Error('Failed to resolve target user ID for chat.');
+    if (!resolvedId || resolvedId === 'undefined') {
+      throw new Error(`Could not resolve user ID for handle: ${recipientUsername}`);
     }
 
     const response = await apiClient.post(`/api/chat/rooms/private/${resolvedId}`);

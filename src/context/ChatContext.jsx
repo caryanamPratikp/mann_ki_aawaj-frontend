@@ -107,7 +107,10 @@ export function ChatProvider({ children }) {
       const isViewingExactChat = String(activeConvRef.current?.id) === String(msg.roomId) && document.visibilityState === 'visible';
 
       if (isFromOther && !isViewingExactChat) {
-        addFloatingToast(msg);
+        const senderHandle = msg.senderUsername ? (msg.senderUsername.startsWith('@') ? msg.senderUsername : `@${msg.senderUsername}`) : 'User';
+        const msgText = msg.content || msg.text || '';
+        const previewText = msgText.length > 50 ? `${msgText.slice(0, 47)}...` : msgText;
+        addToast(`New message from ${senderHandle}: ${previewText}`, 'info', 5000);
       }
     });
 
@@ -171,7 +174,9 @@ export function ChatProvider({ children }) {
       await refreshConversations();
       return conv;
     } catch (err) {
-      addToast('Failed to open chat.', 'error');
+      console.error('[ChatContext] Open chat failed:', err);
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to open chat.';
+      addToast(msg, 'error');
     }
   }, [refreshConversations, addToast, queryClient]);
 
@@ -190,31 +195,36 @@ export function ChatProvider({ children }) {
       await refreshConversations();
       return sent;
     } catch (err) {
-      addToast(err?.message || 'Failed to send message.', 'error');
+      const errorMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to send message.';
+      addToast(errorMsg, 'error');
       throw err;
     }
   }, [refreshConversations, addToast, queryClient]);
 
   const acceptChatRequest = useCallback(async (roomId) => {
     try {
-      const updated = await apiChatService.acceptRequest(roomId);
+      const updated = await apiChatService.acceptChatRequest(roomId);
       setActiveConversation(updated);
       await refreshConversations();
       addToast('Chat request accepted.', 'success');
       return updated;
     } catch (err) {
-      addToast('Failed to accept chat request.', 'error');
+      console.error('[ChatContext] Accept chat request failed:', err);
+      const msg = err?.response?.data?.message || err?.message || 'Failed to accept chat request.';
+      addToast(msg, 'error');
     }
   }, [refreshConversations, addToast]);
 
   const declineChatRequest = useCallback(async (roomId) => {
     try {
-      await apiChatService.declineRequest(roomId);
+      await apiChatService.declineChatRequest(roomId);
       setActiveConversation(null);
       await refreshConversations();
       addToast('Chat request declined.', 'info');
     } catch (err) {
-      addToast('Failed to decline chat request.', 'error');
+      console.error('[ChatContext] Decline chat request failed:', err);
+      const msg = err?.response?.data?.message || err?.message || 'Failed to decline chat request.';
+      addToast(msg, 'error');
     }
   }, [refreshConversations, addToast]);
 

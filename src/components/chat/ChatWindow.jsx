@@ -50,7 +50,7 @@ import { useChat } from '../../context/ChatContext.jsx';
 
 export function ChatWindow({ conversation, currentUserUsername, onSendMessage, onNavigate, onAcceptRequest, onDeclineRequest }) {
   const { currentLanguage, translateTextAsync, t } = useLanguage();
-  const { getUserPresence } = useChat();
+  const { getUserPresence, acceptChatRequest, declineChatRequest } = useChat();
   const [spokenLanguage, setSpokenLanguage] = useSpokenLanguage();
   const [inputText, setInputText] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -480,7 +480,10 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
                   type="button"
-                  onClick={() => onAcceptRequest && onAcceptRequest(conversation.id)}
+                  onClick={() => {
+                    const fn = onAcceptRequest || acceptChatRequest;
+                    if (fn && conversation?.id) fn(conversation.id);
+                  }}
                   style={{
                     padding: '8px 16px',
                     borderRadius: '12px',
@@ -499,7 +502,10 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
                 </button>
                 <button
                   type="button"
-                  onClick={() => onDeclineRequest && onDeclineRequest(conversation.id)}
+                  onClick={() => {
+                    const fn = onDeclineRequest || declineChatRequest;
+                    if (fn && conversation?.id) fn(conversation.id);
+                  }}
                   style={{
                     padding: '8px 16px',
                     borderRadius: '12px',

@@ -28,9 +28,9 @@ export function AdminDashboardPage({ onNavigate }) {
         {/* Metric Cards Grid */}
         <div className="grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
           <AdminMetricCard title="Pending Reports" value={pendingReports} icon={Flag} color="var(--warning)" />
+          <AdminMetricCard title="AI Blocked Content" value={stats?.totalBlockedContent || 0} icon={ShieldAlert} color="var(--error)" />
           <AdminMetricCard title="Total Posts" value={postsHeld} icon={FileCheck} color="var(--deep-plum)" />
           <AdminMetricCard title="Registered Users" value={totalUsers} icon={MessageSquare} color="var(--deep-plum)" />
-          <AdminMetricCard title="Blocked Users" value={blockedUsers} icon={ShieldAlert} color="var(--error)" />
         </div>
 
         {/* Quick Actions */}
@@ -39,6 +39,9 @@ export function AdminDashboardPage({ onNavigate }) {
           <div className="flex-row gap-md flex-wrap">
             <Button variant="primary" onClick={() => onNavigate('/admin/reports')}>
               Review Reports Queue ({pendingReports})
+            </Button>
+            <Button variant="danger" onClick={() => onNavigate('/admin/blocked-content')} icon={ShieldAlert}>
+              AI Blocked Content & Logs
             </Button>
           </div>
         </div>

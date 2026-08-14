@@ -25,6 +25,30 @@ const getOtherUsername = (conv, cleanSelf) => {
   return 'User';
 };
 
+function TranslatedSnippet({ text }) {
+  const { currentLanguage, translateTextAsync } = useLanguage();
+  const [translated, setTranslated] = React.useState(text);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    if (!text || currentLanguage === 'EN' || currentLanguage === 'English') {
+      setTranslated(text);
+      return;
+    }
+    translateTextAsync(text, currentLanguage)
+      .then((res) => {
+        if (isMounted && res) setTranslated(res);
+      })
+      .catch(() => {
+        if (isMounted) setTranslated(text);
+      });
+
+    return () => { isMounted = false; };
+  }, [text, currentLanguage, translateTextAsync]);
+
+  return <>{translated || text}</>;
+}
+
 export function ConversationList({ conversations = [], activeConvId, onSelectConversation, currentUserUsername }) {
   const { addToast } = useToast();
   const { acceptChatRequest, declineChatRequest, getUserPresence } = useChat();
@@ -250,7 +274,7 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
                           margin: 0,
                         }}
                       >
-                        {conv.lastMessage}
+                        <TranslatedSnippet text={conv.lastMessage} />
                       </p>
                     )}
                   </div>
@@ -303,50 +327,9 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
                     </div>
                   </div>
 
-                  <p style={{ fontSize: '12px', color: 'var(--eclipse)', margin: '2px 0 4px 0', fontStyle: 'italic' }}>
+                  <p style={{ fontSize: '12px', color: 'var(--eclipse)', margin: '2px 0 0 0', fontStyle: 'italic' }}>
                     "{otherUsername} {t('wantsToChat')}"
                   </p>
-
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <button
-                      type="button"
-                      onClick={(e) => handleAccept(e, conv.id)}
-                      style={{
-                        flex: 1,
-                        padding: '6px',
-                        borderRadius: '12px',
-                        background: 'var(--deep-plum)',
-                        color: '#ffffff',
-                        border: 'none',
-                        fontSize: '11.5px',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '4px',
-                      }}
-                    >
-                      <Check size={13} /> {t('accept')}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={(e) => handleDecline(e, conv.id)}
-                      style={{
-                        padding: '6px 10px',
-                        borderRadius: '12px',
-                        background: '#ffffff',
-                        color: 'var(--hurricane)',
-                        border: '1px solid var(--border-light)',
-                        fontSize: '11.5px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {t('decline')}
-                    </button>
-                  </div>
                 </div>
               );
             })

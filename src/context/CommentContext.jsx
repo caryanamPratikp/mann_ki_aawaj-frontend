@@ -63,7 +63,8 @@ export function CommentProvider({ children }) {
       addToast('Comment published!', 'success');
       return { comment };
     } catch (err) {
-      addToast(err.message || 'Failed to post comment', 'error');
+      const errorMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to post comment';
+      addToast(errorMsg, 'error');
       throw err;
     }
   };

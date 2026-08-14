@@ -10,6 +10,7 @@ import { ReportProvider } from './context/ReportContext.jsx';
 import { ChatProvider } from './context/ChatContext.jsx';
 import { AppRoutes } from './routes/AppRoutes.jsx';
 import { ToastContainer } from './components/common/Toast.jsx';
+import { GlobalTranslationOverlay } from './components/common/GlobalTranslationOverlay.jsx';
 import './styles/global.css';
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ export default function App() {
                     <ChatProvider>
                       <AppRoutes />
                       <ToastContainer />
+                      <GlobalTranslationOverlay />
                     </ChatProvider>
                   </ReportProvider>
                 </NotificationProvider>
