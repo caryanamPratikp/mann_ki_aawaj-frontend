@@ -181,13 +181,13 @@ export function LandingPage({ onNavigate }) {
                 fontFamily: '"Playfair Display", serif',
               }}
             >
-              M
+              A
             </div>
             <span
               className="font-playfair"
               style={{ fontSize: '23px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.03em' }}
             >
-              Man Ki Aavaj
+              Awaaz Man Ki
             </span>
           </div>
 
@@ -415,7 +415,7 @@ export function LandingPage({ onNavigate }) {
             {/* Left Column Narrative */}
             <div style={{ flex: '1 1 440px', display: 'flex', flexDirection: 'column', gap: '20px', position: 'relative' }}>
               <span style={{ fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#D89C7A' }}>
-                Why Man Ki Aavaj?
+                Why Awaaz Man Ki?
               </span>
               <h2 className="font-playfair" style={{ fontSize: '42px', lineHeight: 1.15, color: '#181818', margin: 0 }}>
                 Social media is<br />
@@ -498,8 +498,8 @@ export function LandingPage({ onNavigate }) {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '14.5px', fontWeight: 700, color: '#181818', borderBottom: '1px solid #E8DDD4', paddingBottom: '12px' }}>
-                    <div style={{ width: '20px', height: '20px', borderRadius: '5px', backgroundColor: '#D89C7A', color: '#0B0A16', display: 'grid', placeItems: 'center', fontSize: '11px', fontWeight: 900 }}>M</div>
-                    <span>Man Ki Aavaj</span>
+                    <div style={{ width: '20px', height: '20px', borderRadius: '5px', backgroundColor: '#D89C7A', color: '#0B0A16', display: 'grid', placeItems: 'center', fontSize: '11px', fontWeight: 900 }}>A</div>
+                    <span>Awaaz Man Ki</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {['Anonymous', 'Respectful', 'Ideas First', 'AI Moderated', 'Meaningful Discussions', 'Toxicity Free'].map((item, i) => (
@@ -742,7 +742,7 @@ export function LandingPage({ onNavigate }) {
                 Built For Every Voice.
               </h2>
               <p style={{ fontSize: '17px', color: '#666666', lineHeight: 1.6, margin: 0 }}>
-                Whether you're carrying a quiet win, seeking advice, or processing life—Man Ki Aavaj welcomes you.
+                Whether you're carrying a quiet win, seeking advice, or processing life—Awaaz Man Ki welcomes you.
               </p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '6px' }}>
@@ -903,7 +903,7 @@ export function LandingPage({ onNavigate }) {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', fontWeight: 700, color: '#6F405F' }}>
-                    <span>Man Ki Aavaj Feed</span>
+                    <span>Awaaz Man Ki Feed</span>
                     <span>Live 🟢</span>
                   </div>
 
@@ -988,9 +988,9 @@ export function LandingPage({ onNavigate }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ width: '32px', height: '32px', borderRadius: '10px', backgroundColor: '#D89C7A', color: '#0B0A16', display: 'grid', placeItems: 'center', fontWeight: 900, fontFamily: '"Playfair Display", serif' }}>
-                  M
+                  A
                 </div>
-                <span className="font-playfair" style={{ fontSize: '20px', fontWeight: 700 }}>Man Ki Aavaj</span>
+                <span className="font-playfair" style={{ fontSize: '20px', fontWeight: 700 }}>Awaaz Man Ki</span>
               </div>
               <p style={{ fontSize: '13.5px', color: '#666666', lineHeight: 1.5, margin: 0 }}>
                 Share your thoughts,<br />not your identity.

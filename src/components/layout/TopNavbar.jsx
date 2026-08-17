@@ -69,10 +69,10 @@ export function TopNavbar({ activeRoute, onNavigate }) {
                   fontSize: '18px',
                 }}
               >
-                M
+                A
               </div>
               <span className="font-heading" style={{ fontSize: '22px', color: 'var(--eclipse)', letterSpacing: '-0.02em' }}>
-                Man Ki Aavaj
+                Awaaz Man Ki
               </span>
             </button>
           </div>

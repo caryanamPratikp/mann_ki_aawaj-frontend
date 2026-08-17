@@ -9,7 +9,7 @@ export function PrivacyPolicyPage({ onNavigate }) {
         <div className="mka-card flex-col gap-md">
           <h2 className="card-heading">Identity Shielding</h2>
           <p className="body-text">
-            Man Ki Aavaj strictly segregates registration data (Full Name, Phone Number, Email) from public profiles. Your real identity is never exposed to other members under any circumstance.
+            Awaaz Man Ki strictly segregates registration data (Full Name, Phone Number, Email) from public profiles. Your real identity is never exposed to other members under any circumstance.
           </p>
           <h2 className="card-heading">Data Usage</h2>
           <p className="body-text">

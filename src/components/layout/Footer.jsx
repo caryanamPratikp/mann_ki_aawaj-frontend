@@ -18,7 +18,7 @@ export function Footer({ onNavigate }) {
         <div className="flex-row justify-between items-center flex-wrap gap-md">
           <div className="flex-col gap-xs">
             <h3 className="font-heading" style={{ color: 'var(--swiss-coffee)', fontSize: '24px' }}>
-              Man Ki Aavaj
+              Awaaz Man Ki
             </h3>
             <p style={{ color: 'var(--zorba)', maxWidth: '400px', fontSize: '13px' }}>
               An 18+ anonymous, text-first social space for authentic thoughts, confessions, questions, and personal experiences.
@@ -48,7 +48,7 @@ export function Footer({ onNavigate }) {
           className="flex-row justify-between items-center border-t"
           style={{ paddingTop: '20px', borderTop: '1px solid rgba(225, 220, 219, 0.1)', color: 'var(--zorba)', fontSize: '12px' }}
         >
-          <span>© 2026 Man Ki Aavaj. All rights reserved. 18+ Anonymous Social Platform.</span>
+          <span>© 2026 Awaaz Man Ki. All rights reserved. 18+ Anonymous Social Platform.</span>
           <span>Privacy Guaranteed. No public real-name identity.</span>
         </div>
       </div>

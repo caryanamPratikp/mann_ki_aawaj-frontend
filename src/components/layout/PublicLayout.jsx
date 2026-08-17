@@ -78,7 +78,7 @@ export function PublicLayout({ children, activeRoute, onNavigate }) {
                 whiteSpace: 'nowrap',
               }}
             >
-              Man Ki Aavaj
+              Awaaz Man Ki
             </span>
           </button>
 

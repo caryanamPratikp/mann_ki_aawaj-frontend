@@ -160,7 +160,7 @@ export function AdminLayout({ children, activeRoute, onNavigate, onRefresh, refr
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span className="font-heading" style={{ fontSize: '18px', fontWeight: 700, color: '#ffffff', lineHeight: 1.1 }}>
-                Man Ki Aavaj
+                Awaaz Man Ki
               </span>
               <span style={{ fontSize: '9.5px', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#E1DCDB', opacity: 0.8, fontWeight: 700, marginTop: '2px' }}>
                 ADMINISTRATION & OPERATIONS

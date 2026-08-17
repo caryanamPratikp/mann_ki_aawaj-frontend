@@ -52,7 +52,7 @@ export function AuthLayout({ children, onNavigate }) {
               letterSpacing: '-0.01em',
             }}
           >
-            Man Ki Aavaj
+            Awaaz Man Ki
           </span>
         </button>
 
