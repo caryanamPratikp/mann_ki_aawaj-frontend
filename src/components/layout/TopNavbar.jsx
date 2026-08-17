@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Home, Compass, Search, PlusSquare, Bell, User as UserIcon, Menu, MessageSquare } from 'lucide-react';
+import logoMKA from '../../assets/logo_MKA.png';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useNotifications } from '../../context/NotificationContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
@@ -16,8 +17,6 @@ export function TopNavbar({ activeRoute, onNavigate }) {
   const hasUnreadMessages = chatContext?.hasUnreadMessages || false;
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
-
-
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -52,27 +51,20 @@ export function TopNavbar({ activeRoute, onNavigate }) {
             <button
               onClick={() => onNavigate('/')}
               className="flex-row items-center gap-sm"
-              style={{ textAlign: 'left' }}
+              style={{ textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
             >
-              <div
+              <img
+                src={logoMKA}
+                alt="Aawaj Man Ki Logo"
                 style={{
-                  width: '32px',
-                  height: '32px',
+                  width: '34px',
+                  height: '34px',
+                  objectFit: 'contain',
                   borderRadius: '8px',
-                  background: 'var(--eclipse)',
-                  color: 'var(--swiss-coffee)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontFamily: 'var(--font-serif)',
-                  fontWeight: 'bold',
-                  fontSize: '18px',
                 }}
-              >
-                A
-              </div>
+              />
               <span className="font-heading" style={{ fontSize: '22px', color: 'var(--eclipse)', letterSpacing: '-0.02em' }}>
-                Awaaz Man Ki
+                Aawaj Man Ki
               </span>
             </button>
           </div>

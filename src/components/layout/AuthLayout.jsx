@@ -1,105 +1,133 @@
 import React from 'react';
-import { ArrowLeft, Mic2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import loginBg from '../../assets/login_bg.png';
+import logoMKA from '../../assets/logo_MKA.png';
 
 export function AuthLayout({ children, onNavigate }) {
   return (
     <div
-      className="app-container flex-col"
       style={{
         minHeight: '100vh',
-        background: 'var(--swiss-coffee)',
-        padding: '0',
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundImage: `url(${loginBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'left center',
+        backgroundRepeat: 'no-repeat',
+        backgroundColor: '#EBE4DE',
+        position: 'relative',
       }}
     >
-      {/* Auth Top Bar */}
-      <div
+      {/* Top Navbar */}
+      <header
         style={{
-          padding: '14px 24px',
-          background: 'var(--pure-white)',
-          borderBottom: '1px solid var(--border-light)',
+          padding: '16px 28px',
+          background: 'transparent',
+          borderBottom: 'none',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          position: 'relative',
+          zIndex: 50,
         }}
       >
-        {/* Logo */}
+        {/* Brand Logo */}
         <button
           onClick={() => onNavigate('/')}
-          className="flex-row items-center gap-sm"
-          style={{ background: 'transparent' }}
+          style={{
+            background: 'none',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            cursor: 'pointer',
+            padding: 0,
+          }}
         >
-          <div
+          <img
+            src={logoMKA}
+            alt="Aawaj Man Ki Logo"
             style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              background: 'var(--eclipse)',
-              color: 'var(--swiss-coffee)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              width: '36px',
+              height: '36px',
+              objectFit: 'contain',
+              borderRadius: '9px',
               flexShrink: 0,
             }}
-          >
-            <Mic2 size={16} />
-          </div>
+          />
           <span
             style={{
-              fontFamily: 'var(--font-serif)',
-              fontSize: '18px',
-              fontWeight: 700,
-              color: 'var(--eclipse)',
+              fontFamily: 'var(--font-serif, Georgia, serif)',
+              fontSize: '20px',
+              fontWeight: 800,
+              color: '#2B1B17',
               letterSpacing: '-0.01em',
             }}
           >
-            Awaaz Man Ki
+            Aawaj Man Ki
           </span>
         </button>
 
-        {/* Home Button */}
+        {/* Home Navigation Button */}
         <button
           onClick={() => onNavigate('/')}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',
-            background: 'var(--soft-white)',
-            color: 'var(--eclipse)',
-            border: '1px solid var(--border-light)',
-            padding: '8px 16px',
-            borderRadius: 'var(--radius-pill)',
+            background: '#FFFFFF',
+            color: '#2B1B17',
+            border: '1.5px solid rgba(0, 0, 0, 0.1)',
+            padding: '7px 18px',
+            borderRadius: '24px',
             fontSize: '13px',
-            fontWeight: 600,
+            fontWeight: 700,
             cursor: 'pointer',
-            transition: 'background 0.15s',
+            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)',
+            transition: 'all 0.18s ease',
           }}
-          onMouseEnter={e => e.currentTarget.style.background = 'var(--swiss-coffee)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'var(--soft-white)'}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#2B1B17';
+            e.currentTarget.style.color = '#FFFFFF';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#FFFFFF';
+            e.currentTarget.style.color = '#2B1B17';
+          }}
         >
           <ArrowLeft size={14} />
           Home
         </button>
-      </div>
+      </header>
 
-      {/* Auth Content */}
-      <div
-        className="flex-col items-center justify-center"
-        style={{ flex: 1, padding: '40px 16px' }}
+      {/* Main Content Area */}
+      <main
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          padding: '20px 6% 40px 24px',
+          boxSizing: 'border-box',
+        }}
       >
-        {/* Tagline */}
-        <div style={{ marginBottom: '24px', textAlign: 'center' }}>
-          <p className="secondary-text" style={{ fontSize: '14px', color: 'var(--hurricane)' }}>
-            Share your thoughts, not your identity
-          </p>
-        </div>
-
+        {/* RIGHT SIDE: White Input Card Box */}
         <div
-          className="mka-card animate-fade-in"
-          style={{ width: '100%', maxWidth: '440px', padding: '32px', background: 'var(--pure-white)' }}
+          style={{
+            width: '100%',
+            maxWidth: '460px',
+            background: '#FFFFFF',
+            borderRadius: '28px',
+            padding: '36px 32px',
+            boxShadow: '0 20px 50px rgba(43, 27, 23, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04)',
+            border: '1px solid rgba(255, 255, 255, 0.8)',
+            boxSizing: 'border-box',
+            zIndex: 10,
+          }}
         >
           {children}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

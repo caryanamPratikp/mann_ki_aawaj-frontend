@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AuthLayout } from '../../components/layout/AuthLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { authService } from '../../services/authService.js';
@@ -204,47 +205,8 @@ export function RegisterPage({ onNavigate }) {
   );
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: C.bg,
-      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E")`,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px 16px',
-      fontFamily: "'Inter', -apple-system, sans-serif",
-    }}>
-
-      {/* Back to home */}
-      <button
-        type="button"
-        onClick={() => onNavigate('/')}
-        style={{
-          position: 'fixed', top: 20, left: 24,
-          display: 'flex', alignItems: 'center', gap: 6,
-          fontSize: 13, fontWeight: 500, color: C.hurricane,
-          background: 'transparent', cursor: 'pointer',
-          transition: 'color 0.15s',
-          border: 'none',
-        }}
-        onMouseEnter={e => e.currentTarget.style.color = C.eclipse}
-        onMouseLeave={e => e.currentTarget.style.color = C.hurricane}
-      >
-        <ArrowLeft size={14} /> Home
-      </button>
-
-      {/* ── CARD ─────────────────────────────────────────── */}
-      <div style={{
-        width: '100%',
-        maxWidth: 560,
-        background: C.card,
-        borderRadius: 16,
-        boxShadow: '0 4px 24px rgba(45,29,21,0.10), 0 1px 4px rgba(45,29,21,0.06)',
-        padding: '32px 36px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 18,
-      }}>
+    <AuthLayout onNavigate={onNavigate}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* ── Header ────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -311,7 +273,7 @@ export function RegisterPage({ onNavigate }) {
                 type="tel"
                 value={mobile}
                 onChange={e => setMobile(e.target.value)}
-                placeholder="+91 9876543210"
+                placeholder="Enter mobile number"
                 required
                 style={inp(false, !!fieldErrors.mobile)}
               />
@@ -323,7 +285,7 @@ export function RegisterPage({ onNavigate }) {
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="you@email.com"
+                placeholder="Enter e-mail id"
                 required
                 style={inp(false, !!fieldErrors.email)}
               />
@@ -486,6 +448,6 @@ export function RegisterPage({ onNavigate }) {
           </div>
         </form>
       </Modal>
-    </div>
+    </AuthLayout>
   );
 }

@@ -22,14 +22,12 @@ export const registerSchema = z.object({
 export const loginSchema = z.object({
   email: z
     .string()
-    .min(1, 'Email address is required')
-    .email('Please enter a valid email address'),
+    .min(1, 'Email address or mobile number is required'),
   password: z
     .string()
     .min(1, 'Password is required'),
 });
 
-// Profile Schema for Edit Profile (Max 200 chars, no min word requirement for quick updates)
 export const editProfileSchema = z.object({
   username: z
     .string()
@@ -44,7 +42,6 @@ export const editProfileSchema = z.object({
   avatar: z.string().optional(),
 });
 
-// Profile Schema for First-Time Onboarding (Requires 10 words min)
 export const profileSchema = z.object({
   username: z
     .string()

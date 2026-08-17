@@ -36,11 +36,10 @@ export const mockAuthService = {
       const byUsername = u.username.toLowerCase() === id ||
                          u.username.toLowerCase() === `@${id}`;
       const byEmail = u.email && u.email.toLowerCase() === id;
-      const byMobile = u.mobile && u.mobile.replace(/\s+/g, '') === id.replace(/\s+/g, '');
+      const byMobile = (u.mobile || u.mobileNumber) && (u.mobile || u.mobileNumber).replace(/\s+/g, '') === id.replace(/\s+/g, '');
       return byUsername || byEmail || byMobile;
     });
 
-    // Auto-create mock account if logging in with new credentials in offline mode
     if (!user) {
       const rawPart = identifier.includes('@') ? identifier.split('@')[0] : identifier;
       const cleanHandle = rawPart.trim().toLowerCase().replace(/\s+/g, '');
@@ -52,7 +51,7 @@ export const mockAuthService = {
         email: identifier.includes('@') ? identifier : `${cleanHandle}@example.com`,
         mobileNumber: '9876543210',
         avatarInitials: cleanHandle.slice(0, 2).toUpperCase(),
-        bio: 'Anonymous author on Man Ki Aavaj',
+        bio: 'Anonymous author on Awaaz Man Ki',
         status: 'ACTIVE',
         joinedDate: new Date().toISOString(),
       };
@@ -88,7 +87,7 @@ export const mockAuthService = {
         .join('')
         .slice(0, 2)
         .toUpperCase(),
-      bio: userData.bio || 'Anonymous author on Man Ki Aavaj',
+      bio: userData.bio || 'Anonymous author on Awaaz Man Ki',
       languages: userData.languages || ['English'],
       interests: userData.interests || ['Life'],
       status: 'ACTIVE',
@@ -101,13 +100,41 @@ export const mockAuthService = {
     return newUser;
   },
 
+  forgotPassword(identifier) {
+    const users = this.getUsers();
+    const id = identifier.trim().toLowerCase();
+
+    const user = users.find(u => {
+      const byEmail = u.email && u.email.toLowerCase() === id;
+      const byMobile = (u.mobile || u.mobileNumber) && (u.mobile || u.mobileNumber).replace(/\s+/g, '') === id.replace(/\s+/g, '');
+      return byEmail || byMobile;
+    });
+
+    if (!user && !id.includes('@') && !/^[6-9]\d{9}$/.test(id)) {
+      throw { status: 404, message: 'Account not found' };
+    }
+
+    return { success: true, message: 'Verification OTP sent successfully', identifier };
+  },
+
+  verifyForgotPasswordOtp(identifier, otp) {
+    if (!otp || otp.trim().length < 4) {
+      throw { status: 400, message: 'Invalid OTP code' };
+    }
+    return { success: true, message: 'OTP verified successfully' };
+  },
+
+  resetPassword(identifier, otp, newPassword) {
+    return { success: true, message: 'Password reset successfully. You can now login with your new password.' };
+  },
+
   updateProfile(userId, updates) {
     const users = this.getUsers();
     const index = users.findIndex(u => u.id === userId);
     if (index !== -1) {
       users[index] = { ...users[index], ...updates };
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
-      
+
       const current = this.getCurrentUser();
       if (current?.id === userId) {
         this.setCurrentUser(users[index]);

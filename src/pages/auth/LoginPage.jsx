@@ -3,7 +3,7 @@ import { AuthLayout } from '../../components/layout/AuthLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { loginSchema } from '../../utils/validationSchemas.js';
-import { LogIn, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { LogIn, Mail, Lock, Eye, EyeOff, AlertCircle, Smartphone, KeyRound } from 'lucide-react';
 
 export function LoginPage({ onNavigate }) {
   const { login } = useAuth();
@@ -33,13 +33,10 @@ export function LoginPage({ onNavigate }) {
     setSubmitting(true);
     try {
       const res = await login(email.trim(), password);
-      // Admins live in the backend Admin table and deliberately have no user profile.
-      // Role must be checked before the profile-onboarding condition.
       if (res?.user?.role === 'ADMIN') {
         onNavigate('/admin/dashboard');
         return;
       }
-      // Check if user has completed profile setup (GET /api/profile/me)
       if (res && res.hasProfile === false) {
         addToast('Please complete your profile setup.', 'info');
         onNavigate('/profile-setup');
@@ -48,15 +45,20 @@ export function LoginPage({ onNavigate }) {
       }
     } catch (err) {
       console.error(err);
-      if (err?.errors && typeof err.errors === 'object') {
+      if (err?.status === 404 || err?.message?.toLowerCase().includes('account not found') || err?.message?.toLowerCase().includes('not found')) {
+        addToast('Account not found. Please check your email or mobile number.', 'error');
+        setErrors({ email: 'Account not found. No account is registered with this email or mobile number.' });
+      } else if (err?.errors && typeof err.errors === 'object') {
         setErrors(err.errors);
       } else {
-        addToast(err?.message || 'Invalid email or password.', 'error');
+        addToast(err?.message || 'Invalid credentials.', 'error');
       }
     } finally {
       setSubmitting(false);
     }
   };
+
+  const isMobileInput = /^\d+$/.test(email.trim());
 
   return (
     <AuthLayout onNavigate={onNavigate}>
@@ -68,24 +70,24 @@ export function LoginPage({ onNavigate }) {
             Welcome Back
           </h2>
           <p style={{ fontSize: '13px', color: 'var(--hurricane)', lineHeight: 1.5, margin: 0 }}>
-            Sign in to your account using your email and password.
+            Sign in to your account using your registered email or mobile number.
           </p>
         </div>
 
-        {/* Email Field */}
+        {/* Email or Mobile Field */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
           <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--eclipse)' }}>
-            Email Address *
+            Email Address or Mobile Number *
           </label>
           <div style={{ position: 'relative' }}>
             <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--hurricane)', pointerEvents: 'none', display: 'flex' }}>
-              <Mail size={16} />
+              {isMobileInput ? <Smartphone size={16} /> : <Mail size={16} />}
             </div>
             <input
-              type="email"
+              type="text"
               value={email}
               onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: null })); }}
-              placeholder="aman@example.com"
+              placeholder="Enter registered mail or mobile"
               required
               style={{
                 width: '100%',
@@ -108,9 +110,26 @@ export function LoginPage({ onNavigate }) {
 
         {/* Password Field */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-          <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--eclipse)' }}>
-            Password *
-          </label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--eclipse)' }}>
+              Password *
+            </label>
+            <button
+              type="button"
+              onClick={() => onNavigate('/forgot-password')}
+              style={{
+                fontSize: '12px',
+                fontWeight: 700,
+                color: 'var(--deep-plum)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+              }}
+            >
+              Forgot Password?
+            </button>
+          </div>
           <div style={{ position: 'relative' }}>
             <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--hurricane)', pointerEvents: 'none', display: 'flex' }}>
               <Lock size={16} />
@@ -119,7 +138,7 @@ export function LoginPage({ onNavigate }) {
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: null })); }}
-              placeholder="••••••••"
+              placeholder="Enter password"
               required
               style={{
                 width: '100%',
@@ -169,7 +188,7 @@ export function LoginPage({ onNavigate }) {
             width: '100%',
             padding: '13px',
             borderRadius: '8px',
-            background: submitting ? 'var(--zorba)' : 'var(--eclipse)',
+            background: submitting ? 'var(--zorba)' : 'var(--deep-plum)',
             color: 'var(--pure-white)',
             fontSize: '14.5px',
             fontWeight: 700,
@@ -186,6 +205,7 @@ export function LoginPage({ onNavigate }) {
           <LogIn size={17} />
           {submitting ? 'Signing In...' : 'Sign In'}
         </button>
+
 
         {/* Footer link */}
         <p style={{ textAlign: 'center', fontSize: '13px', color: 'var(--hurricane)', margin: 0 }}>

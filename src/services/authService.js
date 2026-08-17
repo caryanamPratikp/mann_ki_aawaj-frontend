@@ -4,9 +4,9 @@ import { mockAuthService } from './mockAuthService.js';
 
 export const authService = {
   // POST /api/auth/login { email, password } → returns user data plus token
-  async login(email, password) {
+  async login(emailOrMobile, password) {
     try {
-      const response = await apiClient.post('/api/auth/login', { email, password });
+      const response = await apiClient.post('/api/auth/login', { email: emailOrMobile, password });
       const res = response.data;
 
       if (res && res.success && res.data?.token) {
@@ -47,7 +47,7 @@ export const authService = {
       }
       if (err.isNetworkError || err.code === 'ECONNABORTED' || err.message?.includes('timeout') || err.message?.includes('Network Error') || err.message?.includes('Failed to fetch') || !err.response) {
         console.warn('Backend server offline or timed out. Falling back to mock auth.');
-        const mockUser = mockAuthService.login(email, password);
+        const mockUser = mockAuthService.login(emailOrMobile, password);
         return { user: mockUser, hasProfile: true };
       }
       throw err;
@@ -78,6 +78,48 @@ export const authService = {
       if (err.isNetworkError || err.message?.includes('Failed to fetch') || !err.response) {
         console.warn('Backend offline. Falling back to mock registration.');
         return { success: true, message: 'Mock registration successful. Please verify email/OTP.' };
+      }
+      throw err;
+    }
+  },
+
+  // POST /api/auth/forgot-password { identifier }
+  async forgotPassword(identifier) {
+    try {
+      const response = await apiClient.post('/api/auth/forgot-password', { identifier });
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      if (err.isNetworkError || err.message?.includes('Failed to fetch') || !err.response) {
+        return mockAuthService.forgotPassword(identifier);
+      }
+      throw err;
+    }
+  },
+
+  // POST /api/auth/verify-forgot-password-otp { identifier, otp }
+  async verifyForgotPasswordOtp(identifier, otp) {
+    try {
+      const response = await apiClient.post('/api/auth/verify-forgot-password-otp', { identifier, otp });
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      if (err.isNetworkError || err.message?.includes('Failed to fetch') || !err.response) {
+        return mockAuthService.verifyForgotPasswordOtp(identifier, otp);
+      }
+      throw err;
+    }
+  },
+
+  // POST /api/auth/reset-password { identifier, otp, newPassword }
+  async resetPassword(identifier, otp, newPassword) {
+    try {
+      const response = await apiClient.post('/api/auth/reset-password', { identifier, otp, newPassword });
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      if (err.isNetworkError || err.message?.includes('Failed to fetch') || !err.response) {
+        return mockAuthService.resetPassword(identifier, otp, newPassword);
       }
       throw err;
     }
