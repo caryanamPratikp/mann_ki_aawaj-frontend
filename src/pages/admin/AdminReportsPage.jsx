@@ -24,7 +24,7 @@ export function AdminReportsPage({ onNavigate }) {
   };
 
   return (
-    <AdminLayout activeRoute="/admin/reports" onNavigate={onNavigate}>
+    <AdminLayout activeRoute="/admin/reports" onNavigate={onNavigate} onRefresh={refreshReports}>
       <div className="flex-col gap-md">
         <div className="flex-row justify-between items-center flex-wrap gap-sm">
           <div>

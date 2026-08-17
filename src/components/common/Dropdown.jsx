@@ -15,8 +15,8 @@ export function Dropdown({ trigger, children, align = 'right' }) {
   }, []);
 
   return (
-    <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-block' }}>
-      <div onClick={() => setIsOpen(!isOpen)} style={{ cursor: 'pointer' }}>
+    <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-block' }} onClick={(e) => e.stopPropagation()}>
+      <div onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} style={{ cursor: 'pointer' }}>
         {trigger}
       </div>
 
@@ -33,7 +33,7 @@ export function Dropdown({ trigger, children, align = 'right' }) {
             zIndex: 900,
             boxShadow: 'var(--shadow-medium)',
           }}
-          onClick={() => setIsOpen(false)}
+          onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
         >
           {children}
         </div>

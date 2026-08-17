@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { UI_DICTIONARY, SUPPORTED_LANGUAGES } from '../utils/translations.js';
 import { apiTranslationService } from '../services/apiTranslationService.js';
@@ -7,22 +7,33 @@ import { apiUserService } from '../services/apiUserService.js';
 
 const LanguageContext = createContext(null);
 
+// In-flight request deduplication map to prevent API call storms
+const pendingTranslations = new Map();
+
+export function normalizeLanguage(lang) {
+  if (!lang) return 'English';
+  const found = SUPPORTED_LANGUAGES.find(
+    (l) => l.code.toLowerCase() === lang.toLowerCase() || l.label.toLowerCase() === lang.toLowerCase()
+  );
+  return found ? found.label : lang;
+}
+
 /**
  * Batch-translate all English UI dictionary keys into targetLang via OpenAI API.
- * Returns an object like { home: 'ઘર', explore: 'શોધખોળ', ... }
  */
 async function batchTranslateUI(targetLang) {
   const englishDict = UI_DICTIONARY['English'];
   if (!englishDict) return {};
 
+  const normTarget = normalizeLanguage(targetLang);
+  if (normTarget === 'English') return {};
+
   const keys = Object.keys(englishDict);
   const values = Object.values(englishDict);
-
-  // Build one big payload: key=value lines, translate as a single block
   const payload = values.join('\n|||MKA_SEP|||\n');
 
   try {
-    const translated = await apiTranslationService.translateText(payload, targetLang, 'EN');
+    const translated = await apiTranslationService.translateText(payload, normTarget, 'EN');
     if (!translated) return {};
 
     const parts = translated.split(/\|\|\|MKA_SEP\|\|\|/).map(s => s.trim());
@@ -33,34 +44,22 @@ async function batchTranslateUI(targetLang) {
     });
     return result;
   } catch (err) {
-    console.warn('[LanguageContext] Batch UI translation failed, falling back to individual:', err?.message);
-    // Fallback: translate each key individually (slower but more reliable)
-    const result = {};
-    const promises = keys.map(async (key) => {
-      try {
-        const val = await apiTranslationService.translateText(englishDict[key], targetLang, 'EN');
-        result[key] = val || englishDict[key];
-      } catch {
-        result[key] = englishDict[key];
-      }
-    });
-    await Promise.all(promises);
-    return result;
+    console.warn('[LanguageContext] Batch UI translation warning:', err?.message);
+    return {};
   }
 }
 
 export function LanguageProvider({ children }) {
   const queryClient = useQueryClient();
   const [currentLanguage, setCurrentLanguage] = useState(() => {
-    return localStorage.getItem('mka_preferred_language') || 'EN';
+    const saved = localStorage.getItem('mka_preferred_language') || 'EN';
+    return normalizeLanguage(saved);
   });
 
   const [translationCache, setTranslationCache] = useState({});
   const [isTranslating, setIsTranslating] = useState(false);
 
-  // Dynamic UI translations for languages without hardcoded dictionaries
   const [dynamicUI, setDynamicUI] = useState(() => {
-    // Try to restore from sessionStorage for faster re-renders
     try {
       const cached = localStorage.getItem('mka_dynamic_ui');
       return cached ? JSON.parse(cached) : {};
@@ -69,91 +68,109 @@ export function LanguageProvider({ children }) {
     }
   });
 
-  // Check if current language has a complete hardcoded dictionary
   const hasHardcodedDict = useCallback((langCode) => {
-    const dict = UI_DICTIONARY[langCode];
+    const norm = normalizeLanguage(langCode);
+    const dict = UI_DICTIONARY[norm] || UI_DICTIONARY[langCode];
     if (!dict) return false;
-    // Check if it has at least the essential keys
     const essentialKeys = ['home', 'latest', 'topicsStream', 'noThoughtsFound', 'personalSpace'];
     return essentialKeys.every(k => !!dict[k]);
   }, []);
 
-  // Translate UI for languages without hardcoded dictionaries
   const translateUIForLanguage = useCallback(async (langCode) => {
-    if (langCode === 'EN' || langCode === 'English') return; // English is the source
-    if (hasHardcodedDict(langCode)) return; // Already has hardcoded translations
+    const norm = normalizeLanguage(langCode);
+    if (norm === 'English' || langCode === 'EN') return;
+    if (hasHardcodedDict(norm)) return;
 
-    // Check if we already have a dynamic translation cached for this lang
-    if (dynamicUI._lang === langCode && Object.keys(dynamicUI).length > 2) return;
+    if (dynamicUI._lang === norm && Object.keys(dynamicUI).length > 2) return;
 
-    console.log(`[LanguageContext] Translating UI dynamically for: ${langCode}`);
     try {
-      const translated = await batchTranslateUI(langCode);
-      translated._lang = langCode; // Tag which lang this translation is for
+      const translated = await batchTranslateUI(norm);
+      translated._lang = norm;
       setDynamicUI(translated);
-      // Persist in storage for faster subsequent loads
       try {
         localStorage.setItem('mka_dynamic_ui', JSON.stringify(translated));
       } catch {}
     } catch (err) {
-      console.warn('[LanguageContext] Dynamic UI translation failed:', err?.message);
+      console.warn('[LanguageContext] Dynamic UI translation warning:', err?.message);
     }
   }, [hasHardcodedDict, dynamicUI]);
 
-  // Sync language with backend user profile on load if available
+  // Sync language with backend user profile on load & after login
   useEffect(() => {
     const syncProfileLanguage = async () => {
       try {
+        if (window.location.pathname.startsWith('/admin')) {
+          return;
+        }
         const token = localStorage.getItem('auth_token');
         if (token && !token.startsWith('mock')) {
           const profileRes = await apiProfileService.getMyProfile();
           if (profileRes?.data?.preferredLanguage) {
-            const backendLang = profileRes.data.preferredLanguage;
-            setCurrentLanguage(backendLang);
-            localStorage.setItem('mka_preferred_language', backendLang);
+            const rawLang = profileRes.data.preferredLanguage;
+            const normalized = normalizeLanguage(rawLang);
+
+            setCurrentLanguage(normalized);
+            localStorage.setItem('mka_preferred_language', normalized);
+
+            if (!hasHardcodedDict(normalized) && normalized !== 'English') {
+              batchTranslateUI(normalized).then((translated) => {
+                translated._lang = normalized;
+                setDynamicUI(translated);
+                try {
+                  localStorage.setItem('mka_dynamic_ui', JSON.stringify(translated));
+                } catch {}
+              });
+            }
+
+            await queryClient.invalidateQueries({
+              predicate: (query) => {
+                const key = query.queryKey[0];
+                return ['posts', 'comments', 'notifications', 'profile', 'savedPosts', 'chatMessages', 'myPosts'].includes(key);
+              },
+            });
           }
         }
       } catch (err) {
-        console.warn('Could not sync user preferred language from DB profile:', err?.message || err);
+        // Silently swallow sync failures
       }
     };
     syncProfileLanguage();
-  }, []);
+  }, [queryClient, hasHardcodedDict]);
 
-  // When language changes or on mount, translate UI if needed
   useEffect(() => {
-    if (currentLanguage && currentLanguage !== 'EN' && currentLanguage !== 'English') {
-      translateUIForLanguage(currentLanguage);
+    const norm = normalizeLanguage(currentLanguage);
+    if (norm && norm !== 'English') {
+      translateUIForLanguage(norm);
     }
-  }, [currentLanguage]);
+  }, [currentLanguage, translateUIForLanguage]);
 
   const changeLanguage = async (langCode) => {
-    if (!langCode || langCode === currentLanguage) return;
+    if (!langCode) return;
+    const normalized = normalizeLanguage(langCode);
 
     setIsTranslating(true);
-    setCurrentLanguage(langCode);
-    localStorage.setItem('mka_preferred_language', langCode);
+    setCurrentLanguage(normalized);
+    localStorage.setItem('mka_preferred_language', normalized);
 
     try {
       const token = localStorage.getItem('auth_token');
       if (token && !token.startsWith('mock')) {
-        await apiUserService.updateLanguage(langCode);
+        await apiUserService.updateLanguage(normalized);
       }
     } catch (err) {
-      console.warn('[LanguageContext] Database preferred_language update warning:', err?.message || err);
+      console.warn('[LanguageContext] Preferred language update warning:', err?.message || err);
     }
 
-    // If language doesn't have hardcoded dict, do dynamic translation first
-    if (!hasHardcodedDict(langCode) && langCode !== 'EN' && langCode !== 'English') {
+    if (!hasHardcodedDict(normalized) && normalized !== 'English') {
       try {
-        const translated = await batchTranslateUI(langCode);
-        translated._lang = langCode;
+        const translated = await batchTranslateUI(normalized);
+        translated._lang = normalized;
         setDynamicUI(translated);
         try {
           localStorage.setItem('mka_dynamic_ui', JSON.stringify(translated));
         } catch {}
       } catch (err) {
-        console.warn('[LanguageContext] Dynamic UI translation during change failed:', err?.message);
+        console.warn('[LanguageContext] Dynamic UI translation warning:', err?.message);
       }
     }
 
@@ -163,52 +180,65 @@ export function LanguageProvider({ children }) {
         return ['posts', 'comments', 'notifications', 'profile', 'savedPosts', 'chatMessages', 'myPosts'].includes(key);
       },
     });
-    // Delay disabling overlay slightly so translation queries have time to fire and paint
+
     setTimeout(() => {
       setIsTranslating(false);
-    }, 900);
+    }, 800);
   };
 
-  const t = (key, defaultText) => {
-    // 1. Check hardcoded dictionary for the current language
-    const dict = UI_DICTIONARY[currentLanguage];
+  const t = useCallback((key, defaultText) => {
+    const norm = normalizeLanguage(currentLanguage);
+
+    const dict = UI_DICTIONARY[norm] || UI_DICTIONARY[currentLanguage];
     if (dict && dict[key]) return dict[key];
 
-    // 2. Check dynamic AI-translated dictionary
-    if (dynamicUI._lang === currentLanguage && dynamicUI[key]) {
+    if ((dynamicUI._lang === norm || dynamicUI._lang === currentLanguage) && dynamicUI[key]) {
       return dynamicUI[key];
     }
 
-    // 3. Fallback to English dictionary or provided defaultText or key
     return UI_DICTIONARY['English']?.[key] || defaultText || key;
-  };
+  }, [currentLanguage, dynamicUI]);
 
-  /**
-   * Async translation method invoking Spring Boot / OpenAI Translation Service.
-   */
   const translateTextAsync = async (text, targetLang = currentLanguage, sourceLang = null) => {
     if (!text || !text.trim()) return text;
-    const cacheKey = `${sourceLang || 'AUTO'}_${targetLang}_${text.trim()}`;
+    const normTarget = normalizeLanguage(targetLang);
+    if (normTarget === 'English' || normTarget === 'EN') return text;
+
+    const cacheKey = `${sourceLang || 'AUTO'}_${normTarget}_${text.trim()}`;
     if (translationCache[cacheKey]) return translationCache[cacheKey];
 
-    const result = await apiTranslationService.translateText(text, targetLang, sourceLang);
-    setTranslationCache(prev => ({ ...prev, [cacheKey]: result }));
-    return result;
+    if (pendingTranslations.has(cacheKey)) {
+      return pendingTranslations.get(cacheKey);
+    }
+
+    const promise = (async () => {
+      try {
+        const result = await apiTranslationService.translateText(text, normTarget, sourceLang);
+        const finalVal = result || text;
+        setTranslationCache(prev => ({ ...prev, [cacheKey]: finalVal }));
+        return finalVal;
+      } catch (err) {
+        return text;
+      } finally {
+        pendingTranslations.delete(cacheKey);
+      }
+    })();
+
+    pendingTranslations.set(cacheKey, promise);
+    return promise;
   };
 
-  /**
-   * Synchronous translation getter with fallback for instant UI render.
-   */
-  const translateText = (text, targetLang = currentLanguage, sourceLang = null) => {
+  const translateText = useCallback((text, targetLang = currentLanguage, sourceLang = null) => {
     if (!text || !text.trim()) return text;
-    const cacheKey = `${sourceLang || 'AUTO'}_${targetLang}_${text.trim()}`;
+    const normTarget = normalizeLanguage(targetLang);
+    if (normTarget === 'English' || normTarget === 'EN') return text;
+
+    const cacheKey = `${sourceLang || 'AUTO'}_${normTarget}_${text.trim()}`;
     if (translationCache[cacheKey]) {
       return translationCache[cacheKey];
     }
-    // Trigger async fetch in background to populate cache
-    translateTextAsync(text, targetLang, sourceLang);
     return text;
-  };
+  }, [currentLanguage, translationCache]);
 
   return (
     <LanguageContext.Provider value={{

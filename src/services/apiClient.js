@@ -21,16 +21,18 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Handle 401 Unauthorized by clearing token & redirecting protected routes only
+// Response Interceptor: Handle 401 Unauthorized safely without breaking active login flow on public pages
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('auth_user');
       const publicPaths = ['/', '', '/index.html', '/about', '/privacy-policy', '/community-guidelines', '/contact', '/login', '/register', '/forgot-password'];
       const currentPath = window.location.pathname.split('?')[0].replace(/\/+$/, '') || '/';
+      
+      // Do not clear tokens or force redirect if user is actively on public pages like /login
       if (!publicPaths.includes(currentPath)) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
         window.location.href = '/login';
       }
     }

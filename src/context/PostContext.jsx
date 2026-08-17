@@ -3,7 +3,7 @@ import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-quer
 import { apiPostService } from '../services/apiPostService.js';
 import { mapPost } from '../services/apiMappers.js';
 import { useAuth } from './AuthContext.jsx';
-import { useLanguage } from './LanguageContext.jsx';
+import { useLanguage, normalizeLanguage } from './LanguageContext.jsx';
 import { useToast } from './ToastContext.jsx';
 
 const PostContext = createContext(null);
@@ -15,29 +15,44 @@ export function PostProvider({ children }) {
   const queryClient = useQueryClient();
   const [savedPostIds, setSavedPostIds] = useState([]);
 
-  // React TanStack Query: Realtime Posts Feed with currentLanguage dependency key
+  const normLang = normalizeLanguage(currentLanguage);
+
+  // TanStack Query: Realtime Posts Feed with 8-second timing & preserved data state
   const {
     data: posts = [],
     isLoading: loading,
     isFetching,
     refetch: refreshPosts,
   } = useQuery({
-    queryKey: ['posts', currentLanguage],
-    queryFn: async () => {
-      try {
-        const response = await apiPostService.getPosts();
-        const rawContent = response.data?.content || response.content || response.data || [];
-        if (Array.isArray(rawContent)) {
-          return rawContent.map(mapPost);
+    queryKey: ['posts', normLang],
+    queryFn: async ({ queryKey }) => {
+      const response = await apiPostService.getPosts();
+      const rawContent = response.data?.content || response.content || response.data || [];
+      if (Array.isArray(rawContent)) {
+        const fetchedPosts = rawContent.map(mapPost);
+
+        const cachedPosts = queryClient.getQueryData(queryKey) || [];
+
+        if (fetchedPosts.length === 0 && cachedPosts.length > 0) {
+          return cachedPosts;
         }
-      } catch (err) {
-        console.warn('[PostContext] DB fetch error:', err);
+
+        if (cachedPosts.length > 0) {
+          const fetchedIds = new Set(fetchedPosts.map((p) => p.id));
+          const oldUnique = cachedPosts.filter((p) => !fetchedIds.has(p.id));
+          return [...fetchedPosts, ...oldUnique];
+        }
+
+        return fetchedPosts;
       }
-      return [];
+      throw new Error('Failed to parse posts response');
     },
     placeholderData: keepPreviousData,
-    refetchInterval: 5000, // 5 seconds automatic polling & background refresh
-    staleTime: 1000,
+    staleTime: 8000,
+    refetchInterval: 8000,
+    gcTime: 1000 * 60 * 30,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 3000),
   });
 
   const createPost = async (postData) => {
@@ -51,7 +66,11 @@ export function PostProvider({ children }) {
       const rawPostData = response.data || response;
       const newPost = mapPost(rawPostData);
 
-      // Invalidate query cache to trigger immediate update across all pages
+      queryClient.setQueriesData({ queryKey: ['posts'] }, (old = []) => {
+        if (!Array.isArray(old)) return [newPost];
+        return [newPost, ...old.filter((p) => p.id !== newPost.id)];
+      });
+
       await queryClient.invalidateQueries({ queryKey: ['posts'] });
       addToast('Thought published successfully!', 'success');
       return newPost;
@@ -82,31 +101,67 @@ export function PostProvider({ children }) {
       console.warn('[PostContext] Backend delete notice:', e);
     }
 
-    // Optimistically update TanStack Query cache instantly across all language query keys
     queryClient.setQueriesData({ queryKey: ['posts'] }, (oldPosts = []) =>
       oldPosts.filter((p) => p.id !== postId)
     );
 
-    // Invalidate query to refetch latest feed from DB
     await queryClient.invalidateQueries({ queryKey: ['posts'] });
     addToast('Thought permanently deleted from database.', 'info');
   };
 
-  const reactToPost = async (postId) => {
+  const reactToPost = async (postId, reactionType = 'RELATE') => {
     if (!currentUser) {
       addToast('Please login to react to posts.', 'error');
       return;
     }
-    const post = posts.find((item) => item.id === postId);
+
+    const typeKey = (reactionType || 'RELATE').toUpperCase();
+
+    // 1. Optimistically update TanStack Query cache instantly for immediate UI feedback
+    queryClient.setQueriesData({ queryKey: ['posts'] }, (oldPosts = []) => {
+      if (!Array.isArray(oldPosts)) return oldPosts;
+      return oldPosts.map((p) => {
+        if (p.id !== postId) return p;
+
+        const prevReaction = p.userReaction ? p.userReaction.toUpperCase() : null;
+        const currentReactions = { ...(p.reactions || {}) };
+
+        let newUserReaction = typeKey;
+        let newIsLiked = true;
+
+        if (prevReaction === typeKey) {
+          // Toggling off same reaction
+          newUserReaction = null;
+          newIsLiked = false;
+          currentReactions[typeKey] = Math.max(0, (currentReactions[typeKey] || 1) - 1);
+        } else {
+          // If switching from another reaction, decrement old
+          if (prevReaction && currentReactions[prevReaction]) {
+            currentReactions[prevReaction] = Math.max(0, currentReactions[prevReaction] - 1);
+          }
+          currentReactions[typeKey] = (currentReactions[typeKey] || 0) + 1;
+        }
+
+        const newLikesCount = Object.values(currentReactions).reduce((a, b) => a + b, 0);
+
+        return {
+          ...p,
+          userReaction: newUserReaction,
+          isLikedByCurrentUser: newIsLiked,
+          likesCount: newLikesCount,
+          reactions: currentReactions,
+        };
+      });
+    });
+
+    // 2. Call backend API to persist reaction in database
     try {
-      if (post?.isLikedByCurrentUser) {
-        await apiPostService.unlikePost(postId);
-      } else {
-        await apiPostService.likePost(postId);
-      }
+      await apiPostService.reactToPost(postId, typeKey);
     } catch (e) {
-      console.warn('[PostContext] Reaction error:', e);
+      console.warn('[PostContext] Reaction API notice:', e);
     }
+
+    // 3. Invalidate query cache to pull final database state
     await queryClient.invalidateQueries({ queryKey: ['posts'] });
   };
 

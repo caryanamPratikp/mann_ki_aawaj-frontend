@@ -1,8 +1,8 @@
 export const RESTRICTED_CATEGORIES = {
-  ABUSIVE: 'Abusive language',
+  ABUSIVE: 'Abusive language & profanity',
   HATE_SPEECH: 'Hate speech',
-  HARASSMENT: 'Harassment',
-  THREAT: 'Threats',
+  HARASSMENT: 'Harassment & Bullying',
+  THREAT: 'Threats & Violence',
   POLITICAL: 'Political propaganda',
   RELIGIOUS: 'Religious offence',
   SEXUAL: 'Sexual content',
@@ -14,7 +14,59 @@ export const RESTRICTED_CATEGORIES = {
 
 // Word & phrase patterns with risk levels and categories
 export const RESTRICTED_TERMS = [
-  // Abusive & Hate speech
+  // Violence & Threat Terms
+  { pattern: 'kill', category: RESTRICTED_CATEGORIES.THREAT, risk: 'CRITICAL', status: 'BLOCKED' },
+  { pattern: 'bomb', category: RESTRICTED_CATEGORIES.THREAT, risk: 'CRITICAL', status: 'BLOCKED' },
+  { pattern: 'shoot', category: RESTRICTED_CATEGORIES.THREAT, risk: 'CRITICAL', status: 'BLOCKED' },
+  { pattern: 'stab', category: RESTRICTED_CATEGORIES.THREAT, risk: 'CRITICAL', status: 'BLOCKED' },
+  { pattern: 'terror', category: RESTRICTED_CATEGORIES.THREAT, risk: 'CRITICAL', status: 'BLOCKED' },
+  { pattern: 'terrorist', category: RESTRICTED_CATEGORIES.THREAT, risk: 'CRITICAL', status: 'BLOCKED' },
+  { pattern: 'attack', category: RESTRICTED_CATEGORIES.THREAT, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'destroy', category: RESTRICTED_CATEGORIES.THREAT, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'die', category: RESTRICTED_CATEGORIES.THREAT, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'death', category: RESTRICTED_CATEGORIES.THREAT, risk: 'HIGH', status: 'BLOCKED' },
+
+  // Profanities & Abusive Terms (English)
+  { pattern: 'fucker', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'fuck', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'fucking', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'fucked', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'motherfucker', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'shit', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'MEDIUM', status: 'BLOCKED' },
+  { pattern: 'bullshit', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'MEDIUM', status: 'BLOCKED' },
+  { pattern: 'bitch', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'bitches', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'bastard', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'asshole', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'dumbass', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'MEDIUM', status: 'BLOCKED' },
+  { pattern: 'cunt', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'CRITICAL', status: 'BLOCKED' },
+  { pattern: 'dick', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'cock', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'pussy', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'slut', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'CRITICAL', status: 'BLOCKED' },
+  { pattern: 'whore', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'CRITICAL', status: 'BLOCKED' },
+  { pattern: 'wanker', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'twat', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'prick', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'nigger', category: RESTRICTED_CATEGORIES.HATE_SPEECH, risk: 'CRITICAL', status: 'BLOCKED' },
+  { pattern: 'faggot', category: RESTRICTED_CATEGORIES.HATE_SPEECH, risk: 'CRITICAL', status: 'BLOCKED' },
+  { pattern: 'retard', category: RESTRICTED_CATEGORIES.HARASSMENT, risk: 'HIGH', status: 'BLOCKED' },
+
+  // Regional / Hindi Abusive Terms
+  { pattern: 'chutiya', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'madarchod', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'CRITICAL', status: 'BLOCKED' },
+  { pattern: 'behenchod', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'CRITICAL', status: 'BLOCKED' },
+  { pattern: 'bhosdike', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'CRITICAL', status: 'BLOCKED' },
+  { pattern: 'gandu', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'harami', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'saala', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'MEDIUM', status: 'BLOCKED' },
+  { pattern: 'kamina', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'MEDIUM', status: 'BLOCKED' },
+  { pattern: 'gaand', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'lauda', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'lode', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+  { pattern: 'chut', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
+
+  // Other Hate & Disrespect
   { pattern: 'hate', category: RESTRICTED_CATEGORIES.HATE_SPEECH, risk: 'HIGH', status: 'BLOCKED' },
   { pattern: 'idiot', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'LOW', status: 'NEEDS_EDITING' },
   { pattern: 'stupid', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'LOW', status: 'NEEDS_EDITING' },
@@ -24,8 +76,6 @@ export const RESTRICTED_TERMS = [
   { pattern: 'die alone', category: RESTRICTED_CATEGORIES.HARASSMENT, risk: 'HIGH', status: 'BLOCKED' },
   { pattern: 'trash', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'LOW', status: 'NEEDS_EDITING' },
   { pattern: 'loser', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'LOW', status: 'NEEDS_EDITING' },
-  { pattern: 'bitch', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
-  { pattern: 'bastard', category: RESTRICTED_CATEGORIES.ABUSIVE, risk: 'HIGH', status: 'BLOCKED' },
 
   // Political / Religious Offence
   { pattern: 'political party', category: RESTRICTED_CATEGORIES.POLITICAL, risk: 'MEDIUM', status: 'PENDING_REVIEW' },
@@ -43,6 +93,4 @@ export const RESTRICTED_TERMS = [
   { pattern: 'call this number', category: RESTRICTED_CATEGORIES.PERSONAL_INFO, risk: 'HIGH', status: 'BLOCKED' },
   { pattern: 'free money', category: RESTRICTED_CATEGORIES.SCAM, risk: 'HIGH', status: 'BLOCKED' },
   { pattern: 'telegram group', category: RESTRICTED_CATEGORIES.SPAM, risk: 'MEDIUM', status: 'NEEDS_EDITING' },
-
-  // Personal Info / Phone Numbers / Emails regex patterns checked programmatically
 ];

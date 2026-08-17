@@ -14,10 +14,19 @@ export function ReportProvider({ children }) {
   const { addToast } = useToast();
 
   const refreshReports = useCallback(async () => {
-    if (!currentUser) { setMyReports([]); setAdminQueue([]); return; }
+    const token = localStorage.getItem('auth_token');
+    if (!currentUser || !token) { setMyReports([]); setAdminQueue([]); return; }
+
     if (currentUser.role === 'ADMIN') {
-      const response = await apiAdminService.getReports();
-      setAdminQueue(response.data?.content || []);
+      try {
+        const response = await apiAdminService.getReports();
+        const raw = response.data?.content || (Array.isArray(response.data) ? response.data : (response.data || response.content || []));
+        const list = Array.isArray(raw) ? raw : [];
+        setAdminQueue(list);
+      } catch (err) {
+        console.warn('Failed to fetch admin report queue:', err?.message || err);
+        setAdminQueue([]);
+      }
     }
   }, [currentUser]);
 
@@ -34,15 +43,15 @@ export function ReportProvider({ children }) {
         : await apiReportService.reportPost(targetId, reason, explanation);
       const report = response.data;
       setMyReports((previous) => [report, ...previous]);
-      addToast(`Report submitted successfully. Reference: ${report.id}`, 'success');
+      addToast(`Report submitted successfully. Reference ID: #${report.id || 'SUBMITTED'}`, 'success');
+      refreshReports();
       return report;
     } catch (err) {
-      addToast(err.message, 'error');
+      addToast(err.message || 'Failed to submit report', 'error');
       throw err;
     }
   };
 
-  // The backend has no user-to-user block feature; this remains a local UI preference.
   const blockUser = (username) => setBlockedUsers((previous) => [...new Set([...previous, username])]);
 
   const unblockUser = (username) => setBlockedUsers((previous) => previous.filter((item) => item !== username));
@@ -52,10 +61,10 @@ export function ReportProvider({ children }) {
       if (actionType === 'Dismiss' || actionType === 'Mark No Violation') await apiAdminService.rejectReport(reportId);
       else await apiAdminService.resolveReport(reportId);
       await refreshReports();
-      addToast(`Admin action '${actionType}' applied to ${reportId}.`, 'success');
+      addToast(`Admin action '${actionType}' applied to report #${reportId}.`, 'success');
       return true;
     } catch (err) {
-      addToast(err.message, 'error');
+      addToast(err.message || 'Action failed', 'error');
       throw err;
     }
   };

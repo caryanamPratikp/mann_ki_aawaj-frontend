@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { PostCard } from '../../components/posts/PostCard.jsx';
+import { PostMenu } from '../../components/posts/PostMenu.jsx';
+import { ReportModal } from '../../components/reports/ReportModal.jsx';
 import { LargeDiscussionWindow } from '../../components/posts/LargeDiscussionWindow.jsx';
 import { AvatarThumbnail } from '../../components/avatar/AvatarThumbnail.jsx';
 import { Modal } from '../../components/common/Modal.jsx';
@@ -22,13 +24,14 @@ import { apiClient } from '../../services/apiClient.js';
 import { getMediaUrl } from '../../config/env.js';
 
 export function HomePage({ onNavigate }) {
-  const { posts, loading, isFetching, createPost } = usePosts();
+  const { posts, loading, isFetching, createPost, deletePost, toggleSavePost, savedPostIds = [] } = usePosts();
   const { commentsByPost, fetchComments, createComment, reactToComment } = useComments();
   const { currentUser } = useAuth();
-  const { blockedUsers } = useReports();
+  const { blockedUsers, blockUser } = useReports();
   const { addToast } = useToast();
   const { currentLanguage, t } = useLanguage();
   const [spokenLanguage, setSpokenLanguage] = useSpokenLanguage();
+  const [reportingPost, setReportingPost] = useState(null);
 
   const [activeTab, setActiveTab] = useState('Latest');
   const [selectedTopic, setSelectedTopic] = useState('All');
@@ -478,7 +481,28 @@ export function HomePage({ onNavigate }) {
                             </div>
                           </div>
 
-                          <div style={{ fontSize: '16px', color: '#666666', padding: '0 4px', fontWeight: 900 }}>•••</div>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <PostMenu
+                              isSaved={savedPostIds.includes(post.id)}
+                              isOwner={currentUser && (currentUser.username === post.username || currentUser.email === post.username)}
+                              onDelete={async () => {
+                                try {
+                                  if (deletePost) await deletePost(post.id);
+                                  addToast('Post deleted', 'success');
+                                } catch (e) {
+                                  addToast(e.message || 'Failed to delete post', 'error');
+                                }
+                              }}
+                              onSave={() => toggleSavePost && toggleSavePost(post.id)}
+                              onHide={() => addToast('Post hidden from feed', 'info')}
+                              onMute={() => addToast(`Muted posts from ${post.username}`, 'info')}
+                              onBlock={() => {
+                                blockUser(post.username);
+                                addToast(`Blocked ${post.username}`, 'info');
+                              }}
+                              onReport={() => setReportingPost(post)}
+                            />
+                          </div>
                         </div>
 
                         {/* ── EXPANDED CONTENT & REACTIONS WHEN CLICKED ── */}
@@ -507,6 +531,11 @@ export function HomePage({ onNavigate }) {
                     </motion.div>
                   );
                 })
+              ) : loading ? (
+                <div style={{ padding: '36px', textAlign: 'center', color: '#6F405F', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                  <Loader2 size={24} className="animate-spin" />
+                  <span style={{ fontSize: '13px', fontWeight: 600 }}>{t('updatingTranslations')}</span>
+                </div>
               ) : (
                 <EmptyState
                   icon={MessageSquare}
@@ -737,6 +766,18 @@ export function HomePage({ onNavigate }) {
           </button>
         </form>
       </Modal>
+
+      {reportingPost && (
+        <ReportModal
+          isOpen={Boolean(reportingPost)}
+          onClose={() => setReportingPost(null)}
+          contentType="POST"
+          targetId={reportingPost.id}
+          postId={reportingPost.id}
+          reportedContent={reportingPost.content || reportingPost.title}
+          authorUsername={reportingPost.username}
+        />
+      )}
     </UserLayout>
   );
 }

@@ -254,7 +254,9 @@ export function ConversationList({ conversations = [], activeConvId, onSelectCon
                           </span>
                         )}
                       </div>
-                      <span className="caption-text" style={{ fontSize: '11px', fontWeight: hasUnread ? 700 : 400 }}>{formatDate(conv.updatedAt)}</span>
+                      <span className="caption-text" style={{ fontSize: '11px', fontWeight: hasUnread ? 700 : 400 }}>
+                        {formatDate(conv.lastMessageTime || conv.lastMessageAt || conv.lastMessage?.createdAt || conv.updatedAt)}
+                      </span>
                     </div>
 
                     {isSentPending ? (

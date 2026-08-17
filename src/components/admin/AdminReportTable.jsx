@@ -32,29 +32,29 @@ export function AdminReportTable({ reports = [], onSelectReport, onActionClick }
         <tbody>
           {reports.map((report) => (
             <tr key={report.id} style={{ borderBottom: '1px solid var(--swiss-coffee)' }}>
-              <td style={{ padding: '12px 16px', fontWeight: 600 }}>{report.id}</td>
+              <td style={{ padding: '12px 16px', fontWeight: 600 }}>{report.reportId || `#${report.id}`}</td>
               <td style={{ padding: '12px 16px' }}>
                 <span className="badge badge-neutral">{report.contentType}</span>
               </td>
               <td style={{ padding: '12px 16px', maxWidth: '240px' }}>
                 <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {report.reportedContent}
+                  {report.reportedContent || report.description || `Item #${report.contentId}`}
                 </div>
               </td>
-              <td style={{ padding: '12px 16px', fontWeight: 500 }}>{report.authorUsername}</td>
+              <td style={{ padding: '12px 16px', fontWeight: 500 }}>{report.authorUsername || 'Member'}</td>
               <td style={{ padding: '12px 16px', color: 'var(--hurricane)', fontSize: '13px' }}>
-                {report.reporterUsername}
+                {report.reporterUsername || 'Member'}
               </td>
               <td style={{ padding: '12px 16px' }}>{report.reason}</td>
               <td style={{ padding: '12px 16px' }}>
                 <span
                   className="badge"
                   style={{
-                    background: report.riskLevel === 'HIGH' || report.riskLevel === 'CRITICAL' ? 'var(--error-bg)' : 'var(--warning-bg)',
-                    color: report.riskLevel === 'HIGH' || report.riskLevel === 'CRITICAL' ? 'var(--error)' : 'var(--warning)',
+                    background: (report.riskLevel === 'HIGH' || report.riskLevel === 'CRITICAL') ? 'var(--error-bg)' : 'var(--warning-bg)',
+                    color: (report.riskLevel === 'HIGH' || report.riskLevel === 'CRITICAL') ? 'var(--error)' : 'var(--warning)',
                   }}
                 >
-                  {report.riskLevel}
+                  {report.riskLevel || 'MEDIUM'}
                 </span>
               </td>
               <td style={{ padding: '12px 16px' }}>

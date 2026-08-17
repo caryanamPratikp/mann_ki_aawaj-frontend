@@ -116,7 +116,14 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!inputText.trim() || submitting || !conversation || isBlocked) return;
+    if (!inputText.trim() || submitting || !conversation) return;
+
+    const modCheck = moderationCheck(inputText);
+    if (modCheck.status === 'BLOCKED') {
+      addToast(`Message auto-blocked by AI for policy violation (${modCheck.category || 'Threat/Abuse'}). Reported to Admin.`, 'error', 6000);
+      setInputText('');
+      return;
+    }
 
     const textToSend = inputText.trim();
     setInputText('');
@@ -126,7 +133,7 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
       await onSendMessage(conversation.id, textToSend);
     } catch (err) {
       console.error(err);
-      setInputText(textToSend);
+      addToast(err?.message || 'Message blocked by AI moderation.', 'error');
     } finally {
       setSubmitting(false);
     }

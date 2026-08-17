@@ -51,8 +51,8 @@ export function CreatePostPage({ onNavigate }) {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      addToast(t('imageSizeError') || 'Image size must be less than 5MB.', 'error');
+    if (file.size > 10 * 1024 * 1024) {
+      addToast(t('imageSizeError') || 'Image size must be less than 10MB.', 'error');
       return;
     }
 
@@ -248,7 +248,7 @@ export function CreatePostPage({ onNavigate }) {
                       {t('chooseImage')}
                     </span>
                     <span style={{ fontSize: '11.5px', color: 'var(--hurricane)' }}>
-                      PNG, JPG, WEBP (Max 5MB) • Verified by AI Safety
+                      PNG, JPG, WEBP, GIF, SVG, BMP (Max 10MB) • Verified by AI Safety
                     </span>
                   </div>
                 )}

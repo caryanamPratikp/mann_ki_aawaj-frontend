@@ -28,6 +28,7 @@ import { EditProfilePage } from '../pages/user/EditProfilePage.jsx';
 import { SettingsPage } from '../pages/user/SettingsPage.jsx';
 import { PrivacySettingsPage } from '../pages/user/PrivacySettingsPage.jsx';
 import { AccountSettingsPage } from '../pages/user/AccountSettingsPage.jsx';
+import { NotificationSettingsPage } from '../pages/user/NotificationSettingsPage.jsx';
 import { SafetyModerationPage } from '../pages/user/SafetyModerationPage.jsx';
 import { HelpSupportPage } from '../pages/user/HelpSupportPage.jsx';
 import { ChatPage } from '../pages/user/ChatPage.jsx';
@@ -38,6 +39,8 @@ import { AdminReportsPage } from '../pages/admin/AdminReportsPage.jsx';
 import { AdminReportDetailsPage } from '../pages/admin/AdminReportDetailsPage.jsx';
 import { AdminContentReviewPage } from '../pages/admin/AdminContentReviewPage.jsx';
 import { AdminBlockedContentPage } from '../pages/admin/AdminBlockedContentPage.jsx';
+import { AdminUsersPage } from '../pages/admin/AdminUsersPage.jsx';
+import { AdminAnalyticsPage } from '../pages/admin/AdminAnalyticsPage.jsx';
 
 export function AppRoutes() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -116,6 +119,18 @@ export function AppRoutes() {
   if (normalizedPath === '/admin/blocked-content') {
     return <AdminBlockedContentPage onNavigate={navigate} />;
   }
+  if (normalizedPath === '/admin/users') {
+    return <AdminUsersPage onNavigate={navigate} />;
+  }
+  if (normalizedPath === '/admin/analytics') {
+    return <AdminAnalyticsPage onNavigate={navigate} />;
+  }
+  if (normalizedPath === '/admin/settings') {
+    return <AdminDashboardPage onNavigate={navigate} />;
+  }
+  if (normalizedPath === '/admin/system-logs') {
+    return <AdminBlockedContentPage onNavigate={navigate} />;
+  }
 
   // 5. User App Protected Routes (redirect to /login if not logged in)
   if (!currentUser) {
@@ -175,6 +190,9 @@ export function AppRoutes() {
   if (normalizedPath === '/settings/account') {
     return <AccountSettingsPage onNavigate={navigate} />;
   }
+  if (normalizedPath === '/settings/notifications') {
+    return <NotificationSettingsPage onNavigate={navigate} />;
+  }
   if (normalizedPath === '/settings/safety') {
     return <SafetyModerationPage onNavigate={navigate} />;
   }
@@ -182,6 +200,6 @@ export function AppRoutes() {
     return <HelpSupportPage onNavigate={navigate} />;
   }
 
-  // Fallback for unhandled routes: render LandingPage if not logged in, otherwise HomePage
+  // Fallback for unhandled routes
   return currentUser ? <HomePage onNavigate={navigate} /> : <LandingPage onNavigate={navigate} />;
 }

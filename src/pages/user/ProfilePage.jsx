@@ -108,9 +108,19 @@ export function ProfilePage({ username, onNavigate }) {
     return () => { isMounted = false; };
   }, [username, currentUser, isSelf]);
 
-  const userPosts = posts.filter(
-    (p) => p.username?.toLowerCase().replace('@', '') === targetUsername?.toLowerCase() && p.status === 'PUBLISHED'
-  );
+  const cleanProfileUname = profileData?.username?.toLowerCase().replace(/^@/, '');
+  const cleanTargetUname = targetUsername?.toLowerCase().replace(/^@/, '');
+
+  const userPosts = posts.filter((p) => {
+    if (p.status !== 'PUBLISHED' && p.status !== 'ACTIVE') return false;
+    if (isSelf && currentUser?.id && (p.userId === currentUser.id || String(p.userId) === String(currentUser.id))) {
+      return true;
+    }
+    const postUname = (p.username || '').toLowerCase().replace(/^@/, '');
+    if (cleanProfileUname && postUname === cleanProfileUname) return true;
+    if (cleanTargetUname && postUname === cleanTargetUname) return true;
+    return false;
+  });
 
   // Handle Edit Profile Save (PUT /api/profile or POST /api/profile)
   const handleSaveEdit = async (e) => {

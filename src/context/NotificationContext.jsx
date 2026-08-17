@@ -3,6 +3,7 @@ import { apiNotificationService } from '../services/apiNotificationService.js';
 import { mapNotification } from '../services/apiMappers.js';
 import { useAuth } from './AuthContext.jsx';
 import { useToast } from './ToastContext.jsx';
+import { playNotificationSound } from '../utils/soundUtil.js';
 
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '../config/env.js';
@@ -14,27 +15,48 @@ export function NotificationProvider({ children }) {
   const { currentUser } = useAuth();
   const { addToast } = useToast();
 
+  const getUserNotifPrefs = useCallback(() => {
+    const userId = currentUser?.id || currentUser?.username || 'guest';
+    const raw = localStorage.getItem(`user_notif_prefs_${userId}`);
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch (e) {}
+    }
+    return { chatMessages: true, postLikes: true, comments: true, systemAlerts: true, soundAlerts: true };
+  }, [currentUser]);
+
   const refreshNotifications = useCallback(async () => {
     if (!currentUser) { setNotifications([]); return; }
     try {
       const response = await apiNotificationService.getNotifications();
-      setNotifications((response.data?.content || []).map(mapNotification));
+      const fetched = (response.data?.content || []).map(mapNotification);
+
+      // EXCLUDE chat messages/requests from the Bell Icon section
+      // Only Post actions (Comments, Likes, Reactions) & System Warnings belong in Bell section
+      const postAndSystemNotifs = fetched.filter(n => {
+        const type = (n.type || '').toUpperCase();
+        return !type.includes('CHAT') && !type.includes('MESSAGE');
+      });
+
+      setNotifications(postAndSystemNotifs);
     } catch (err) {
       setNotifications([]);
     }
   }, [currentUser]);
 
+  // 10-Second Auto-Refresh Timer
   useEffect(() => {
     refreshNotifications();
     const timer = setInterval(() => {
       refreshNotifications();
-    }, 5000);
+    }, 10000);
     return () => clearInterval(timer);
   }, [refreshNotifications]);
 
   // Real-time Socket.IO notification listener
   useEffect(() => {
-    if (!currentUser || !currentUser.id) return;
+    if (!currentUser || !currentUser.id || window.location.pathname.startsWith('/admin')) return;
 
     const socket = io(SOCKET_URL, {
       transports: ['polling', 'websocket'],
@@ -49,16 +71,56 @@ export function NotificationProvider({ children }) {
     });
 
     socket.on('new_notification', (newNotif) => {
-      console.log('[NotificationSocket] Received real-time notification:', newNotif);
+      const type = (newNotif?.type || '').toUpperCase();
+
+      // Skip chat messages from Bell notification processing
+      if (type.includes('CHAT') || type.includes('MESSAGE')) return;
+
       refreshNotifications();
-      const notifMsg = newNotif?.message || newNotif?.content || newNotif?.title || 'You have a new notification';
-      addToast(notifMsg, 'info', 5000);
+      const prefs = getUserNotifPrefs();
+
+      if (type.includes('LIKE') || type.includes('RELATE') || type.includes('REACTION')) {
+        if (prefs.postLikes === false) return;
+      } else if (type.includes('COMMENT')) {
+        if (prefs.comments === false) return;
+      } else if (type.includes('SYSTEM') || type.includes('WARNING')) {
+        if (prefs.systemAlerts === false) return;
+      }
+
+      const rawSender = newNotif?.senderUsername || newNotif?.actorUsername || newNotif?.username || 'Someone';
+      const cleanSender = rawSender.startsWith('@') ? rawSender : `@${rawSender}`;
+
+      let formattedText = '';
+      if (type.includes('RELATE')) {
+        formattedText = `${cleanSender} related to your post`;
+      } else if (type.includes('SUPPORT')) {
+        formattedText = `${cleanSender} supported your post`;
+      } else if (type.includes('AGREE')) {
+        formattedText = `${cleanSender} agreed with your post`;
+      } else if (type.includes('INTERESTING')) {
+        formattedText = `${cleanSender} found your post interesting`;
+      } else if (type.includes('LIKE')) {
+        formattedText = `${cleanSender} reacted to your post`;
+      } else if (type.includes('COMMENT')) {
+        formattedText = `${cleanSender} commented on your post`;
+      } else {
+        formattedText = newNotif?.message || newNotif?.content || newNotif?.title || 'You have a new notification';
+      }
+
+      addToast(formattedText, 'notification', 4000, {
+        label: 'NOTIFICATION',
+        senderUsername: cleanSender,
+      });
+
+      if (prefs.soundAlerts !== false) {
+        playNotificationSound();
+      }
     });
 
     return () => {
       socket.disconnect();
     };
-  }, [currentUser, refreshNotifications]);
+  }, [currentUser, refreshNotifications, addToast, getUserNotifPrefs]);
 
   const markAsRead = async (id) => {
     await apiNotificationService.markAsRead(id);
@@ -71,7 +133,6 @@ export function NotificationProvider({ children }) {
     await refreshNotifications();
   };
 
-  // No delete-notification endpoint exists in the current backend.
   const deleteNotification = () => {};
 
   const unreadCount = notifications.filter(n => !n.isRead).length;

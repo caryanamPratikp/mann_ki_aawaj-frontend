@@ -58,6 +58,7 @@ export const apiChatService = {
           otherParticipantId: apiRoom.otherParticipantId,
           lastMessage: apiRoom.lastMessage?.content || 'Chat room active',
           lastMessageObj: apiRoom.lastMessage,
+          lastMessageTime: apiRoom.lastMessage?.createdAt || apiRoom.updatedAt || apiRoom.createdAt,
           hasUnread: Boolean(apiRoom.hasUnread || unreadCount > 0),
           unreadCount: unreadCount,
           updatedAt: apiRoom.updatedAt || new Date().toISOString(),

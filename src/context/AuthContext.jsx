@@ -19,6 +19,13 @@ export function AuthProvider({ children }) {
       try {
         const user = authService.getCurrentUser();
         if (user) {
+          if (user.role === 'ADMIN') {
+            const adminUser = { ...user, username: user.username || '@admin', hasProfile: true };
+            setCurrentUser(adminUser);
+            setIsAdminLoggedIn(true);
+            return;
+          }
+
           try {
             const profileRes = await apiProfileService.getMyProfile();
             if (profileRes && profileRes.success && profileRes.data?.username) {
@@ -38,13 +45,10 @@ export function AuthProvider({ children }) {
             // DB profile fetch error fallback
           }
 
-          const defaultHandle = user.fullName
-            ? `@${user.fullName.toLowerCase().replace(/\s+/g, '')}`
-            : (user.email ? `@${user.email.split('@')[0]}` : '@user');
-          const usernameFormatted = user.username
+          const defaultHandle = user.username
             ? (user.username.startsWith('@') ? user.username : `@${user.username}`)
-            : defaultHandle;
-          setCurrentUser({ ...user, username: usernameFormatted });
+            : `@user_${user.id || 'anonymous'}`;
+          setCurrentUser({ ...user, username: defaultHandle });
         } else {
           setCurrentUser(null);
         }
@@ -61,15 +65,37 @@ export function AuthProvider({ children }) {
     try {
       const result = await authService.login(email, password);
       const user = result.user || result;
-      const defaultHandle = user.fullName
-        ? `@${user.fullName.toLowerCase().replace(/\s+/g, '')}`
-        : (user.email ? `@${user.email.split('@')[0]}` : '@user');
-      const usernameFormatted = user.username
+
+      // Admins live in admin scope and have no user profile
+      if (user.role === 'ADMIN') {
+        const adminUser = { ...user, username: user.username || '@admin', hasProfile: true };
+        localStorage.setItem('auth_user', JSON.stringify(adminUser));
+        localStorage.setItem('mka_admin_logged_in', 'true');
+        setCurrentUser(adminUser);
+        setIsAdminLoggedIn(true);
+        addToast(`Welcome back Admin!`, 'success');
+        return { ...result, user: adminUser };
+      }
+
+      // Try fetching database profile for regular users to resolve handle
+      let dbHandle = null;
+      try {
+        const profileRes = await apiProfileService.getMyProfile();
+        if (profileRes && profileRes.data?.username) {
+          dbHandle = profileRes.data.username.startsWith('@')
+            ? profileRes.data.username
+            : `@${profileRes.data.username}`;
+        }
+      } catch (e) {}
+
+      const cleanHandle = dbHandle || (user.username
         ? (user.username.startsWith('@') ? user.username : `@${user.username}`)
-        : defaultHandle;
-      const updatedUser = { ...user, username: usernameFormatted };
+        : `@user_${user.id || 'anonymous'}`);
+
+      const updatedUser = { ...user, username: cleanHandle, hasProfile: true };
+      localStorage.setItem('auth_user', JSON.stringify(updatedUser));
       setCurrentUser(updatedUser);
-      addToast(`Welcome back, ${updatedUser.username}!`, 'success');
+      addToast(`Welcome back, ${cleanHandle}!`, 'success');
       return { ...result, user: updatedUser };
     } catch (err) {
       addToast(err.message || 'Login failed', 'error');
@@ -114,6 +140,8 @@ export function AuthProvider({ children }) {
   const logout = () => {
     authService.logout();
     setCurrentUser(null);
+    setIsAdminLoggedIn(false);
+    localStorage.removeItem('mka_admin_logged_in');
     addToast('You have logged out.', 'info');
   };
 

@@ -5,13 +5,19 @@ const ToastContext = createContext(null);
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
 
-  const addToast = useCallback((message, type = 'info', duration = 3500) => {
+  const addToast = useCallback((message, type = 'info', duration = 4000, options = {}) => {
     const id = Date.now() + Math.random();
-    setToasts(prev => [...prev, { id, message, type }]);
+    const newToast = {
+      id,
+      message,
+      type,
+      duration: duration || 4000,
+      label: options.label || (type === 'notification' ? 'NOTIFICATION' : type.toUpperCase()),
+      senderUsername: options.senderUsername || options.username || null,
+    };
 
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, duration);
+    // Append to bottom of toast list
+    setToasts(prev => [...prev, newToast]);
   }, []);
 
   const removeToast = useCallback((id) => {

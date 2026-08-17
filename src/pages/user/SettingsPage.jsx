@@ -2,7 +2,7 @@ import React from 'react';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
-import { Shield, Lock, User, ChevronRight } from 'lucide-react';
+import { Shield, Lock, User, Bell, ChevronRight } from 'lucide-react';
 
 export function SettingsPage({ onNavigate }) {
   const { currentUser } = useAuth();
@@ -16,6 +16,14 @@ export function SettingsPage({ onNavigate }) {
       defaultDesc: 'Private full name, mobile number, email, and password.',
       icon: User,
       route: '/settings/account',
+    },
+    {
+      titleKey: 'notificationSettings',
+      defaultTitle: 'Notification Settings',
+      descKey: 'notificationSettingsDesc',
+      defaultDesc: 'Message toasts, reaction alerts, comment notices, and sound chime.',
+      icon: Bell,
+      route: '/settings/notifications',
     },
     {
       titleKey: 'privacySettings',

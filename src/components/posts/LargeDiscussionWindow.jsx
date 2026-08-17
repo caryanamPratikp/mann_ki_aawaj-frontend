@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { SpeechBubbleComment } from '../comments/SpeechBubbleComment.jsx';
 import { AvatarThumbnail } from '../avatar/AvatarThumbnail.jsx';
+import { ReactionsBar } from './ReactionsBar.jsx';
 import { formatDate } from '../../utils/formatDate.js';
 import { MessageSquare, Send, Sparkles, ChevronDown, ChevronUp, Mic, MicOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
 import { useComments } from '../../context/CommentContext.jsx';
+import { usePosts } from '../../context/PostContext.jsx';
 import { getMediaUrl } from '../../config/env.js';
 
 export function LargeDiscussionWindow({ post, comments: passedComments, onAddComment, onReactComment, onNavigate }) {
   const { currentUser } = useAuth();
   const { createReply } = useComments();
+  const { reactToPost } = usePosts();
   const { currentLanguage, translateTextAsync, t } = useLanguage();
   const [commentText, setCommentText] = useState('');
   const [pinnedCommentId, setPinnedCommentId] = useState(null);
@@ -188,13 +191,13 @@ export function LargeDiscussionWindow({ post, comments: passedComments, onAddCom
       {/* ── EXPANDABLE DISCUSSION BODY ── */}
       {isExpanded && (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-          {/* Main Post Body Content & Image Attachment */}
-          <div style={{ padding: '12px 18px', borderBottom: '1px solid #EDE8E6', backgroundColor: '#FFFDFB' }}>
+          {/* Main Post Body Content, Image Attachment & Reaction Buttons */}
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #EDE8E6', backgroundColor: '#FFFDFB', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <p style={{ fontSize: '13.5px', color: '#2D1D15', margin: 0, lineHeight: 1.45, whiteSpace: 'pre-line' }}>
               {post.content}
             </p>
             {post.imageUrl && (
-              <div style={{ marginTop: '10px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #EDE8E6', maxWidth: '360px' }}>
+              <div style={{ marginTop: '4px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #EDE8E6', maxWidth: '360px' }}>
                 <img
                   src={getMediaUrl(post.imageUrl)}
                   alt="Post attachment"
@@ -202,6 +205,15 @@ export function LargeDiscussionWindow({ post, comments: passedComments, onAddCom
                 />
               </div>
             )}
+
+            {/* Reactions Bar inside Center Expanded Post Box */}
+            <div style={{ marginTop: '4px', paddingTop: '8px', borderTop: '1px solid #FAF7F6' }}>
+              <ReactionsBar
+                reactions={post.reactions}
+                userReaction={post.userReaction}
+                onReact={(type) => reactToPost(post.id, type)}
+              />
+            </div>
           </div>
 
           {/* ── LIVE COMMENT COMPOSER (Sticky on Top) ── */}

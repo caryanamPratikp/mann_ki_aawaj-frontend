@@ -6,6 +6,7 @@ import { useAuth } from './AuthContext.jsx';
 import { useToast } from './ToastContext.jsx';
 import { FloatingChatToast } from '../components/common/FloatingChatToast.jsx';
 import { formatLastSeen } from '../utils/formatLastSeen.js';
+import { playNotificationSound } from '../utils/soundUtil.js';
 
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '../config/env.js';
@@ -27,12 +28,25 @@ export function ChatProvider({ children }) {
   const [floatingToasts, setFloatingToasts] = useState([]);
   const socketRef = useRef(null);
   const activeConvRef = useRef(activeConversation);
+  const prevConvsRef = useRef(null);
+  const recentNotifKeysRef = useRef(new Set());
+
+  const getUserNotifPrefs = useCallback(() => {
+    const userId = currentUser?.id || currentUser?.username || 'guest';
+    const raw = localStorage.getItem(`user_notif_prefs_${userId}`);
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch (e) {}
+    }
+    return { chatMessages: true, postLikes: true, comments: true, systemAlerts: true, soundAlerts: true };
+  }, [currentUser]);
 
   useEffect(() => {
     activeConvRef.current = activeConversation;
   }, [activeConversation]);
 
-  // TanStack Query for background conversations auto-sync
+  // TanStack Query for background conversations auto-sync (3s polling)
   const { data: conversations = [], refetch: refreshConversations } = useQuery({
     queryKey: ['conversations'],
     queryFn: async () => {
@@ -59,9 +73,81 @@ export function ChatProvider({ children }) {
     }, 6000);
   }, [dismissFloatingToast]);
 
+  // Unified & Deduplicated Notification Trigger
+  const notifyNewMessage = useCallback((msgKey, convId, cleanSender, previewText) => {
+    if (!msgKey || recentNotifKeysRef.current.has(msgKey)) return;
+    recentNotifKeysRef.current.add(msgKey);
+
+    if (recentNotifKeysRef.current.size > 100) {
+      const first = recentNotifKeysRef.current.values().next().value;
+      recentNotifKeysRef.current.delete(first);
+    }
+
+    const prefs = getUserNotifPrefs();
+    if (prefs.chatMessages === false) return; // User disabled chat message notifications
+
+    // 1. Single Floating Chat Toast Banner with 4s right-swipe dismissal
+    addFloatingToast({
+      id: `toast_${convId}_${Date.now()}`,
+      roomId: convId,
+      senderUsername: cleanSender,
+      content: `You've a new msg from ${cleanSender}`,
+      previewText: previewText,
+      label: 'MESSAGE',
+    });
+
+    // 2. Play Sound Chime if enabled
+    if (prefs.soundAlerts !== false) {
+      playNotificationSound();
+    }
+  }, [addFloatingToast, getUserNotifPrefs]);
+
+  // Detect newly arrived unread messages from polling or updates
+  useEffect(() => {
+    if (!conversations || conversations.length === 0 || !currentUser) return;
+
+    if (prevConvsRef.current === null) {
+      prevConvsRef.current = conversations;
+      return;
+    }
+
+    const prevMap = new Map((prevConvsRef.current || []).map((c) => [String(c.id), c]));
+
+    conversations.forEach((conv) => {
+      const prev = prevMap.get(String(conv.id));
+
+      const isNewUnread = !prev
+        ? (conv.unreadCount > 0 || conv.hasUnread)
+        : (
+            (conv.unreadCount || 0) > (prev.unreadCount || 0) ||
+            (conv.hasUnread && !prev.hasUnread) ||
+            (conv.lastMessageTime && conv.lastMessageTime !== prev.lastMessageTime && (conv.unreadCount > 0 || conv.hasUnread))
+          );
+
+      if (isNewUnread) {
+        const otherName = conv.otherParticipantUsername || conv.participant2Username || 'Someone';
+        const cleanSender = otherName.startsWith('@') ? otherName : `@${otherName}`;
+        const msgText = conv.lastMessage || 'Sent you a new message';
+        const previewText = typeof msgText === 'string'
+          ? (msgText.length > 45 ? `${msgText.slice(0, 42)}...` : msgText)
+          : 'Sent you a message';
+
+        const cleanSelf = (currentUser.username || '').replace(/^@/, '').toLowerCase();
+        const cleanOther = cleanSender.replace(/^@/, '').toLowerCase();
+
+        if (cleanOther !== cleanSelf) {
+          const dedupeKey = `poll_${conv.id}_${conv.lastMessageTime || conv.unreadCount}`;
+          notifyNewMessage(dedupeKey, conv.id, cleanSender, previewText);
+        }
+      }
+    });
+
+    prevConvsRef.current = conversations;
+  }, [conversations, currentUser, notifyNewMessage]);
+
   // Global Real-time Socket.IO Connection & Presence Heartbeat
   useEffect(() => {
-    if (!currentUser || isMockMode()) return;
+    if (!currentUser || isMockMode() || window.location.pathname.startsWith('/admin')) return;
 
     const socket = io(SOCKET_URL, {
       transports: ['polling', 'websocket'],
@@ -92,25 +178,30 @@ export function ChatProvider({ children }) {
 
     socket.on('receive_message', (msg) => {
       console.log('[Socket] Received message:', msg);
-      
+
       queryClient.invalidateQueries({ queryKey: ['messages', msg.roomId] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
 
-      const cleanSelf = currentUser?.username
-        ? (currentUser.username.startsWith('@') ? currentUser.username.toLowerCase() : `@${currentUser.username.toLowerCase()}`)
-        : '';
-      const cleanSender = msg.senderUsername
-        ? (msg.senderUsername.startsWith('@') ? msg.senderUsername.toLowerCase() : `@${msg.senderUsername.toLowerCase()}`)
-        : '';
+      const senderId = msg.senderId || msg.sender?.id || msg.userId || msg.authorId;
+      const currentUserId = currentUser?.id;
 
-      const isFromOther = cleanSender && cleanSender !== cleanSelf;
-      const isViewingExactChat = String(activeConvRef.current?.id) === String(msg.roomId) && document.visibilityState === 'visible';
+      const cleanSelfHandle = (currentUser?.username || '').replace(/^@/, '').toLowerCase();
+      const rawSenderHandle = msg.senderUsername || msg.sender?.username || msg.username || '';
+      const cleanSenderHandle = rawSenderHandle.replace(/^@/, '').toLowerCase();
 
-      if (isFromOther && !isViewingExactChat) {
-        const senderHandle = msg.senderUsername ? (msg.senderUsername.startsWith('@') ? msg.senderUsername : `@${msg.senderUsername}`) : 'User';
-        const msgText = msg.content || msg.text || '';
+      const isFromOther = (senderId && currentUserId)
+        ? (String(senderId) !== String(currentUserId))
+        : (cleanSenderHandle ? cleanSenderHandle !== cleanSelfHandle : true);
+
+      if (isFromOther) {
+        const senderHandle = rawSenderHandle
+          ? (rawSenderHandle.startsWith('@') ? rawSenderHandle : `@${rawSenderHandle}`)
+          : 'Anonymous Member';
+        const msgText = msg.content || msg.text || 'Sent you a message';
         const previewText = msgText.length > 50 ? `${msgText.slice(0, 47)}...` : msgText;
-        addToast(`New message from ${senderHandle}: ${previewText}`, 'info', 5000);
+
+        const dedupeKey = msg.id ? `socket_${msg.id}` : `socket_${msg.roomId}_${msgText}`;
+        notifyNewMessage(dedupeKey, msg.roomId, senderHandle, previewText);
       }
     });
 
@@ -134,10 +225,8 @@ export function ChatProvider({ children }) {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     });
 
-    // Send heartbeat every 25 seconds
     const heartbeatInterval = setInterval(sendHeartbeat, 25000);
 
-    // Browser Visibility API
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         sendHeartbeat();
@@ -151,9 +240,8 @@ export function ChatProvider({ children }) {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [currentUser, queryClient, addFloatingToast]);
+  }, [currentUser, queryClient, notifyNewMessage]);
 
-  // Join/leave active chat room channels via socket
   useEffect(() => {
     const socket = socketRef.current;
     if (!socket || !activeConversation?.id || isMockMode()) return;
@@ -232,15 +320,14 @@ export function ChatProvider({ children }) {
     if (!username) return { isOnline: false, statusText: t ? t('offline', 'Offline') : 'Offline' };
     const cleanU = username.trim().toLowerCase().replace('@', '');
     const entry = onlineUsers[cleanU] || onlineUsers[`@${cleanU}`];
-    
+
     if (entry) {
       return {
         isOnline: entry.isOnline,
         statusText: formatLastSeen(entry, t),
       };
     }
-    
-    // Fallback based on backend API response or default active state
+
     const presenceObj = {
       isOnline: Boolean(fallbackOnline),
       lastSeen: fallbackLastSeen,

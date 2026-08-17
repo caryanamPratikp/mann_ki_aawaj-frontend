@@ -30,12 +30,15 @@ export function MyPostsPage({ onNavigate }) {
   }
 
   const cleanActive = (activeUsername || '').replace(/^@/, '').toLowerCase();
-  const currentUserId = currentUser?.id;
+  const currentUserId = currentUser?.id || currentUser?.userId;
 
-  // Filter posts created strictly by current user
+  // Filter posts created strictly by current user (by ID or handle match)
   const myPosts = posts.filter((p) => {
     if (!currentUser) return false;
-    if (currentUserId && p.userId === currentUserId) return true;
+    const postUserId = p.userId || p.authorId;
+    if (currentUserId && postUserId && String(postUserId) === String(currentUserId)) {
+      return true;
+    }
     const postUname = (p.username || '').replace(/^@/, '').toLowerCase();
     return Boolean(cleanActive && postUname && postUname === cleanActive);
   });

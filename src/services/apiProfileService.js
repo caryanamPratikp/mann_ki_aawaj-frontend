@@ -4,6 +4,12 @@ import { mockAuthService } from './mockAuthService.js';
 export const apiProfileService = {
   // GET /api/profile/me
   async getMyProfile() {
+    const isAdminRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+    const isAdminUser = typeof localStorage !== 'undefined' && (localStorage.getItem('admin_token') || localStorage.getItem('is_admin'));
+    if (isAdminRoute || isAdminUser) {
+      return { success: true, data: null };
+    }
+
     const token = localStorage.getItem('auth_token');
     const isMock = !token || token.startsWith('mock') || token === 'mock_token';
     if (isMock) {
