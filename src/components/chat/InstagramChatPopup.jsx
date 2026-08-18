@@ -3,6 +3,7 @@ import { InitialAvatar } from '../profile/InitialAvatar.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { mockChatService } from '../../services/mockChatService.js';
+import { moderationCheck } from '../../utils/moderationCheck.js';
 import { X, Send, Shield, CheckCircle2, Lock, ArrowLeft } from 'lucide-react';
 import { formatDate } from '../../utils/formatDate.js';
 
@@ -49,6 +50,14 @@ export function InstagramChatPopup({ targetUsername, onClose, onNavigate }) {
   const handleSendInitialRequest = (e) => {
     e.preventDefault();
     if (!inputText.trim() || submitting) return;
+
+    const modCheck = moderationCheck(inputText.trim());
+    if (modCheck.status === 'BLOCKED') {
+      addToast(modCheck.message || 'Sharing external links or contact information is not permitted.', 'error');
+      setInputText('');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const msg = mockChatService.sendMessage(conversation.id, inputText.trim(), cleanSelf, cleanTarget);
@@ -95,6 +104,14 @@ export function InstagramChatPopup({ targetUsername, onClose, onNavigate }) {
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!inputText.trim() || submitting) return;
+
+    const modCheck = moderationCheck(inputText.trim());
+    if (modCheck.status === 'BLOCKED') {
+      addToast(modCheck.message || 'Sharing external links or contact information is not permitted.', 'error');
+      setInputText('');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const msg = mockChatService.sendMessage(conversation.id, inputText.trim(), cleanSelf, cleanTarget);

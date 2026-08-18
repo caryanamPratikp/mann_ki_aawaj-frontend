@@ -24,87 +24,44 @@ import {
   Mail,
   Phone,
   MapPin,
+  Smartphone,
 } from 'lucide-react';
-import heroBg from '../../assets/hero_bg.png';
+import heroBgVideo from '../../assets/hero_bg.mp4';
+import heroImg from '../../assets/hero.png';
 import logoMKA from '../../assets/logo_MKA.png';
+import leafImg from '../../assets/leaf.png';
+import { Footer } from '../../components/layout/Footer.jsx';
 
-/* ── Decorative Botanical Branch Component ── */
-function BotanicalBranch({ width = 150, height = 115, style = {}, flip = false, color = "#C99E85" }) {
+/* ── Decorative Leaf Artwork Component ── */
+function BotanicalBranch({ width = 160, height, style = {}, flip = false }) {
   return (
-    <svg
-      width={width}
-      height={height}
-      viewBox="0 0 160 120"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
+    <img
+      src={leafImg}
+      alt="Leaf Graphic"
       style={{
+        width: typeof width === 'number' ? `${width}px` : width,
+        height: height ? (typeof height === 'number' ? `${height}px` : height) : 'auto',
+        objectFit: 'contain',
+        objectPosition: 'bottom center',
         transform: flip ? 'scaleX(-1)' : 'none',
         pointerEvents: 'none',
         userSelect: 'none',
+        opacity: 0.95,
+        verticalAlign: 'bottom',
+        display: 'block',
         ...style,
       }}
       aria-hidden="true"
-    >
-      <g opacity="0.75">
-        {/* Main Curved Stem */}
-        <path
-          d="M 15 115 Q 45 65 125 15"
-          stroke={color}
-          strokeWidth="2.5"
-          strokeLinecap="round"
-        />
-        {/* Leaf 1 - Bottom Left */}
-        <path
-          d="M 32 90 C 8 75 14 55 36 70 C 44 80 38 90 32 90 Z"
-          fill="#E5C7B7"
-          stroke={color}
-          strokeWidth="1.2"
-        />
-        {/* Leaf 2 - Mid Left */}
-        <path
-          d="M 52 65 C 22 45 32 25 58 42 C 64 54 58 65 52 65 Z"
-          fill="#DEC0AE"
-          stroke={color}
-          strokeWidth="1.2"
-        />
-        {/* Leaf 3 - Upper Left */}
-        <path
-          d="M 78 38 C 52 18 66 3 88 22 C 92 32 86 38 78 38 Z"
-          fill="#E8CCBC"
-          stroke={color}
-          strokeWidth="1.2"
-        />
-        {/* Leaf 4 - Top Leaf */}
-        <path
-          d="M 125 15 C 120 -8 142 -8 138 15 C 132 22 125 18 125 15 Z"
-          fill="#DDBBA7"
-          stroke={color}
-          strokeWidth="1.2"
-        />
-        {/* Leaf 5 - Mid Right */}
-        <path
-          d="M 64 58 C 86 46 100 60 84 75 C 74 77 66 68 64 58 Z"
-          fill="#E2C1AF"
-          stroke={color}
-          strokeWidth="1.2"
-        />
-        {/* Leaf 6 - Bottom Right */}
-        <path
-          d="M 42 84 C 66 76 78 90 58 104 C 48 106 43 94 42 84 Z"
-          fill="#E8CCA0"
-          stroke={color}
-          strokeWidth="1.2"
-          opacity="0.85"
-        />
-      </g>
-    </svg>
+    />
   );
 }
 
 export function LandingPage({ onNavigate }) {
   const [scrolled, setScrolled] = useState(false);
   const [vsInView, setVsInView] = useState(false);
+  const [appInView, setAppInView] = useState(false);
   const vsRef = useRef(null);
+  const appRef = useRef(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -125,6 +82,20 @@ export function LandingPage({ onNavigate }) {
       { threshold: 0.25 }
     );
     if (vsRef.current) observer.observe(vsRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // IntersectionObserver for Mobile App section slide-in animation
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setAppInView(true);
+        }
+      },
+      { threshold: 0.2 }
+    );
+    if (appRef.current) observer.observe(appRef.current);
     return () => observer.disconnect();
   }, []);
 
@@ -397,9 +368,10 @@ export function LandingPage({ onNavigate }) {
           zIndex: 1000,
           padding: '14px 0',
           transition: 'all 0.3s ease',
-          backgroundColor: scrolled ? 'rgba(8, 10, 24, 0.96)' : 'rgba(8, 10, 24, 0.82)',
-          backdropFilter: 'blur(16px)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          backgroundColor: scrolled ? '#080A18' : 'transparent',
+          backdropFilter: scrolled ? 'blur(16px)' : 'none',
+          borderBottom: scrolled ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid transparent',
+          boxShadow: scrolled ? '0 4px 20px rgba(0, 0, 0, 0.4)' : 'none',
         }}
       >
         <div className="section-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -434,7 +406,6 @@ export function LandingPage({ onNavigate }) {
             </span>
             <a href="#features" className="nav-item">Features</a>
             <a href="#how-it-works" className="nav-item">How It Works</a>
-            <a href="#safety" className="nav-item">Safety</a>
             <a href="#about" className="nav-item">About Us</a>
           </div>
 
@@ -467,14 +438,10 @@ export function LandingPage({ onNavigate }) {
         </div>
       </nav>
 
-      {/* ── 1. MODE A: HERO SECTION ── */}
+      {/* ── 1. MODE A: HERO SECTION (VIDEO BACKGROUND) ── */}
       <section
         style={{
           backgroundColor: '#080A18',
-          backgroundImage: `url(${heroBg})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'right center',
-          backgroundRepeat: 'no-repeat',
           color: '#FFF8F2',
           paddingTop: '120px',
           paddingBottom: '90px',
@@ -485,16 +452,29 @@ export function LandingPage({ onNavigate }) {
           overflow: 'hidden',
         }}
       >
-        {/* Dark Left Gradient Overlay for text readability */}
-        <div
+        {/* Muted Autoplay Video Background (Shifted 25px Right) */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
           style={{
             position: 'absolute',
-            inset: 0,
-            background: 'linear-gradient(90deg, #080A18 0%, rgba(8, 10, 24, 0.94) 42%, rgba(8, 10, 24, 0.45) 68%, rgba(8, 10, 24, 0) 100%)',
-            zIndex: 1,
+            top: 0,
+            left: '25px',
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'calc(50% + 25px) center',
+            transform: 'translateX(25px)',
+            zIndex: 0,
             pointerEvents: 'none',
           }}
-        />
+        >
+          <source src={heroBgVideo} type="video/mp4" />
+        </video>
+
+        {/* (No dark overlay above background video) */}
 
         <div className="section-container" style={{ position: 'relative', zIndex: 2, width: '100%', display: 'flex', flexDirection: 'column', gap: '32px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '40px', flexWrap: 'wrap' }}>
@@ -644,8 +624,8 @@ export function LandingPage({ onNavigate }) {
               </p>
 
               {/* Botanical Branch 1 */}
-              <div style={{ marginTop: '16px' }}>
-                <BotanicalBranch width={160} height={120} />
+              <div style={{ marginTop: 'auto', paddingTop: '16px', display: 'flex', alignItems: 'flex-end' }}>
+                <BotanicalBranch width={160} style={{ marginBottom: '-90px' }} />
               </div>
             </div>
 
@@ -661,7 +641,7 @@ export function LandingPage({ onNavigate }) {
                     left: '50%',
                     transform: vsInView ? 'translate(-50%, -50%) scale(1)' : 'translate(-50%, -50%) scale(0.2)',
                     opacity: vsInView ? 1 : 0,
-                    transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s, opacity 0.5s ease 0.4s',
+                    transition: 'transform 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.4s, opacity 1.2s ease 0.4s',
                     width: '48px',
                     height: '48px',
                     borderRadius: '50%',
@@ -689,9 +669,9 @@ export function LandingPage({ onNavigate }) {
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '16px',
-                    transform: vsInView ? 'translateX(0)' : 'translateX(-50px)',
+                    transform: vsInView ? 'translateX(0)' : 'translateX(-80px)',
                     opacity: vsInView ? 1 : 0,
-                    transition: 'transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.8s ease',
+                    transition: 'transform 1.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 1.6s ease',
                     boxShadow: vsInView ? '0 8px 24px rgba(70, 45, 35, 0.06)' : 'none',
                   }}
                 >
@@ -720,9 +700,9 @@ export function LandingPage({ onNavigate }) {
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '16px',
-                    transform: vsInView ? 'translateX(0)' : 'translateX(50px)',
+                    transform: vsInView ? 'translateX(0)' : 'translateX(80px)',
                     opacity: vsInView ? 1 : 0,
-                    transition: 'transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.15s, opacity 0.8s ease 0.15s',
+                    transition: 'transform 1.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s, opacity 1.6s ease 0.2s',
                     boxShadow: vsInView ? '0 12px 30px rgba(99, 52, 79, 0.12)' : 'none',
                   }}
                 >
@@ -882,10 +862,9 @@ export function LandingPage({ onNavigate }) {
             <div style={{ flex: '1 1 520px', display: 'flex', justifyContent: 'center', position: 'relative' }}>
               {/* Botanical Branch 2 */}
               <BotanicalBranch
-                width={170}
-                height={130}
+                width={160}
                 flip={true}
-                style={{ position: 'absolute', right: '-35px', top: '-45px', zIndex: 1 }}
+                style={{ position: 'absolute', right: '-15px', bottom: '0px', zIndex: 1 }}
               />
 
               <div className="sanctuary-card" style={{ zIndex: 2 }}>
@@ -899,10 +878,6 @@ export function LandingPage({ onNavigate }) {
                   <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#FFF8F2', color: '#63344F', display: 'grid', placeItems: 'center', fontWeight: 800 }}>
                     AN
                   </div>
-                  <div>
-                    <div style={{ fontSize: '14.5px', fontWeight: 700 }}>@mindful_soul</div>
-                    <div style={{ fontSize: '12px', color: '#F7D7C4' }}>Anonymous Community Member</div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -910,308 +885,375 @@ export function LandingPage({ onNavigate }) {
         </div>
       </section>
 
-      {/* ── 5. RE-ALIGNED SLEEK 4-STEP HOW IT WORKS (SOCIAL MEDIA FRIENDLY FLOW) ── */}
-      <section id="how-it-works" className="section-space" style={{ backgroundColor: '#F2E8DF', borderTop: '1px solid #E9DDD3', borderBottom: '1px solid #E9DDD3' }}>
+      {/* ── 5. RE-DESIGNED APP INTRO & SHOWCASE (WITH SLIDE ANIMATIONS & UNIQUE SCREEN) ── */}
+      <section id="how-it-works" ref={appRef} className="section-space" style={{ backgroundColor: '#F2E8DF', borderTop: '1px solid #E9DDD3', borderBottom: '1px solid #E9DDD3', position: 'relative', overflow: 'hidden' }}>
         <div className="section-container">
-          <div style={{ textAlign: 'center', maxWidth: '640px', margin: '0 auto 52px auto' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#63344F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              Simple & Fast
-            </span>
-            <h2 className="font-playfair" style={{ fontSize: '38px', color: '#17151A', margin: '6px 0 0 0' }}>
-              How It Works
-            </h2>
-            <div style={{ width: '28px', height: '2px', backgroundColor: '#F2B08D', borderRadius: '1px', margin: '10px auto 0 auto' }} />
-          </div>
-
-          {/* Compact 4-Step Social Media Friendly Horizontal Layout */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '22px', position: 'relative' }}>
-            {[
-              { icon: UserPlus, step: '1', title: 'Sign Up Anonymously', desc: 'Register instantly with your email or mobile. No real-name requirement.' },
-              { icon: BadgeCheck, step: '2', title: 'Choose Unique Handle', desc: 'Pick your unique handle (e.g. @mindful_soul) to represent your voice.' },
-              { icon: Mic, step: '3', title: 'Express & Share', desc: 'Post thoughts via text, media, or AI voice-to-text in 22 Indian languages.' },
-              { icon: MessagesSquare, step: '4', title: 'Connect & Discuss', desc: 'Join live topic discussions, react with empathy, and chat safely.' },
-            ].map((item, idx) => {
-              const Icon = item.icon;
-              return (
-                <div key={idx} className="step-card">
-                  <div style={{ position: 'relative' }}>
-                    <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#FFF8F2', border: '1px solid #E8DDD5', display: 'grid', placeItems: 'center', boxShadow: '0 4px 12px rgba(99, 52, 79, 0.08)' }}>
-                      <Icon strokeWidth={1.8} size={24} color="#63344F" />
-                    </div>
-                    <div style={{ position: 'absolute', top: '-4px', right: '-4px', width: '22px', height: '22px', borderRadius: '50%', backgroundColor: '#F2B08D', color: '#17151A', fontWeight: 800, fontSize: '11.5px', display: 'grid', placeItems: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
-                      {item.step}
-                    </div>
-                  </div>
-                  <h4 style={{ fontSize: '16px', fontWeight: 700, color: '#332821', margin: 0 }}>{item.title}</h4>
-                  <p style={{ fontSize: '13px', color: '#766D68', lineHeight: 1.5, margin: 0 }}>{item.desc}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ── 6. EXPRESS YOURSELF YOUR WAY ── */}
-      <section className="section-space" style={{ backgroundColor: '#FFF8F2', position: 'relative', overflow: 'hidden' }}>
-        <div className="section-container">
-          <div style={{ display: 'flex', gap: '60px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 460px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div>
-                <h2 className="font-playfair" style={{ fontSize: '42px', color: '#17151A', margin: 0 }}>
-                  Express Yourself Your Way
-                </h2>
-                <div style={{ width: '28px', height: '2px', backgroundColor: '#F2B08D', borderRadius: '1px', marginTop: '6px' }} />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingTop: '8px' }}>
-                {[
-                  { icon: FileText, title: 'Text Posts', desc: 'Share your thoughts in words.' },
-                  { icon: Image, title: 'Images & Videos', desc: 'Share what you see and feel.' },
-                  { icon: Mic, title: 'Voice-to-Text', desc: 'Speak your mind, we convert to text.' },
-                  { icon: MessagesSquare, title: 'Comments', desc: 'Comment and join the conversation.' },
-                  { icon: Smile, title: 'Reactions', desc: 'React and express your feelings.' },
-                ].map((item, idx) => {
-                  const Icon = item.icon;
-                  return (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
-                      <div style={{ padding: '8px', borderRadius: '10px', backgroundColor: '#FFFDFC', border: '1px solid #E8DDD5', flexShrink: 0 }}>
-                        <Icon strokeWidth={1.75} size={20} color="#63344F" />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '15px', fontWeight: 700, color: '#332821' }}>{item.title}</div>
-                        <div style={{ fontSize: '13px', color: '#766D68' }}>{item.desc}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Right Phone Mockup UI Showcase */}
-            <div style={{ flex: '1 1 420px', display: 'flex', justifyContent: 'center', position: 'relative' }}>
-              {/* Botanical Branch 3 */}
+          <div style={{ display: 'flex', gap: '56px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+            
+            {/* Left Column: Realistic Smartphone Mockup (SLIDES IN FROM LEFT) */}
+            <div
+              style={{
+                flex: '0 1 360px',
+                display: 'flex',
+                justifyContent: 'center',
+                position: 'relative',
+                margin: '0 auto',
+                transform: appInView ? 'translateX(0)' : 'translateX(-80px)',
+                opacity: appInView ? 1 : 0,
+                transition: 'transform 1.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 1.4s ease',
+              }}
+            >
+              {/* Botanical Branch Accent */}
               <BotanicalBranch
-                width={180}
-                height={135}
-                style={{ position: 'absolute', right: '-40px', bottom: '-40px', zIndex: 1 }}
+                width={160}
+                style={{ position: 'absolute', right: '-25px', bottom: '0px', zIndex: 1 }}
               />
 
               <div
-                className="animate-float"
                 style={{
-                  width: '310px',
-                  borderRadius: '38px',
+                  width: '320px',
+                  borderRadius: '42px',
                   background: '#080A18',
                   padding: '14px',
-                  boxShadow: '0 24px 60px rgba(48, 31, 25, 0.16)',
-                  border: '3px solid #F2B08D',
+                  boxShadow: '0 28px 70px rgba(45, 29, 21, 0.22), 0 8px 20px rgba(0,0,0,0.15)',
+                  border: '3.5px solid #F2B08D',
                   position: 'relative',
                   zIndex: 2,
                 }}
               >
+                {/* Top Notch & Status Bar */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 14px 10px 14px', color: '#8C8385', fontSize: '11px', fontWeight: 600 }}>
+                  <span>9:41</span>
+                  <div style={{ width: '80px', height: '14px', backgroundColor: '#080A18', borderRadius: '0 0 10px 10px' }} />
+                  <span>5G 🔋</span>
+                </div>
+
+                {/* Mobile App Unique Screen Content */}
                 <div
                   style={{
-                    borderRadius: '26px',
+                    borderRadius: '28px',
                     background: '#FFF8F2',
-                    padding: '18px',
+                    padding: '16px',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '14px',
+                    minHeight: '450px',
+                    overflow: 'hidden',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', fontWeight: 700, color: '#63344F' }}>
-                    <span>Aawaj Man Ki Feed</span>
-                    <span>Live 🟢</span>
-                  </div>
-
+                  {/* App Screen Header with Logo & Brand Name */}
                   <div
                     style={{
-                      background: '#FFFDFC',
-                      border: '1px solid #E8DDD5',
-                      borderRadius: '14px',
-                      padding: '14px',
                       display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '10px 14px',
+                      backgroundColor: '#63344F',
+                      borderRadius: '16px',
+                      color: '#FFFFFF',
+                      boxShadow: '0 4px 14px rgba(99, 52, 79, 0.22)',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: '#63344F', color: '#FFF', display: 'grid', placeItems: 'center', fontSize: '11px', fontWeight: 800 }}>
-                        QP
-                      </div>
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#17151A' }}>@quietparagraph</span>
-                    </div>
-                    <div style={{ fontSize: '12.5px', color: '#17151A', lineHeight: 1.4 }}>
-                      "Overcoming internal fear without seeking applause is the truest sign of maturity."
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', fontSize: '10px', color: '#63344F', fontWeight: 700 }}>
-                      <span>❤️ 14 Relate</span>
-                      <span>💡 22 Well Said</span>
+                    <img
+                      src={logoMKA}
+                      alt="Logo"
+                      style={{ width: '28px', height: '28px', objectFit: 'contain', borderRadius: '6px', backgroundColor: '#FFF' }}
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF', lineHeight: 1.1 }}>
+                        Aawaj Man Ki
+                      </span>
+                      <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.85)' }}>
+                        Anonymous Social App
+                      </span>
                     </div>
                   </div>
 
+                  {/* Looping / Animated Screen Features Showcase */}
+                  <div
+                    style={{
+                      backgroundColor: '#FFFDFC',
+                      border: '1.5px solid #E8DDD5',
+                      borderRadius: '18px',
+                      padding: '16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px',
+                      boxShadow: '0 4px 14px rgba(0,0,0,0.04)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#F2B08D', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Live Voice Thought 🎙️
+                      </span>
+                      <span style={{ fontSize: '10.5px', color: '#29965A', fontWeight: 700 }}>● 22 Languages</span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#63344F', color: '#FFF', display: 'grid', placeItems: 'center', fontSize: '12px', fontWeight: 800 }}>
+                        MS
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#17151A' }}>@mindful_soul</div>
+                        <div style={{ fontSize: '10.5px', color: '#766D68' }}>Topic: Mental Wellness</div>
+                      </div>
+                    </div>
+
+                    {/* Sample Voice Waveform Card */}
+                    <div
+                      style={{
+                        backgroundColor: '#F7F2EE',
+                        border: '1px solid #E8DDD5',
+                        borderRadius: '12px',
+                        padding: '12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                      }}
+                    >
+                      <div style={{ fontSize: '12px', color: '#332821', lineHeight: 1.45 }}>
+                        "Expressing unspoken thoughts without fear of judgment changes everything."
+                      </div>
+                      
+                      {/* Simulated Audio Waveform */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', paddingTop: '4px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#63344F' }}>▶️ 0:14</span>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '2px', height: '14px' }}>
+                          {[60, 90, 40, 100, 70, 30, 85, 95, 50, 75, 40, 90, 60, 100, 45, 80].map((h, i) => (
+                            <div key={i} style={{ flex: 1, height: `${h}%`, backgroundColor: '#63344F', borderRadius: '2px' }} />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', fontSize: '10.5px', color: '#63344F', fontWeight: 700 }}>
+                      <span style={{ backgroundColor: '#FFF8F2', padding: '4px 8px', borderRadius: '12px', border: '1px solid #E8DDD5' }}>
+                        ❤️ 28 Relate
+                      </span>
+                      <span style={{ backgroundColor: '#FFF8F2', padding: '4px 8px', borderRadius: '12px', border: '1px solid #E8DDD5' }}>
+                        💡 19 Well Said
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Mic Voice Action Bar */}
                   <button
                     type="button"
                     style={{
+                      marginTop: 'auto',
                       width: '100%',
-                      padding: '10px',
-                      borderRadius: '16px',
-                      background: '#63344F',
-                      color: '#FFF',
+                      padding: '12px',
+                      borderRadius: '18px',
+                      backgroundColor: '#63344F',
+                      color: '#FFFFFF',
                       border: 'none',
-                      fontSize: '12px',
+                      fontSize: '12.5px',
                       fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      boxShadow: '0 4px 14px rgba(99, 52, 79, 0.25)',
                     }}
                   >
-                    🎙️ Tap Mic to Speak Thought
+                    <Mic size={16} /> Tap Mic to Speak Thought
                   </button>
                 </div>
               </div>
             </div>
+
+            {/* Right Column: Title, Subtitle, Bullet Checklist & Store Buttons (SLIDES IN FROM RIGHT) */}
+            <div
+              style={{
+                flex: '1 1 480px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '22px',
+                maxWidth: '580px',
+                transform: appInView ? 'translateX(0)' : 'translateX(80px)',
+                opacity: appInView ? 1 : 0,
+                transition: 'transform 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.15s, opacity 1.4s ease 0.15s',
+              }}
+            >
+              <div>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#63344F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Mobile App Experience
+                </span>
+                <h2 className="font-playfair" style={{ fontSize: 'clamp(32px, 4.2vw, 44px)', color: '#17151A', margin: '8px 0 0 0', lineHeight: 1.15 }}>
+                  Share Your Voice<br />
+                  <span style={{ color: '#63344F' }}>Anytime, Anywhere</span>
+                </h2>
+                <div style={{ width: '36px', height: '2.5px', backgroundColor: '#F2B08D', borderRadius: '2px', marginTop: '12px' }} />
+              </div>
+
+              <p style={{ fontSize: '15.5px', color: '#766D68', lineHeight: 1.6, margin: 0 }}>
+                Download our mobile app to share anonymous thoughts, join live discussions in 22 Indian languages, compare topic streams, and manage your private chat conversations right from your smartphone.
+              </p>
+
+              {/* Bullet Points Checklist */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', paddingTop: '4px' }}>
+                {[
+                  'Real-time anonymous thought stream & discussions',
+                  'AI Voice-to-Text in 22 Indian languages',
+                  'Instant 1-on-1 private chat requests & alerts',
+                  'Absolute identity protection & zero data tracking',
+                ].map((item, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div
+                      style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        backgroundColor: 'rgba(41, 150, 90, 0.15)',
+                        border: '1.5px solid #29965A',
+                        display: 'grid',
+                        placeItems: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Check size={13} color="#29965A" strokeWidth={3} />
+                    </div>
+                    <span style={{ fontSize: '14.5px', fontWeight: 600, color: '#332821' }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Store Buttons (Play Store & App Store) */}
+              <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', paddingTop: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => alert('Mobile app coming soon on Google Play Store!')}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '12px 24px',
+                    borderRadius: '28px',
+                    backgroundColor: '#17151A',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 6px 20px rgba(23, 21, 26, 0.2)',
+                    transition: 'transform 0.2s ease',
+                  }}
+                >
+                  {/* Android Play Store Icon */}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 20.5v-17c0-.83.67-1.5 1.5-1.5.34 0 .65.11.91.31l12.5 8.5c.67.45.85 1.36.4 2.03-.1.15-.22.28-.36.38l-12.5 8.5c-.26.2-.57.31-.91.31-.83 0-1.5-.67-1.5-1.5z"></path>
+                  </svg>
+                  <span>Play Store</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => alert('Mobile app coming soon on Apple App Store!')}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '12px 24px',
+                    borderRadius: '28px',
+                    backgroundColor: '#63344F',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 6px 20px rgba(99, 52, 79, 0.25)',
+                    transition: 'transform 0.2s ease',
+                  }}
+                >
+                  {/* Apple App Store Icon */}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.32c.66-.82 1.12-1.96.99-3.1-.96.04-2.14.65-2.83 1.46-.61.71-1.14 1.87-1 3 1.07.08 2.18-.54 2.84-1.36z"></path>
+                  </svg>
+                  <span>App Store</span>
+                </button>
+              </div>
+
+            </div>
+
           </div>
         </div>
       </section>
 
-      {/* ── 7. CTA SECTION ── */}
-      <section className="section-space" style={{ backgroundColor: '#FCE9DD', textAlign: 'center', borderTop: '1px solid #F2D7C7', borderBottom: '1px solid #F2D7C7', position: 'relative', overflow: 'hidden' }}>
-        {/* Botanical Branch 4 */}
+      {/* ── 7. CTA SECTION (SHORT & SWEET BANNER) ── */}
+      <section style={{ backgroundColor: '#FCE9DD', padding: '54px 0', textAlign: 'center', borderTop: '1px solid #F2D7C7', borderBottom: '1px solid #F2D7C7', position: 'relative', overflow: 'hidden' }}>
+        {/* Botanical Branch Accent */}
         <BotanicalBranch
-          width={180}
-          height={135}
-          style={{ position: 'absolute', left: '16px', bottom: '-20px', zIndex: 1 }}
+          width={150}
+          style={{ position: 'absolute', left: '20px', bottom: '0px', zIndex: 1 }}
         />
 
-        <div className="section-container" style={{ maxWidth: '720px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '18px', alignItems: 'center', position: 'relative', zIndex: 2 }}>
-          <h2 className="font-playfair" style={{ fontSize: '42px', color: '#332821', margin: 0, lineHeight: 1.1 }}>
-            Join India's Anonymous<br />Conversation Platform
+        <div className="section-container" style={{ maxWidth: '620px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '14px', alignItems: 'center', position: 'relative', zIndex: 2 }}>
+          <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#63344F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Authentic Expression
+          </span>
+          <h2 className="font-playfair" style={{ fontSize: 'clamp(28px, 3.5vw, 36px)', color: '#332821', margin: 0, lineHeight: 1.2 }}>
+            Ready to Share Your Unspoken Thoughts?
           </h2>
-          <p style={{ fontSize: '16px', color: '#766D68', margin: 0, lineHeight: 1.6 }}>
-            Share your thoughts freely. Join meaningful discussions. Stay anonymous.
+          <p style={{ fontSize: '14.5px', color: '#766D68', margin: 0 }}>
+            Join India's safest anonymous discussion platform today.
           </p>
-          <div style={{ paddingTop: '6px' }}>
+
+          <div style={{ paddingTop: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
             <button
               type="button"
               className="btn-accent"
-              style={{ fontSize: '15px', padding: '13px 32px', backgroundColor: '#6B3D5A', color: '#FFF8F2' }}
+              style={{ fontSize: '14px', padding: '12px 28px', backgroundColor: '#63344F', color: '#FFF8F2', borderRadius: '24px', boxShadow: '0 6px 20px rgba(99, 52, 79, 0.2)' }}
               onClick={() => onNavigate('/register')}
             >
-              Get Started Now <ArrowRight size={16} />
+              Get Started Now <ArrowRight size={15} />
             </button>
+            <span style={{ fontSize: '12px', color: '#766D68', fontWeight: 500 }}>
+              Free to use · No identity required
+            </span>
           </div>
-          <span style={{ fontSize: '12.5px', color: '#766D68' }}>
-            Free to use. No identity required.
-          </span>
         </div>
       </section>
 
-      {/* ── 8. RECONSTRUCTED & ACCURATE FOOTER (TAILORED FOR AAWAJ MAN KI) ── */}
-      <footer id="about" style={{ backgroundColor: '#0B0D1B', color: '#FFFFFF', paddingTop: '68px', paddingBottom: '32px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-        <div className="section-container">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '44px', paddingBottom: '52px' }}>
-            
-            {/* Column 1: Logo & Brand Narrative */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '300px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <img
-                  src={logoMKA}
-                  alt="Aawaj Man Ki Logo"
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    objectFit: 'contain',
-                    borderRadius: '8px',
-                  }}
-                />
-                <span className="font-playfair" style={{ fontSize: '22px', fontWeight: 700, color: '#FFF8F2' }}>Aawaj Man Ki</span>
-              </div>
-              <p style={{ fontSize: '13.5px', color: '#A0A5BD', lineHeight: 1.6, margin: 0 }}>
-                India's first 18+ anonymous, text-first social platform designed for self-expression without public social pressure.
-              </p>
-            </div>
+      {/* ── 8. UNIFIED FOOTER ── */}
+      <Footer onNavigate={onNavigate} />
 
-            {/* Column 2: Quick Links */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <h4 style={{ fontSize: '16px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>Quick Links</h4>
-              <span onClick={() => onNavigate('/')} className="footer-link">Home</span>
-              <a href="#features" className="footer-link">Features</a>
-              <a href="#how-it-works" className="footer-link">How It Works</a>
-              <a href="#safety" className="footer-link">Safety</a>
-              <span onClick={() => onNavigate('/about')} className="footer-link">About Us</span>
-            </div>
-
-            {/* Column 3: Resources & Support */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <h4 style={{ fontSize: '16px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>Resources</h4>
-              <span onClick={() => onNavigate('/help')} className="footer-link">FAQs</span>
-              <span onClick={() => onNavigate('/community-guidelines')} className="footer-link">Community Guidelines</span>
-              <span onClick={() => onNavigate('/help')} className="footer-link">Help & Support</span>
-              <span onClick={() => onNavigate('/privacy-policy')} className="footer-link">Delete My Account</span>
-            </div>
-
-            {/* Column 4: Contact Us */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <h4 style={{ fontSize: '16px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>Contact Us</h4>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13.5px', color: '#A0A5BD' }}>
-                <Mail size={16} color="#F2B08D" />
-                <span>support@awaazmanki.com</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13.5px', color: '#A0A5BD' }}>
-                <Phone size={16} color="#F2B08D" />
-                <span>+91 99999 99999</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13.5px', color: '#A0A5BD' }}>
-                <MapPin size={16} color="#F2B08D" />
-                <span>Pune, Maharshtra</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Bar */}
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-            <span style={{ fontSize: '13.5px', color: '#A0A5BD' }}>
-              Developed by <strong style={{ color: '#F2B08D' }}>Caryanamindia Pvt Ltd</strong>
-            </span>
-
-            <span style={{ fontSize: '13.5px', color: '#A0A5BD' }}>
-              © 2026 Aawaj Man Ki. All rights reserved by Caryanamindia Pvt Ltd
-            </span>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-              <span onClick={() => onNavigate('/privacy-policy')} className="footer-link" style={{ fontSize: '13px' }}>Privacy Policy</span>
-              <span onClick={() => onNavigate('/community-guidelines')} className="footer-link" style={{ fontSize: '13px' }}>Terms & Conditions</span>
-              
-              <button
-                type="button"
-                onClick={scrollToTop}
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                  color: '#FFFFFF',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  display: 'grid',
-                  placeItems: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.25s ease',
-                  marginLeft: '8px',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#F2B08D';
-                  e.currentTarget.style.color = '#0B0D1B';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
-                  e.currentTarget.style.color = '#FFFFFF';
-                }}
-                title="Back to Top"
-              >
-                <ArrowUp size={18} />
-              </button>
-            </div>
-          </div>
-        </div>
-      </footer>
+      {/* ── FLOATING SCROLL TO TOP BUTTON ── */}
+      {scrolled && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          style={{
+            position: 'fixed',
+            bottom: '30px',
+            right: '30px',
+            width: '46px',
+            height: '46px',
+            borderRadius: '50%',
+            backgroundColor: '#63344F',
+            color: '#FFF8F2',
+            border: '1.5px solid #F2B08D',
+            boxShadow: '0 6px 22px rgba(99, 52, 79, 0.35)',
+            display: 'grid',
+            placeItems: 'center',
+            cursor: 'pointer',
+            zIndex: 999,
+            transition: 'all 0.3s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#F2B08D';
+            e.currentTarget.style.color = '#17151A';
+            e.currentTarget.style.transform = 'scale(1.1)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#63344F';
+            e.currentTarget.style.color = '#FFF8F2';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          title="Scroll to top"
+        >
+          <ArrowUp size={20} strokeWidth={2.5} />
+        </button>
+      )}
     </div>
   );
 }

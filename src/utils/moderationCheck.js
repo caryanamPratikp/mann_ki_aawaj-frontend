@@ -28,18 +28,19 @@ export function moderationCheck(rawText) {
 
   const normalized = normalizeText(rawText);
 
-  // Check phone numbers (10+ digits) & emails for personal info exposure
+  // Check phone numbers (10+ digits), emails, & external URLs/links
   const phonePattern = /(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/;
   const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+  const urlPattern = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.(com|org|net|io|co|in|info|biz|me|app|dev|xyz|tech|online|store|site|link|top)[^\s]*)/i;
 
-  if (phonePattern.test(rawText) || emailPattern.test(rawText)) {
+  if (phonePattern.test(rawText) || emailPattern.test(rawText) || urlPattern.test(rawText)) {
     return {
       status: 'BLOCKED',
-      category: RESTRICTED_CATEGORIES.PERSONAL_INFO,
+      category: RESTRICTED_CATEGORIES.SPAM,
       risk: 'HIGH',
-      message: 'Personal contact information (phone numbers/emails) is not permitted.',
-      explanation: 'To maintain anonymity and protect privacy, sharing direct contact details is restricted.',
-      matchedTerm: '[Phone/Email]',
+      message: 'Sharing external links, URLs, phone numbers, or email addresses is not permitted.',
+      explanation: 'To maintain platform safety, privacy, and protect users from external phishing/spam, web links and personal contact details are restricted.',
+      matchedTerm: '[URL/Contact]',
     };
   }
 

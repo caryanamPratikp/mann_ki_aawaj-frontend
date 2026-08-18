@@ -7,6 +7,7 @@ import { AboutPage } from '../pages/public/AboutPage.jsx';
 import { PrivacyPolicyPage } from '../pages/public/PrivacyPolicyPage.jsx';
 import { CommunityGuidelinesPage } from '../pages/public/CommunityGuidelinesPage.jsx';
 import { ContactPage } from '../pages/public/ContactPage.jsx';
+import { FaqPage } from '../pages/public/FaqPage.jsx';
 
 import { LoginPage } from '../pages/auth/LoginPage.jsx';
 import { RegisterPage } from '../pages/auth/RegisterPage.jsx';
@@ -80,6 +81,9 @@ export function AppRoutes() {
   }
   if (normalizedPath === '/contact') {
     return <ContactPage onNavigate={navigate} />;
+  }
+  if (normalizedPath === '/faq') {
+    return <FaqPage onNavigate={navigate} />;
   }
 
   // 3. Auth Routes: /login, /register, /forgot-password, /onboarding, /setup-profile
