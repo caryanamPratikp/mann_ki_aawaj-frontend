@@ -4,14 +4,16 @@ import { PostCard } from '../../components/posts/PostCard.jsx';
 import { InitialAvatar } from '../../components/profile/InitialAvatar.jsx';
 import { usePosts } from '../../context/PostContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useReports } from '../../context/ReportContext.jsx';
 import { apiProfileService } from '../../services/apiProfileService.js';
-import { Compass, Search, TrendingUp, Users, MessageSquare, ArrowRight } from 'lucide-react';
+import { Compass, Search, TrendingUp, Users, MessageSquare, ArrowRight, ShieldAlert } from 'lucide-react';
 import { Button } from '../../components/common/Button.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 
 export function ExplorePage({ onNavigate }) {
   const { posts } = usePosts();
   const { currentUser } = useAuth();
+  const { blockedUsers } = useReports();
   const { t } = useLanguage();
   const searchParams = new URLSearchParams(window.location.search);
   const [query, setQuery] = useState(searchParams.get('q') || '');
@@ -19,12 +21,21 @@ export function ExplorePage({ onNavigate }) {
   const [activeTopic, setActiveTopic] = useState('All');
   const [userBios, setUserBios] = useState({});
 
+  const isUserMuted = Boolean(
+    (currentUser?.mutedUntil && new Date(currentUser.mutedUntil) > new Date()) ||
+    currentUser?.warningCount >= 3 ||
+    currentUser?.active === false ||
+    currentUser?.isMuted
+  );
+
   const topicsList = [
     'All', 'Life', 'Career', 'Relationships', 'Education', 'Personal Growth',
     'Workplace', 'Parenting', 'Technology', 'Creativity', 'Books', 'Entertainment', 'Financial Experiences', 'Positive Thoughts'
   ];
 
-  let displayPosts = posts.filter((p) => p.status === 'PUBLISHED');
+  let displayPosts = isUserMuted
+    ? []
+    : posts.filter((p) => p.status === 'PUBLISHED' && !blockedUsers.includes(p.username) && !p.isMuted && !p.muted);
 
   // Extract unique authors dynamically from the real database posts
   const dbUsers = useMemo(() => {
@@ -93,6 +104,30 @@ export function ExplorePage({ onNavigate }) {
   return (
     <UserLayout activeRoute="/explore" onNavigate={onNavigate}>
       <div className="flex-col gap-lg">
+        {isUserMuted && (
+          <div
+            style={{
+              padding: '16px 20px',
+              borderRadius: '14px',
+              backgroundColor: 'rgba(239, 68, 68, 0.08)',
+              border: '1.5px solid rgba(239, 68, 68, 0.3)',
+              color: '#DC2626',
+              fontSize: '13.5px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '16px',
+            }}
+          >
+            <ShieldAlert size={22} color="#DC2626" />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '14.5px' }}>Account Muted / Restricted</div>
+              <div>Your account is currently muted due to a safety warning. Explore posts are hidden.</div>
+            </div>
+          </div>
+        )}
+
         {/* Explore Header */}
         <div className="mka-card flex-col gap-md" style={{ background: 'var(--soft-white)' }}>
           <div className="flex-row items-center gap-sm">

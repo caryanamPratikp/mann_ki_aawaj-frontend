@@ -16,7 +16,7 @@ import { useLanguage } from '../../context/LanguageContext.jsx';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
 import { useSpokenLanguage } from '../../hooks/useSpokenLanguage.js';
 import { SpokenLanguageSelector } from '../../components/common/SpokenLanguageSelector.jsx';
-import { PlusSquare, Sparkles, Filter, TrendingUp, MessageSquare, Edit3, Mic, MicOff, Loader2, Upload, X } from 'lucide-react';
+import { PlusSquare, Sparkles, Filter, TrendingUp, MessageSquare, Edit3, Mic, MicOff, Loader2, Upload, X, ShieldAlert } from 'lucide-react';
 import { EmptyState } from '../../components/common/EmptyState.jsx';
 import { SUPPORTED_LANGUAGES } from '../../utils/translations.js';
 import { formatDate } from '../../utils/formatDate.js';
@@ -51,6 +51,13 @@ export function HomePage({ onNavigate }) {
   const [imageUrl, setImageUrl] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const isUserMuted = Boolean(
+    (currentUser?.mutedUntil && new Date(currentUser.mutedUntil) > new Date()) ||
+    currentUser?.warningCount >= 3 ||
+    currentUser?.active === false ||
+    currentUser?.isMuted
+  );
 
   const handleImageFileChange = async (e) => {
     const file = e.target.files?.[0];

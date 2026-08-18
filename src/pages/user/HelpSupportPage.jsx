@@ -207,10 +207,10 @@ export function HelpSupportPage({ onNavigate }) {
         {/* Contact Support Ticket Form */}
         <div className="mka-card flex-col gap-md">
           <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--eclipse)' }}>
-            Still Need Help? Contact Community Support
+            {t('stillNeedHelp', 'Still Need Help? Contact Community Support')}
           </h2>
           <p className="secondary-text" style={{ fontSize: '13px', margin: 0 }}>
-            Submit a confidential support ticket. Our team responds within 24 hours.
+            {t('submitTicketDesc', 'Submit a confidential support ticket. Our team responds within 24 hours.')}
           </p>
 
           {ticketSubmitted ? (
@@ -228,10 +228,10 @@ export function HelpSupportPage({ onNavigate }) {
               <CheckCircle2 size={24} color="#2E7D32" />
               <div>
                 <div style={{ fontSize: '14px', fontWeight: 700, color: '#1B5E20' }}>
-                  Support Ticket Submitted (#MKA-8924)
+                  {t('ticketSubmitted', 'Support Ticket Submitted (#MKA-8924)')}
                 </div>
                 <div style={{ fontSize: '12.5px', color: '#388E3C' }}>
-                  Thank you! Our support team will review your inquiry and get back to you via your notification panel.
+                  {t('ticketThanks', 'Thank you! Our support team will review your inquiry and get back to you via your notification panel.')}
                 </div>
               </div>
             </div>
@@ -239,7 +239,7 @@ export function HelpSupportPage({ onNavigate }) {
             <form onSubmit={handleTicketSubmit} className="flex-col gap-md">
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
                 <div className="flex-col gap-xs">
-                  <label style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--eclipse)' }}>Category</label>
+                  <label style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--eclipse)' }}>{t('category', 'Category')}</label>
                   <select
                     value={ticketCategory}
                     onChange={(e) => setTicketCategory(e.target.value)}
@@ -253,20 +253,20 @@ export function HelpSupportPage({ onNavigate }) {
                       backgroundColor: '#FFFFFF',
                     }}
                   >
-                    <option>Account & Handle</option>
-                    <option>Privacy & Security</option>
-                    <option>Technical Bug / Issue</option>
-                    <option>Report Misconduct</option>
+                    <option>{t('accountAndHandle', 'Account & Handle')}</option>
+                    <option>{t('privacyAndSecurity', 'Privacy & Security')}</option>
+                    <option>{t('technicalBug', 'Technical Bug / Issue')}</option>
+                    <option>{t('reportMisconduct', 'Report Misconduct')}</option>
                   </select>
                 </div>
 
                 <div className="flex-col gap-xs">
-                  <label style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--eclipse)' }}>Subject</label>
+                  <label style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--eclipse)' }}>{t('subject', 'Subject')}</label>
                   <input
                     type="text"
                     value={ticketSubject}
                     onChange={(e) => setTicketSubject(e.target.value)}
-                    placeholder="Brief summary of your inquiry..."
+                    placeholder={t('subjectPlaceholder', 'Brief summary of your inquiry...')}
                     style={{
                       width: '100%',
                       padding: '9px 12px',
@@ -280,12 +280,12 @@ export function HelpSupportPage({ onNavigate }) {
               </div>
 
               <div className="flex-col gap-xs">
-                <label style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--eclipse)' }}>Description</label>
+                <label style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--eclipse)' }}>{t('description', 'Description')}</label>
                 <textarea
                   rows={4}
                   value={ticketMessage}
                   onChange={(e) => setTicketMessage(e.target.value)}
-                  placeholder="Provide details about your issue or question..."
+                  placeholder={t('descPlaceholder', 'Provide details about your issue or question...')}
                   style={{
                     width: '100%',
                     padding: '10px 12px',
@@ -300,7 +300,7 @@ export function HelpSupportPage({ onNavigate }) {
 
               <div className="flex-row justify-end">
                 <Button type="submit" variant="primary" icon={Send} disabled={submitting}>
-                  {submitting ? 'Submitting...' : 'Submit Support Ticket'}
+                  {submitting ? t('submitting', 'Submitting...') : t('submitSupportTicket', 'Submit Support Ticket')}
                 </Button>
               </div>
             </form>
@@ -310,3 +310,4 @@ export function HelpSupportPage({ onNavigate }) {
     </UserLayout>
   );
 }
+

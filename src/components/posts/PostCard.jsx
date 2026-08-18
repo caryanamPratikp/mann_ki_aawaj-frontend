@@ -165,31 +165,10 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false 
           </div>
         </div>
 
-        {/* ── ACTION BUTTONS: Translate & Options Menu ── */}
+        {/* ── ACTION BUTTONS: Options Menu ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={() => setManualToggle(!manualToggle)}
-            title={isTranslated ? 'Show original text' : `Translate to ${currentLanguage}`}
-            style={{
-              padding: '4px 6px',
-              borderRadius: '12px',
-              border: `1px solid ${isTranslated ? '#6F405F' : '#D4CECC'}`,
-              background: isTranslated ? 'rgba(111,64,95,0.1)' : '#FAFAFA',
-              color: isTranslated ? '#6F405F' : '#6E625F',
-              fontSize: '11px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '3px',
-            }}
-          >
-            <Languages size={12} />
-            <span>Translate</span>
-          </button>
-
           <PostMenu
+
             isSaved={isSaved}
             isOwner={isOwner}
             onDelete={async () => {

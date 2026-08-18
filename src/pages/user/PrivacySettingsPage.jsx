@@ -4,9 +4,12 @@ import { Button } from '../../components/common/Button.jsx';
 import { Checkbox } from '../../components/common/Checkbox.jsx';
 import { ArrowLeft, Save, ShieldCheck, Eye, MessageSquare, Download, Trash2 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 
 export function PrivacySettingsPage({ onNavigate }) {
   const { addToast } = useToast();
+  const { t } = useLanguage();
+
   
   // Privacy preferences states
   const [allowComments, setAllowComments] = useState(true);

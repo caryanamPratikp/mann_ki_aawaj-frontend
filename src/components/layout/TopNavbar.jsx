@@ -8,6 +8,8 @@ import { useChat } from '../../context/ChatContext.jsx';
 import { InitialAvatar } from '../profile/InitialAvatar.jsx';
 import { Tooltip } from '../common/Tooltip.jsx';
 import { Drawer } from '../common/Drawer.jsx';
+import { LanguageSelectorDropdown } from '../common/LanguageSelectorDropdown.jsx';
+
 
 export function TopNavbar({ activeRoute, onNavigate }) {
   const { currentUser, logout } = useAuth();
@@ -205,7 +207,13 @@ export function TopNavbar({ activeRoute, onNavigate }) {
               </button>
             </Tooltip>
 
+            {/* Language Selector Dropdown */}
+            <div className="desktop-only">
+              <LanguageSelectorDropdown compact={true} />
+            </div>
+
             {currentUser ? (
+
               <Tooltip text={`Profile (${currentUser.username || 'User'})`} position="bottom">
                 <button
                   type="button"

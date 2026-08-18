@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { PublicLayout } from '../../components/layout/PublicLayout.jsx';
 import { HelpCircle, Search, ChevronDown, ShieldCheck, Lock, Trash2, Mic, AlertTriangle, ArrowRight, MessageSquare } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 
 export function FaqPage({ onNavigate }) {
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [openIndex, setOpenIndex] = useState(0);
 
   const categories = ['All', 'Identity & Privacy', 'Posting & Voice', '30-Day Data Rule', 'Safety & 3-Strikes'];
+
 
   const faqs = [
     {

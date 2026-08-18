@@ -1,13 +1,14 @@
 import React from 'react';
 import { useLanguage } from '../../context/LanguageContext.jsx';
-import { Heart, Handshake, Lightbulb } from 'lucide-react';
+import { Heart, Handshake, ThumbsUp, Lightbulb } from 'lucide-react';
 
 export const REACTION_TYPES = [
   { key: 'RELATE', labelKey: 'relate', defaultLabel: 'I Relate', icon: Heart, color: '#e11d48' },
   { key: 'SUPPORT', labelKey: 'support', defaultLabel: 'Support', icon: Handshake, color: '#10b981' },
-  { key: 'AGREE', labelKey: 'agree', defaultLabel: 'Agree', icon: Handshake, color: '#3b82f6' },
+  { key: 'AGREE', labelKey: 'agree', defaultLabel: 'Agree', icon: ThumbsUp, color: '#3b82f6' },
   { key: 'INTERESTING', labelKey: 'interesting', defaultLabel: 'Insightful', icon: Lightbulb, color: '#eab308' },
 ];
+
 
 export function ReactionsBar({ reactions = {}, userReaction, onReact, compact = false }) {
   const { t } = useLanguage();

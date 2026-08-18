@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 import { Button } from '../../components/common/Button.jsx';
 import { Modal } from '../../components/common/Modal.jsx';
 import { ArrowLeft, Lock, ShieldAlert, Eye, EyeOff, KeyRound, Edit2, Smartphone, Mail, CheckCircle2, ShieldCheck, RefreshCw } from 'lucide-react';
@@ -10,6 +11,8 @@ import { apiUserService } from '../../services/apiUserService.js';
 export function AccountSettingsPage({ onNavigate }) {
   const { currentUser, updateProfile, logout } = useAuth();
   const { addToast } = useToast();
+  const { t } = useLanguage();
+
 
   // Delete Account State
   const [deleteAccountModalOpen, setDeleteAccountModalOpen] = useState(false);
