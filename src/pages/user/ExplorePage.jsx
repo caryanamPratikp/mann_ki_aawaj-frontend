@@ -13,7 +13,7 @@ import { useLanguage } from '../../context/LanguageContext.jsx';
 export function ExplorePage({ onNavigate }) {
   const { posts } = usePosts();
   const { currentUser } = useAuth();
-  const { blockedUsers } = useReports();
+  const { blockedUsers, mutedUsers = [] } = useReports();
   const { t } = useLanguage();
   const searchParams = new URLSearchParams(window.location.search);
   const [query, setQuery] = useState(searchParams.get('q') || '');
@@ -35,7 +35,16 @@ export function ExplorePage({ onNavigate }) {
 
   let displayPosts = isUserMuted
     ? []
-    : posts.filter((p) => p.status === 'PUBLISHED' && !blockedUsers.includes(p.username) && !p.isMuted && !p.muted);
+    : posts.filter((p) => {
+        if (!p || !p.username) return false;
+        const pUnameClean = p.username.toLowerCase().replace('@', '');
+        const isBlockedOrMuted =
+          blockedUsers.some((b) => b.toLowerCase().replace('@', '') === pUnameClean) ||
+          mutedUsers.some((m) => m.toLowerCase().replace('@', '') === pUnameClean) ||
+          p.isMuted || p.muted;
+        return p.status === 'PUBLISHED' && !isBlockedOrMuted;
+      });
+
 
   // Extract unique authors dynamically from the real database posts
   const dbUsers = useMemo(() => {

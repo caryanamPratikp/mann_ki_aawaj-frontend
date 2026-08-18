@@ -10,6 +10,15 @@ export function ReportProvider({ children }) {
   const [myReports, setMyReports] = useState([]);
   const [adminQueue, setAdminQueue] = useState([]);
   const [blockedUsers, setBlockedUsers] = useState([]);
+  const [mutedUsers, setMutedUsers] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mka_muted_users');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const { currentUser } = useAuth();
   const { addToast } = useToast();
 
@@ -56,6 +65,29 @@ export function ReportProvider({ children }) {
 
   const unblockUser = (username) => setBlockedUsers((previous) => previous.filter((item) => item !== username));
 
+  const muteUser = useCallback((username) => {
+    if (!username) return;
+    const cleanHandle = username.startsWith('@') ? username : `@${username}`;
+    setMutedUsers((prev) => {
+      const rawClean = username.replace('@', '');
+      const next = [...new Set([...prev, cleanHandle, username, rawClean])];
+      try { localStorage.setItem('mka_muted_users', JSON.stringify(next)); } catch {}
+      return next;
+    });
+    addToast(`Muted @${username.replace('@', '')}. Their posts are now hidden from your feed.`, 'info');
+  }, [addToast]);
+
+  const unmuteUser = useCallback((username) => {
+    if (!username) return;
+    const rawClean = username.replace('@', '').toLowerCase();
+    setMutedUsers((prev) => {
+      const next = prev.filter((item) => item.toLowerCase().replace('@', '') !== rawClean);
+      try { localStorage.setItem('mka_muted_users', JSON.stringify(next)); } catch {}
+      return next;
+    });
+    addToast(`Unmuted @${rawClean}. Their posts are visible again.`, 'success');
+  }, [addToast]);
+
   const performAdminAction = async (reportId, actionType, actionReason) => {
     try {
       if (actionType === 'Dismiss' || actionType === 'Mark No Violation') await apiAdminService.rejectReport(reportId);
@@ -74,16 +106,20 @@ export function ReportProvider({ children }) {
       myReports,
       adminQueue,
       blockedUsers,
+      mutedUsers,
       refreshReports,
       submitReport,
       blockUser,
       unblockUser,
+      muteUser,
+      unmuteUser,
       performAdminAction
     }}>
       {children}
     </ReportContext.Provider>
   );
 }
+
 
 export function useReports() {
   const context = useContext(ReportContext);

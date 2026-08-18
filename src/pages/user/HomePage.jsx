@@ -27,8 +27,9 @@ export function HomePage({ onNavigate }) {
   const { posts, loading, isFetching, createPost, deletePost, toggleSavePost, savedPostIds = [] } = usePosts();
   const { commentsByPost, fetchComments, createComment, reactToComment } = useComments();
   const { currentUser } = useAuth();
-  const { blockedUsers, blockUser } = useReports();
+  const { blockedUsers, mutedUsers = [], blockUser } = useReports();
   const { addToast } = useToast();
+
   const { currentLanguage, t } = useLanguage();
   const [spokenLanguage, setSpokenLanguage] = useSpokenLanguage();
   const [reportingPost, setReportingPost] = useState(null);
@@ -168,17 +169,27 @@ export function HomePage({ onNavigate }) {
   const postTypes = ['All', 'Thought', 'Question', 'Vent', 'Story', 'Advice'];
 
   // Filter posts
-  const filteredPosts = posts.filter((p) => {
-    if (blockedUsers.includes(p.username)) return false;
-    if (selectedTopic !== 'All') {
-      const pTopic = (p.topic || 'General').toLowerCase();
-      const sTopic = selectedTopic.toLowerCase();
-      if (pTopic !== sTopic && !pTopic.includes(sTopic) && !sTopic.includes(pTopic)) return false;
-    }
-    if (selectedType !== 'All' && p.postType !== selectedType) return false;
-    if (selectedLanguageFilter !== 'ALL' && selectedLanguageFilter !== 'All' && (p.language || 'EN') !== selectedLanguageFilter) return false;
-    return true;
-  });
+  const filteredPosts = isUserMuted
+    ? []
+    : posts.filter((p) => {
+        if (!p || !p.username) return false;
+        const pUnameClean = p.username.toLowerCase().replace('@', '');
+        const isBlockedOrMuted =
+          blockedUsers.some((b) => b.toLowerCase().replace('@', '') === pUnameClean) ||
+          mutedUsers.some((m) => m.toLowerCase().replace('@', '') === pUnameClean) ||
+          p.isMuted || p.muted;
+
+        if (isBlockedOrMuted) return false;
+
+        if (selectedTopic !== 'All') {
+          const pTopic = (p.topic || 'General').toLowerCase();
+          const sTopic = selectedTopic.toLowerCase();
+          if (pTopic !== sTopic && !pTopic.includes(sTopic) && !sTopic.includes(pTopic)) return false;
+        }
+        if (selectedType !== 'All' && p.postType !== selectedType) return false;
+        if (selectedLanguageFilter !== 'ALL' && selectedLanguageFilter !== 'All' && (p.language || 'EN') !== selectedLanguageFilter) return false;
+        return true;
+      });
 
   return (
     <UserLayout activeRoute="/home" onNavigate={onNavigate} wide={true}>

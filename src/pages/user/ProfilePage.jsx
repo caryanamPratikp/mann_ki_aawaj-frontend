@@ -7,8 +7,8 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { apiProfileService } from '../../services/apiProfileService.js';
 import { PostCard } from '../../components/posts/PostCard.jsx';
 import { Button } from '../../components/common/Button.jsx';
-import { Modal } from '../../components/common/Modal.jsx';
-import { Edit3, Trash2, Calendar, Globe, Heart, MessageSquare, AlertTriangle, Check, Sparkles } from 'lucide-react';
+import { useReports } from '../../context/ReportContext.jsx';
+import { Edit3, Trash2, Calendar, Globe, Heart, MessageSquare, AlertTriangle, Check, Sparkles, Volume2, VolumeX, ShieldOff } from 'lucide-react';
 import { formatDate } from '../../utils/formatDate.js';
 import { EmptyState } from '../../components/common/EmptyState.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
@@ -30,8 +30,10 @@ import { AvatarStudioModal } from '../../components/avatar/AvatarStudioModal.jsx
 export function ProfilePage({ username, onNavigate }) {
   const { currentUser, logout } = useAuth();
   const { posts } = usePosts();
+  const { mutedUsers = [], unmuteUser } = useReports();
   const { t, changeLanguage, currentLanguage, supportedLanguages } = useLanguage();
   const { addToast } = useToast();
+
 
   const [activeTab, setActiveTab] = useState('Posts');
   const [profileData, setProfileData] = useState(null);
@@ -333,12 +335,12 @@ export function ProfilePage({ username, onNavigate }) {
 
         {/* Profile Tabs */}
         <div className="flex-row items-center gap-xs border-b" style={{ borderBottom: '1px solid var(--border-light)' }}>
-          {[(isSelf ? 'My Thoughts' : 'Thoughts'), 'About'].map((tab) => {
+          {[(isSelf ? 'My Thoughts' : 'Thoughts'), 'Muted Users'].map((tab) => {
             const isTabActive = activeTab === 'Posts' ? (tab === 'My Thoughts' || tab === 'Thoughts') : (activeTab === tab);
             return (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab === 'About' ? 'About' : 'Posts')}
+                onClick={() => setActiveTab(tab === 'Muted Users' ? 'Muted' : 'Posts')}
                 style={{
                   padding: '10px 16px',
                   fontSize: '14px',
@@ -349,7 +351,7 @@ export function ProfilePage({ username, onNavigate }) {
                   cursor: 'pointer',
                 }}
               >
-                {tab}
+                {tab === 'Muted Users' ? t('mutedUsers', 'Muted Users') : tab}
               </button>
             );
           })}
@@ -369,14 +371,51 @@ export function ProfilePage({ username, onNavigate }) {
           </div>
         )}
 
-        {activeTab === 'About' && (
-          <div className="mka-card flex-col gap-md" style={{ borderRadius: 'var(--radius-lg)' }}>
-            <h3 className="card-heading" style={{ fontSize: '18px', margin: 0 }}>Privacy &amp; Identity Guarantee</h3>
-            <p className="body-text" style={{ fontSize: '14px', lineHeight: 1.5, margin: 0 }}>
-              Man Ki Aavaj strictly shields user identity. Real names, email addresses, phone numbers, and location details are private and never exposed to other members.
-            </p>
+        {activeTab === 'Muted' && (
+          <div className="flex-col gap-md">
+            {mutedUsers.length === 0 ? (
+              <EmptyState
+                title="No Muted Members"
+                description="You haven't muted any members yet. When you mute a user from post options, they will appear here."
+              />
+            ) : (
+              <div className="flex-col gap-sm">
+                {[...new Set(mutedUsers.map((u) => u.replace('@', '')))].map((cleanHandle) => {
+                  return (
+                    <div
+                      key={cleanHandle}
+                      className="mka-card flex-row items-center justify-between"
+                      style={{ padding: '14px 18px', borderRadius: '12px', background: '#FFFFFF', border: '1px solid #EAE5E3' }}
+                    >
+                      <div className="flex-row items-center gap-sm">
+                        <InitialAvatar username={cleanHandle} size={40} />
+                        <div>
+                          <div style={{ fontSize: '15px', fontWeight: 700, color: '#2D1D15' }}>
+                            @{cleanHandle}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#8C8385' }}>
+                            Muted • Posts hidden from feed
+                          </div>
+                        </div>
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        icon={Volume2}
+                        onClick={() => unmuteUser(cleanHandle)}
+                      >
+                        Unmute
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
+
 
       </div>
 

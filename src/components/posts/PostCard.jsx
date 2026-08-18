@@ -17,8 +17,9 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false 
   const { reactToPost, toggleSavePost, savedPostIds, deletePost } = usePosts();
   const { commentsByPost, fetchComments } = useComments();
   const { currentUser } = useAuth();
-  const { blockUser } = useReports();
+  const { blockUser, muteUser } = useReports();
   const { currentLanguage, translateText, translateTextAsync, t } = useLanguage();
+
 
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -180,8 +181,12 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false 
             }}
             onSave={() => toggleSavePost(post.id)}
             onHide={() => setHidden(true)}
-            onMute={() => setHidden(true)}
+            onMute={() => {
+              muteUser(post.username);
+              setHidden(true);
+            }}
             onBlock={() => blockUser(post.username)}
+
             onReport={() => setReportModalOpen(true)}
           />
         </div>
