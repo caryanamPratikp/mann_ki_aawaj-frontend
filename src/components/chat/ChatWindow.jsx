@@ -39,7 +39,7 @@ import { InitialAvatar } from '../profile/InitialAvatar.jsx';
 import { formatDate } from '../../utils/formatDate.js';
 import { ModerationIndicator } from '../common/ModerationIndicator.jsx';
 import { Button } from '../common/Button.jsx';
-import { Send, Lock, MessageSquare, Paperclip, Smile, Check, CheckCheck, MoreVertical, Search, Mic, MicOff, Loader2, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Send, Lock, MessageSquare, Paperclip, Smile, Check, CheckCheck, MoreVertical, Search, Mic, MicOff, Loader2, Clock, CheckCircle2, XCircle, ArrowLeft } from 'lucide-react';
 import { moderationCheck } from '../../utils/moderationCheck.js';
 import { apiChatService } from '../../services/apiChatService.js';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
@@ -48,7 +48,7 @@ import { SpokenLanguageSelector } from '../common/SpokenLanguageSelector.jsx';
 
 import { useChat } from '../../context/ChatContext.jsx';
 
-export function ChatWindow({ conversation, currentUserUsername, onSendMessage, onNavigate, onAcceptRequest, onDeclineRequest }) {
+export function ChatWindow({ conversation, currentUserUsername, onSendMessage, onNavigate, onAcceptRequest, onDeclineRequest, onBackToList }) {
   const { currentLanguage, translateTextAsync, t } = useLanguage();
   const { getUserPresence, acceptChatRequest, declineChatRequest } = useChat();
   const [spokenLanguage, setSpokenLanguage] = useSpokenLanguage();
@@ -177,12 +177,27 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
   return (
     <div className="mka-card flex-col" style={{ height: '100%', padding: 0, overflow: 'hidden', background: 'var(--pure-white)', borderRadius: 'var(--radius-lg)' }}>
       {/* Chat Header */}
-      <div className="flex-row items-center justify-between" style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-light)', background: 'var(--soft-white)' }}>
-        <button
-          onClick={() => onNavigate && onNavigate(`/profile/${otherUsername.replace('@', '')}`)}
-          className="flex-row items-center gap-md"
-          style={{ cursor: 'pointer', textAlign: 'left', background: 'none', border: 'none' }}
-        >
+      <div className="flex-row items-center justify-between" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-light)', background: 'var(--soft-white)' }}>
+        <div className="flex-row items-center gap-xs">
+          {onBackToList && (
+            <button
+              type="button"
+              onClick={onBackToList}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                padding: '6px', color: 'var(--eclipse)', display: 'flex', alignItems: 'center',
+                borderRadius: '8px',
+              }}
+              title="Back to conversations"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
+          <button
+            onClick={() => onNavigate && onNavigate(`/profile/${otherUsername.replace('@', '')}`)}
+            className="flex-row items-center gap-sm"
+            style={{ cursor: 'pointer', textAlign: 'left', background: 'none', border: 'none' }}
+          >
           <div style={{ position: 'relative' }}>
             <InitialAvatar username={otherUsername} size={42} />
             <span
@@ -208,6 +223,7 @@ export function ChatWindow({ conversation, currentUserUsername, onSendMessage, o
             </span>
           </div>
         </button>
+        </div>
 
         <div className="flex-row items-center gap-sm" style={{ position: 'relative' }}>
           <button

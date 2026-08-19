@@ -35,20 +35,32 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false 
     );
   }
 
-  const [dynamicTranslation, setDynamicTranslation] = useState(null);
+  const [dynamicTitleTranslation, setDynamicTitleTranslation] = useState(null);
+  const [dynamicContentTranslation, setDynamicContentTranslation] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
-    const sourceText = post.originalContent || post.content || post.description || post.title;
-    if (sourceText && currentLanguage) {
-      translateTextAsync(sourceText, currentLanguage).then((res) => {
-        if (isMounted && res) setDynamicTranslation(res);
+    const titleText = post.title || post.originalTitle;
+    const contentText = post.originalContent || post.content || post.description;
+
+    if (titleText && currentLanguage) {
+      translateTextAsync(titleText, currentLanguage).then((res) => {
+        if (isMounted && res) setDynamicTitleTranslation(res);
       });
     } else {
-      setDynamicTranslation(null);
+      setDynamicTitleTranslation(null);
     }
+
+    if (contentText && currentLanguage) {
+      translateTextAsync(contentText, currentLanguage).then((res) => {
+        if (isMounted && res) setDynamicContentTranslation(res);
+      });
+    } else {
+      setDynamicContentTranslation(null);
+    }
+
     return () => { isMounted = false; };
-  }, [currentLanguage, post.originalContent, post.content, post.description, post.title]);
+  }, [currentLanguage, post.title, post.originalTitle, post.originalContent, post.content, post.description]);
 
   const isSaved = savedPostIds.includes(post.id);
   const isOwner = Boolean(
@@ -57,12 +69,20 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false 
   );
   const isTranslated = Boolean(
     !manualToggle && 
-    (dynamicTranslation || post.isTranslated || (post.originalLanguage && post.displayLanguage && post.originalLanguage.toLowerCase() !== post.displayLanguage.toLowerCase()))
+    (
+      (dynamicTitleTranslation && dynamicTitleTranslation !== (post.originalTitle || post.title)) ||
+      (dynamicContentTranslation && dynamicContentTranslation !== (post.originalContent || post.content)) ||
+      post.isTranslated
+    )
   );
-  const displayTitle = post.title;
+
+  const displayTitle = manualToggle
+    ? (post.originalTitle || post.title)
+    : (dynamicTitleTranslation || post.translatedTitle || post.title || post.originalTitle);
+
   const displayContent = manualToggle
     ? (post.originalContent || post.content)
-    : (dynamicTranslation || post.translatedContent || post.content || post.originalContent);
+    : (dynamicContentTranslation || post.translatedContent || post.content || post.originalContent);
 
   const postComments = commentsByPost[post.id] || [];
   const matchedCommentCount = postComments.length > 0 ? postComments.length : (post.commentCount || 0);

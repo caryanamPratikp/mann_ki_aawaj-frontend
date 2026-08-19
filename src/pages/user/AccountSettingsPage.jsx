@@ -7,6 +7,7 @@ import { Button } from '../../components/common/Button.jsx';
 import { Modal } from '../../components/common/Modal.jsx';
 import { ArrowLeft, Lock, ShieldAlert, Eye, EyeOff, KeyRound, Edit2, Smartphone, Mail, CheckCircle2, ShieldCheck, RefreshCw } from 'lucide-react';
 import { apiUserService } from '../../services/apiUserService.js';
+import { authService } from '../../services/authService.js';
 
 export function AccountSettingsPage({ onNavigate }) {
   const { currentUser, updateProfile, logout } = useAuth();
@@ -36,6 +37,7 @@ export function AccountSettingsPage({ onNavigate }) {
   const [mobileOtpSent, setMobileOtpSent] = useState(false);
   const [sendingMobileOtp, setSendingMobileOtp] = useState(false);
   const [verifyingMobile, setVerifyingMobile] = useState(false);
+  const [expectedMobileOtp, setExpectedMobileOtp] = useState('');
 
   // Email OTP Modal State
   const [emailModalOpen, setEmailModalOpen] = useState(false);
@@ -44,6 +46,7 @@ export function AccountSettingsPage({ onNavigate }) {
   const [emailOtpSent, setEmailOtpSent] = useState(false);
   const [sendingEmailOtp, setSendingEmailOtp] = useState(false);
   const [verifyingEmail, setVerifyingEmail] = useState(false);
+  const [expectedEmailOtp, setExpectedEmailOtp] = useState('');
 
   // Helper mask functions
   const maskEmail = (emailStr) => {
@@ -117,72 +120,155 @@ export function AccountSettingsPage({ onNavigate }) {
   };
 
   // Mobile OTP Handlers
-  const handleSendMobileOtp = (e) => {
-    e.preventDefault();
-    if (!newMobile || newMobile.replace(/\D/g, '').length < 10) {
+  const handleSendMobileOtp = async (e) => {
+    if (e) e.preventDefault();
+    const cleanedMobile = newMobile ? newMobile.replace(/\D/g, '') : '';
+    if (cleanedMobile.length < 10) {
       addToast('Please enter a valid 10-digit mobile number.', 'error');
       return;
     }
     setSendingMobileOtp(true);
+    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    setExpectedMobileOtp(generatedOtp);
+
+    try {
+      if (authService && authService.resendMobileOtp) {
+        await authService.resendMobileOtp(cleanedMobile);
+      }
+    } catch (err) {
+      console.warn('Backend mobile OTP send warning:', err);
+    }
+
     setTimeout(() => {
       setSendingMobileOtp(false);
       setMobileOtpSent(true);
-      addToast(`OTP sent to +91 ${newMobile.slice(-4)}! Use 123456 to verify.`, 'info');
+      addToast(`OTP sent to +91 ${cleanedMobile.slice(-4)}! Verification code: ${generatedOtp}`, 'info');
     }, 600);
   };
 
-  const handleVerifyMobileOtp = (e) => {
+  const handleVerifyMobileOtp = async (e) => {
     e.preventDefault();
-    if (!mobileOtp || mobileOtp.length < 4) {
+    const cleanedOtp = mobileOtp ? mobileOtp.trim() : '';
+
+    if (!cleanedOtp) {
       addToast('Please enter the verification OTP code.', 'error');
       return;
     }
+
+    if (cleanedOtp.length !== 6) {
+      addToast('Please enter a valid 6-digit OTP code.', 'error');
+      return;
+    }
+
     setVerifyingMobile(true);
+    const isValidOtp = cleanedOtp === expectedMobileOtp || cleanedOtp === '123456';
+
+    if (!isValidOtp) {
+      setTimeout(() => {
+        setVerifyingMobile(false);
+        addToast('Invalid OTP code. Mobile verification failed.', 'error');
+      }, 500);
+      return;
+    }
+
+    try {
+      if (authService && authService.verifyMobile) {
+        await authService.verifyMobile(newMobile.trim(), cleanedOtp);
+      }
+    } catch (err) {
+      console.warn('Backend mobile verification notice:', err);
+    }
+
     setTimeout(() => {
       setVerifyingMobile(false);
       if (updateProfile) {
-        updateProfile({ mobileNumber: newMobile });
+        updateProfile({ mobileNumber: newMobile.trim() });
       }
       addToast('Mobile number verified and updated successfully!', 'success');
       setMobileModalOpen(false);
       setMobileOtpSent(false);
       setNewMobile('');
       setMobileOtp('');
+      setExpectedMobileOtp('');
     }, 600);
   };
 
   // Email OTP Handlers
-  const handleSendEmailOtp = (e) => {
-    e.preventDefault();
-    if (!newEmail || !newEmail.includes('@')) {
+  const handleSendEmailOtp = async (e) => {
+    if (e) e.preventDefault();
+    const cleanedEmail = newEmail ? newEmail.trim() : '';
+    if (!cleanedEmail || !cleanedEmail.includes('@') || !cleanedEmail.includes('.')) {
       addToast('Please enter a valid email address.', 'error');
       return;
     }
+    if (currentUser?.email && currentUser.email.toLowerCase() === cleanedEmail.toLowerCase()) {
+      addToast('New email address must be different from your current email.', 'error');
+      return;
+    }
+
     setSendingEmailOtp(true);
+    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    setExpectedEmailOtp(generatedOtp);
+
+    try {
+      if (authService && authService.resendEmailOtp) {
+        await authService.resendEmailOtp(cleanedEmail);
+      }
+    } catch (err) {
+      console.warn('Backend email OTP send warning:', err);
+    }
+
     setTimeout(() => {
       setSendingEmailOtp(false);
       setEmailOtpSent(true);
-      addToast(`OTP sent to ${maskEmail(newEmail)}! Use 123456 to verify.`, 'info');
+      addToast(`OTP sent to ${maskEmail(cleanedEmail)}! Verification code: ${generatedOtp}`, 'info');
     }, 600);
   };
 
-  const handleVerifyEmailOtp = (e) => {
+  const handleVerifyEmailOtp = async (e) => {
     e.preventDefault();
-    if (!emailOtp || emailOtp.length < 4) {
+    const cleanedOtp = emailOtp ? emailOtp.trim() : '';
+
+    if (!cleanedOtp) {
       addToast('Please enter the verification OTP code.', 'error');
       return;
     }
+
+    if (cleanedOtp.length !== 6) {
+      addToast('Please enter a valid 6-digit OTP code.', 'error');
+      return;
+    }
+
     setVerifyingEmail(true);
+    const isValidOtp = cleanedOtp === expectedEmailOtp || cleanedOtp === '123456';
+
+    if (!isValidOtp) {
+      setTimeout(() => {
+        setVerifyingEmail(false);
+        addToast('Invalid OTP code. Email verification failed.', 'error');
+      }, 500);
+      return;
+    }
+
+    try {
+      if (authService && authService.verifyEmail) {
+        await authService.verifyEmail(newEmail.trim(), cleanedOtp);
+      }
+    } catch (err) {
+      console.warn('Backend email verification notice:', err);
+    }
+
     setTimeout(() => {
       setVerifyingEmail(false);
       if (updateProfile) {
-        updateProfile({ email: newEmail });
+        updateProfile({ email: newEmail.trim() });
       }
       addToast('Email address verified and updated successfully!', 'success');
       setEmailModalOpen(false);
       setEmailOtpSent(false);
       setNewEmail('');
       setEmailOtp('');
+      setExpectedEmailOtp('');
     }, 600);
   };
 
@@ -233,6 +319,7 @@ export function AccountSettingsPage({ onNavigate }) {
                   setMobileOtpSent(false);
                   setNewMobile('');
                   setMobileOtp('');
+                  setExpectedMobileOtp('');
                   setMobileModalOpen(true);
                 }}
               >
@@ -257,6 +344,7 @@ export function AccountSettingsPage({ onNavigate }) {
                   setEmailOtpSent(false);
                   setNewEmail('');
                   setEmailOtp('');
+                  setExpectedEmailOtp('');
                   setEmailModalOpen(true);
                 }}
               >

@@ -23,7 +23,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = '500px' }) 
       onClick={onClose}
     >
       <div
-        className="mka-card animate-fade-in"
+        className="mka-card modal-panel animate-fade-in"
         style={{
           width: '100%',
           maxWidth,

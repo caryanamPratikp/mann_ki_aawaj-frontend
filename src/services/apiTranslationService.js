@@ -1,4 +1,25 @@
+import axios from 'axios';
+import { API_BASE_URL } from '../config/env.js';
 import { apiClient } from './apiClient.js';
+
+const translationClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+translationClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Mapping UI language names, 2-letter ISO codes, and FLORES-200 codes to standard ISO codes
 export const LANGUAGE_MAP = {
@@ -94,13 +115,17 @@ export const apiTranslationService = {
 
     const tgtCode = normalizeLanguageCode(targetLang) || 'EN';
     let srcCode = normalizeLanguageCode(sourceLang);
+    const detectedScriptCode = detectTextLanguage(text);
 
-    if (!srcCode && sourceLang !== 'auto') {
-      srcCode = detectTextLanguage(text);
+    // If sourceLang was defaulted to EN, but text contains non-English script, trust script detection
+    if (srcCode === 'EN' && detectedScriptCode !== 'EN') {
+      srcCode = detectedScriptCode;
+    } else if (!srcCode && sourceLang !== 'auto') {
+      srcCode = detectedScriptCode;
     }
 
-    // If source and target language are identical and not English target, return original
-    if (srcCode && srcCode === tgtCode && tgtCode !== 'EN') {
+    // Only skip if source and target language are confirmed identical
+    if (srcCode && tgtCode && srcCode === tgtCode) {
       return text;
     }
 
@@ -109,20 +134,49 @@ export const apiTranslationService = {
       return translationCache.get(cacheKey);
     }
 
+    // 1. Attempt primary backend translation endpoint (OpenAI / Spring Boot service)
     try {
-      const response = await apiClient.post('/api/v1/translation/translate', {
+      const response = await translationClient.post('/api/v1/translation/translate', {
         text: text.trim(),
         sourceLanguage: 'auto',
         targetLanguage: tgtCode,
       });
 
-      if (response.data && response.data.translatedText) {
+      if (
+        response.data &&
+        response.data.translatedText &&
+        response.data.translatedText !== text.trim() &&
+        response.data.engine !== 'fallback'
+      ) {
         const result = response.data.translatedText;
         translationCache.set(cacheKey, result);
         return result;
       }
     } catch (err) {
-      console.warn('Backend translation service warning:', err?.message || err);
+      console.warn('[Translation] Primary backend translation service note:', err?.message || err);
+    }
+
+    // 2. Secondary Fallback: Free Google Translate GTX service (works for all languages offline/unconfigured)
+    try {
+      const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${tgtCode.toLowerCase()}&dt=t&q=${encodeURIComponent(text.trim())}`;
+      const gtxResponse = await fetch(gtxUrl);
+      if (gtxResponse.ok) {
+        const gtxData = await gtxResponse.json();
+        if (Array.isArray(gtxData) && Array.isArray(gtxData[0])) {
+          const translatedParts = gtxData[0]
+            .filter((item) => Array.isArray(item) && item[0])
+            .map((item) => item[0])
+            .join('');
+
+          if (translatedParts && translatedParts.trim()) {
+            const finalResult = translatedParts.trim();
+            translationCache.set(cacheKey, finalResult);
+            return finalResult;
+          }
+        }
+      }
+    } catch (fallbackErr) {
+      console.warn('[Translation] Fallback translation service note:', fallbackErr?.message || fallbackErr);
     }
 
     return text;

@@ -26,7 +26,7 @@ import {
   MapPin,
   Smartphone,
 } from 'lucide-react';
-import heroBgVideo from '../../assets/hero_bg.mp4';
+import heroBgVideo from '../../assets/Hero2_bg.mp4';
 import heroImg from '../../assets/hero.png';
 import logoMKA from '../../assets/logo_MKA.png';
 import leafImg from '../../assets/leaf.png';

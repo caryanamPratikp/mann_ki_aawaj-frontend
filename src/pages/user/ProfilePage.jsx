@@ -7,6 +7,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { apiProfileService } from '../../services/apiProfileService.js';
 import { PostCard } from '../../components/posts/PostCard.jsx';
 import { Button } from '../../components/common/Button.jsx';
+import { Modal } from '../../components/common/Modal.jsx';
 import { useReports } from '../../context/ReportContext.jsx';
 import { Edit3, Trash2, Calendar, Globe, Heart, MessageSquare, AlertTriangle, Check, Sparkles, Volume2, VolumeX, ShieldOff } from 'lucide-react';
 import { formatDate } from '../../utils/formatDate.js';
@@ -299,7 +300,7 @@ export function ProfilePage({ username, onNavigate }) {
             <div className="flex-row items-center gap-sm" style={{ marginTop: '4px' }}>
               <Globe size={15} style={{ color: isChangingLang ? 'var(--warning)' : 'var(--deep-plum)' }} />
               <select
-                value={currentLanguage}
+                value={supportedLanguages.find(l => l.label.toLowerCase() === (currentLanguage || '').toLowerCase() || l.code.toLowerCase() === (currentLanguage || '').toLowerCase())?.code || 'EN'}
                 disabled={isChangingLang}
                 onChange={async (e) => {
                   setIsChangingLang(true);
@@ -506,7 +507,7 @@ export function ProfilePage({ username, onNavigate }) {
               Preferred Language
             </label>
             <select
-              value={editPreferredLanguage}
+              value={SUPPORTED_LANGUAGES.find(l => l.label.toLowerCase() === (editPreferredLanguage || '').toLowerCase() || l.code.toLowerCase() === (editPreferredLanguage || '').toLowerCase())?.code || 'EN'}
               onChange={(e) => setEditPreferredLanguage(e.target.value)}
               style={{
                 width: '100%',

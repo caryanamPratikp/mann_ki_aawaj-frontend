@@ -20,7 +20,7 @@ export function ChatPage({ targetUsername, onNavigate }) {
   return (
     <UserLayout activeRoute="/chat" onNavigate={onNavigate} wide={true}>
       <div
-        className="grid"
+        className="chat-layout-grid"
         style={{
           display: 'grid',
           gridTemplateColumns: 'minmax(260px, 320px) 1fr',
@@ -31,7 +31,7 @@ export function ChatPage({ targetUsername, onNavigate }) {
         }}
       >
         <div
-          className="mka-card flex-col gap-sm"
+          className={`mka-card flex-col gap-sm chat-sidebar-card ${activeConversation ? 'hide-on-mobile' : ''}`}
           style={{
             height: '100%',
             overflowY: 'auto',
@@ -50,15 +50,18 @@ export function ChatPage({ targetUsername, onNavigate }) {
           />
         </div>
 
-        <ChatWindow
-          conversation={activeConversation}
-          messages={activeMessages}
-          currentUserUsername={currentUser?.username}
-          onSendMessage={sendMessage}
-          onAcceptRequest={acceptChatRequest}
-          onDeclineRequest={declineChatRequest}
-          onNavigate={onNavigate}
-        />
+        <div className={`chat-window-wrapper ${!activeConversation ? 'hide-on-mobile' : ''}`} style={{ height: '100%', minWidth: 0 }}>
+          <ChatWindow
+            conversation={activeConversation}
+            messages={activeMessages}
+            currentUserUsername={currentUser?.username}
+            onSendMessage={sendMessage}
+            onAcceptRequest={acceptChatRequest}
+            onDeclineRequest={declineChatRequest}
+            onNavigate={onNavigate}
+            onBackToList={() => selectConversation(null)}
+          />
+        </div>
       </div>
     </UserLayout>
   );

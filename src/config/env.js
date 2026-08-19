@@ -15,10 +15,11 @@ const sanitizeUrl = (url) => {
   return url.trim().replace(/^\[|\]$/g, '').replace(/^"|"$/g, '').replace(/^'|'$/g, '');
 };
 
-const currentEnvMode = (import.meta.env.VITE_ENVIRONMENT || 'local').trim().toLowerCase();
+const rawEnv = (import.meta.env.VITE_ENVIRONMENT || '').trim().toLowerCase();
+const currentEnvMode = rawEnv || (import.meta.env.DEV ? ENV_MODES.LOCAL : ENV_MODES.PRODUCTION);
 
 const prodApiUrl = sanitizeUrl(import.meta.env.VITE_PRODUCTION_URL) || 'https://api.awaazmanki.com';
-const prodSocketUrl = sanitizeUrl(import.meta.env.VITE_PRODUCTION_SOCKET_URL) || 'https://api.awaazmanki.com';
+const prodSocketUrl = sanitizeUrl(import.meta.env.VITE_PRODUCTION_SOCKET_URL) || 'https://socketapi.awaazmanki.com';
 
 const localApiUrl = sanitizeUrl(import.meta.env.VITE_LOCAL_URL) || 'http://localhost:8080';
 const localSocketUrl = sanitizeUrl(import.meta.env.VITE_LOCAL_SOCKET_URL) || 'http://localhost:8085';

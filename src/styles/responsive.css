@@ -233,11 +233,16 @@ img, video, iframe {
 }
 
 /* ══════════════════════════════════════════════════════
-   CHAT PAGE — MOBILE
+   CHAT PAGE — RESPONSIVE (MOBILE & TABLET)
    ══════════════════════════════════════════════════════ */
 @media (max-width: 900px) {
-  .chat-layout {
-    flex-direction: column !important;
+  .chat-layout-grid {
+    grid-template-columns: 1fr !important;
+    height: calc(100vh - 140px) !important;
+  }
+
+  .hide-on-mobile {
+    display: none !important;
   }
 
   .chat-sidebar {
@@ -252,6 +257,22 @@ img, video, iframe {
   .chat-input-area {
     padding-bottom: calc(70px + env(safe-area-inset-bottom)) !important;
   }
+}
+
+/* ══════════════════════════════════════════════════════
+   TABLE RESPONSIVE WRAPPER
+   ══════════════════════════════════════════════════════ */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.table-responsive::-webkit-scrollbar {
+  height: 4px;
+}
+.table-responsive::-webkit-scrollbar-thumb {
+  background: var(--border-medium, #D1C7C4);
+  border-radius: 4px;
 }
 
 /* ══════════════════════════════════════════════════════

@@ -241,12 +241,13 @@ export function AdminUsersPage({ onNavigate }) {
 
         {/* ── USERS TABLE ───────────────────────────────────────────────────── */}
         <div
+          className="table-responsive"
           style={{
             backgroundColor: '#FFFFFF',
             borderRadius: '20px',
             border: '1px solid #E1DCDB',
             boxShadow: '0 2px 12px rgba(45, 29, 21, 0.03)',
-            overflow: 'hidden',
+            overflowX: 'auto',
           }}
         >
           {loading ? (
@@ -259,7 +260,7 @@ export function AdminUsersPage({ onNavigate }) {
               No platform users found matching your search.
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
+            <table style={{ width: '100%', minWidth: '650px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#F8F5F3', borderBottom: '1px solid #E1DCDB', color: '#666666', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   <th style={{ padding: '14px 20px' }}>User Handle</th>

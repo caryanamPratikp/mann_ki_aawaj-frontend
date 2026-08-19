@@ -18,8 +18,28 @@ export function normalizeLanguage(lang) {
   return found ? found.label : lang;
 }
 
+export function resolveBrowserOrFallbackLanguage() {
+  try {
+    const saved = localStorage.getItem('mka_preferred_language');
+    if (saved) {
+      return normalizeLanguage(saved);
+    }
+    if (typeof navigator !== 'undefined' && navigator.language) {
+      const navLang = navigator.language.split('-')[0].toLowerCase();
+      const found = SUPPORTED_LANGUAGES.find(
+        (l) => l.code.toLowerCase() === navLang || l.label.toLowerCase().startsWith(navLang)
+      );
+      if (found) {
+        return found.label;
+      }
+    }
+  } catch (e) {}
+  return 'English';
+}
+
 /**
  * Batch-translate all English UI dictionary keys into targetLang via OpenAI API.
+ * Chunks keys into batches of ~15 keys to prevent API timeouts.
  */
 async function batchTranslateUI(targetLang) {
   const englishDict = UI_DICTIONARY['English'];
@@ -28,32 +48,44 @@ async function batchTranslateUI(targetLang) {
   const normTarget = normalizeLanguage(targetLang);
   if (normTarget === 'English') return {};
 
-  const keys = Object.keys(englishDict);
-  const values = Object.values(englishDict);
-  const payload = values.join('\n|||MKA_SEP|||\n');
+  const entries = Object.entries(englishDict);
+  const CHUNK_SIZE = 15;
+  const result = {};
 
-  try {
-    const translated = await apiTranslationService.translateText(payload, normTarget, 'EN');
-    if (!translated) return {};
+  for (let i = 0; i < entries.length; i += CHUNK_SIZE) {
+    const chunk = entries.slice(i, i + CHUNK_SIZE);
+    const keys = chunk.map(([k]) => k);
+    const values = chunk.map(([, v]) => v);
+    const payload = values.join('\n|||MKA_SEP|||\n');
 
-    const parts = translated.split(/\|\|\|MKA_SEP\|\|\|/).map(s => s.trim());
-
-    const result = {};
-    keys.forEach((key, idx) => {
-      result[key] = parts[idx] || englishDict[key];
-    });
-    return result;
-  } catch (err) {
-    console.warn('[LanguageContext] Batch UI translation warning:', err?.message);
-    return {};
+    try {
+      const translated = await apiTranslationService.translateText(payload, normTarget, 'EN');
+      if (translated) {
+        const parts = translated.split(/\|\|\|MKA_SEP\|\|\|/).map(s => s.trim());
+        keys.forEach((key, idx) => {
+          result[key] = parts[idx] || englishDict[key];
+        });
+      } else {
+        keys.forEach((key) => {
+          result[key] = englishDict[key];
+        });
+      }
+    } catch (err) {
+      console.warn('[LanguageContext] Chunk UI translation warning:', err?.message);
+      keys.forEach((key) => {
+        result[key] = englishDict[key];
+      });
+    }
   }
+
+  return result;
 }
 
 export function LanguageProvider({ children }) {
   const queryClient = useQueryClient();
+  const [isResolvingLanguage, setIsResolvingLanguage] = useState(true);
   const [currentLanguage, setCurrentLanguage] = useState(() => {
-    const saved = localStorage.getItem('mka_preferred_language') || 'EN';
-    return normalizeLanguage(saved);
+    return resolveBrowserOrFallbackLanguage();
   });
 
   const [translationCache, setTranslationCache] = useState({});
@@ -100,38 +132,51 @@ export function LanguageProvider({ children }) {
     const syncProfileLanguage = async () => {
       try {
         if (window.location.pathname.startsWith('/admin')) {
+          setIsResolvingLanguage(false);
           return;
         }
         const token = localStorage.getItem('auth_token');
+        const localSaved = localStorage.getItem('mka_preferred_language');
+
         if (token && !token.startsWith('mock')) {
-          const profileRes = await apiProfileService.getMyProfile();
-          if (profileRes?.data?.preferredLanguage) {
-            const rawLang = profileRes.data.preferredLanguage;
-            const normalized = normalizeLanguage(rawLang);
+          if (localSaved) {
+            // Local storage has explicit user preference -> keep local and push to backend profile
+            const normalizedLocal = normalizeLanguage(localSaved);
+            setCurrentLanguage(normalizedLocal);
+            await apiUserService.updateLanguage(normalizedLocal).catch(() => {});
+          } else {
+            // No local storage preference (first session) -> pull from backend profile
+            const profileRes = await apiProfileService.getMyProfile();
+            if (profileRes?.data?.preferredLanguage) {
+              const rawLang = profileRes.data.preferredLanguage;
+              const normalized = normalizeLanguage(rawLang);
 
-            setCurrentLanguage(normalized);
-            localStorage.setItem('mka_preferred_language', normalized);
+              setCurrentLanguage(normalized);
+              localStorage.setItem('mka_preferred_language', normalized);
 
-            if (!hasHardcodedDict(normalized) && normalized !== 'English') {
-              batchTranslateUI(normalized).then((translated) => {
-                translated._lang = normalized;
-                setDynamicUI(translated);
-                try {
-                  localStorage.setItem('mka_dynamic_ui', JSON.stringify(translated));
-                } catch {}
+              if (!hasHardcodedDict(normalized) && normalized !== 'English') {
+                batchTranslateUI(normalized).then((translated) => {
+                  translated._lang = normalized;
+                  setDynamicUI(translated);
+                  try {
+                    localStorage.setItem('mka_dynamic_ui', JSON.stringify(translated));
+                  } catch {}
+                });
+              }
+
+              await queryClient.invalidateQueries({
+                predicate: (query) => {
+                  const key = query.queryKey[0];
+                  return ['posts', 'comments', 'notifications', 'profile', 'savedPosts', 'chatMessages', 'myPosts'].includes(key);
+                },
               });
             }
-
-            await queryClient.invalidateQueries({
-              predicate: (query) => {
-                const key = query.queryKey[0];
-                return ['posts', 'comments', 'notifications', 'profile', 'savedPosts', 'chatMessages', 'myPosts'].includes(key);
-              },
-            });
           }
         }
       } catch (err) {
         // Silently swallow sync failures
+      } finally {
+        setIsResolvingLanguage(false);
       }
     };
     syncProfileLanguage();
@@ -150,6 +195,7 @@ export function LanguageProvider({ children }) {
 
     setIsTranslating(true);
     setCurrentLanguage(normalized);
+    setTranslationCache({});
     localStorage.setItem('mka_preferred_language', normalized);
 
     try {
@@ -202,7 +248,6 @@ export function LanguageProvider({ children }) {
   const translateTextAsync = async (text, targetLang = currentLanguage, sourceLang = null) => {
     if (!text || !text.trim()) return text;
     const normTarget = normalizeLanguage(targetLang);
-    if (normTarget === 'English' || normTarget === 'EN') return text;
 
     const cacheKey = `${sourceLang || 'AUTO'}_${normTarget}_${text.trim()}`;
     if (translationCache[cacheKey]) return translationCache[cacheKey];
@@ -231,7 +276,6 @@ export function LanguageProvider({ children }) {
   const translateText = useCallback((text, targetLang = currentLanguage, sourceLang = null) => {
     if (!text || !text.trim()) return text;
     const normTarget = normalizeLanguage(targetLang);
-    if (normTarget === 'English' || normTarget === 'EN') return text;
 
     const cacheKey = `${sourceLang || 'AUTO'}_${normTarget}_${text.trim()}`;
     if (translationCache[cacheKey]) {
@@ -249,6 +293,7 @@ export function LanguageProvider({ children }) {
       translateTextAsync,
       supportedLanguages: SUPPORTED_LANGUAGES,
       isTranslating,
+      isResolvingLanguage,
     }}>
       {children}
     </LanguageContext.Provider>

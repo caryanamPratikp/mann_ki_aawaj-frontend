@@ -5,7 +5,7 @@ import { toBackendTopic, toBackendPostType } from '../utils/enumMappers.js';
 
 const isMockMode = () => {
   const token = localStorage.getItem('auth_token');
-  return !token || token.startsWith('mock') || token === 'mock_token';
+  return Boolean(token && (token.startsWith('mock') || token === 'mock_token'));
 };
 
 export const apiPostService = {

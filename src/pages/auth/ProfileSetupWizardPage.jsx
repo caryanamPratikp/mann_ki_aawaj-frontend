@@ -450,7 +450,7 @@ export function ProfileSetupWizardPage({ onNavigate }) {
                 Preferred Language *
               </label>
               <select
-                value={preferredLanguage}
+                value={SUPPORTED_LANGUAGES.find(l => l.label.toLowerCase() === (preferredLanguage || '').toLowerCase() || l.code.toLowerCase() === (preferredLanguage || '').toLowerCase())?.code || 'EN'}
                 onChange={(e) => setPreferredLanguage(e.target.value)}
                 style={{
                   width: '100%',

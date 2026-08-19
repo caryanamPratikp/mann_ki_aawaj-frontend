@@ -20,18 +20,31 @@ export function LargeDiscussionWindow({ post, comments: passedComments, onAddCom
   const [pinnedCommentId, setPinnedCommentId] = useState(null);
   const [isExpanded, setIsExpanded] = useState(true);
   const [translatedTitle, setTranslatedTitle] = useState(null);
+  const [translatedContent, setTranslatedContent] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
-    if (post?.title && currentLanguage) {
-      translateTextAsync(post.title, currentLanguage).then((res) => {
+    const titleText = post?.title || post?.originalTitle;
+    const contentText = post?.originalContent || post?.content;
+
+    if (titleText && currentLanguage) {
+      translateTextAsync(titleText, currentLanguage).then((res) => {
         if (isMounted && res) setTranslatedTitle(res);
       });
     } else {
       setTranslatedTitle(null);
     }
+
+    if (contentText && currentLanguage) {
+      translateTextAsync(contentText, currentLanguage).then((res) => {
+        if (isMounted && res) setTranslatedContent(res);
+      });
+    } else {
+      setTranslatedContent(null);
+    }
+
     return () => { isMounted = false; };
-  }, [currentLanguage, post?.title]);
+  }, [currentLanguage, post?.title, post?.originalTitle, post?.originalContent, post?.content]);
 
   const handleQuickReply = async (postId, text, commentAuthorUsername, commentId) => {
     try {
@@ -194,7 +207,7 @@ export function LargeDiscussionWindow({ post, comments: passedComments, onAddCom
           {/* Main Post Body Content, Image Attachment & Reaction Buttons */}
           <div style={{ padding: '14px 18px', borderBottom: '1px solid #EDE8E6', backgroundColor: '#FFFDFB', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <p style={{ fontSize: '13.5px', color: '#2D1D15', margin: 0, lineHeight: 1.45, whiteSpace: 'pre-line' }}>
-              {post.content}
+              {translatedContent || post.content}
             </p>
             {post.imageUrl && (
               <div style={{ marginTop: '4px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #EDE8E6', maxWidth: '360px' }}>

@@ -14,8 +14,8 @@ export function AdminReportTable({ reports = [], onSelectReport, onActionClick }
   }
 
   return (
-    <div className="mka-card" style={{ overflowX: 'auto', padding: 0 }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+    <div className="mka-card table-responsive" style={{ overflowX: 'auto', padding: 0 }}>
+      <table style={{ width: '100%', minWidth: '680px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
         <thead>
           <tr style={{ background: 'var(--soft-white)', borderBottom: '1px solid var(--border-light)' }}>
             <th style={{ padding: '12px 16px' }}>Report ID</th>

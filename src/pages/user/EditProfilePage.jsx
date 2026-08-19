@@ -61,7 +61,7 @@ export function EditProfilePage({ onNavigate }) {
               <span>Preferred Native Language</span>
             </label>
             <select
-              value={preferredLang}
+              value={supportedLanguages.find(l => l.label.toLowerCase() === (preferredLang || '').toLowerCase() || l.code.toLowerCase() === (preferredLang || '').toLowerCase())?.code || 'EN'}
               onChange={(e) => setPreferredLang(e.target.value)}
               style={{
                 width: '100%',

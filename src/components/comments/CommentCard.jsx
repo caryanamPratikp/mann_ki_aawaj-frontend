@@ -37,7 +37,7 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate })
   const { currentUser } = useAuth();
   const { updateComment, deleteComment, createReply, reactToComment } = useComments();
   const { blockUser } = useReports();
-  const { t } = useLanguage();
+  const { t, currentLanguage, translateTextAsync } = useLanguage();
   const { addToast } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -47,6 +47,20 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate })
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [manualToggle, setManualToggle] = useState(false);
+  const [dynamicCommentTranslation, setDynamicCommentTranslation] = useState(null);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    const sourceText = comment.originalContent || comment.content;
+    if (sourceText && currentLanguage) {
+      translateTextAsync(sourceText, currentLanguage).then((res) => {
+        if (isMounted && res) setDynamicCommentTranslation(res);
+      });
+    } else {
+      setDynamicCommentTranslation(null);
+    }
+    return () => { isMounted = false; };
+  }, [currentLanguage, comment.originalContent, comment.content]);
 
   const [activeEmojis, setActiveEmojis] = useState(() => {
     const list = [];
@@ -72,8 +86,6 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate })
     );
   }
 
-  const isOwner = currentUser?.username === comment.username;
-
   const handleUpdate = (e) => {
     e.preventDefault();
     if (!editText.trim()) return;
@@ -83,6 +95,12 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate })
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editText.trim()) return;
+    await updateComment(comment.id, postId, editText);
+    setIsEditing(false);
   };
 
   const handleDelete = () => {
@@ -99,8 +117,12 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate })
     setShowReplyComposer(false);
   };
 
-  const displayContent = manualToggle ? (comment.originalContent || comment.content) : comment.content;
+  const displayContent = manualToggle
+    ? (comment.originalContent || comment.content)
+    : (dynamicCommentTranslation || comment.translatedContent || comment.content || comment.originalContent);
+
   const isTranslated = !manualToggle && Boolean(
+    (dynamicCommentTranslation && dynamicCommentTranslation !== (comment.originalContent || comment.content)) ||
     (comment.originalLanguage && comment.displayLanguage && comment.originalLanguage.toLowerCase() !== comment.displayLanguage.toLowerCase()) ||
     (comment.translatedContent && comment.originalContent && comment.translatedContent !== comment.originalContent)
   );

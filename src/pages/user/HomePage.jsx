@@ -411,144 +411,22 @@ export function HomePage({ onNavigate }) {
           >
             <AnimatePresence initial={false}>
               {filteredPosts.length > 0 ? (
-                filteredPosts.map((post) => {
-                  const isSelected = selectedPostId === post.id;
-
-                  return (
-                    <motion.div
-                      key={post.id}
-                      layout
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <div
-                        onClick={() => handlePostClick(post.id)}
-                        style={{
-                          border: isSelected ? '2px solid #6F405F' : '1px solid #E8DDD4',
-                          borderRadius: '14px',
-                          backgroundColor: isSelected ? '#FFFDFB' : '#FFFFFF',
-                          padding: '12px 14px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '8px',
-                          transition: 'all 0.2s ease',
-                          boxShadow: isSelected ? '0 4px 14px rgba(111,64,95,0.12)' : '0 2px 6px rgba(0,0,0,0.02)',
-                        }}
-                      >
-                        {/* ── COLLAPSED HEADER: Avatar, Username, Topic Tag, Time & Three Dots ── */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onNavigate(`/profile/${post.username.replace('@', '')}`);
-                              }}
-                              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}
-                              title={`View ${post.username}'s profile`}
-                            >
-                              <AvatarThumbnail
-                                username={post.username}
-                                initials={post.avatarInitials}
-                                config={post.avatarConfig}
-                                size={28}
-                              />
-                            </button>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onNavigate(`/profile/${post.username.replace('@', '')}`);
-                                  }}
-                                  style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    padding: 0,
-                                    cursor: 'pointer',
-                                    fontSize: '13px',
-                                    fontWeight: 700,
-                                    color: '#181818',
-                                    textAlign: 'left',
-                                  }}
-                                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-                                >
-                                  {post.username}
-                                </button>
-                                <span
-                                  style={{
-                                    fontSize: '10.5px',
-                                    fontWeight: 700,
-                                    padding: '2px 8px',
-                                    borderRadius: '10px',
-                                    backgroundColor: '#D89C7A',
-                                    color: '#0B0A16',
-                                  }}
-                                >
-                                  🏷️ {post.topic || 'General'}
-                                </span>
-                              </div>
-                              <div style={{ fontSize: '11px', color: '#666666' }}>
-                                {formatDate(post.createdAt)} {post.language ? `• 🌐 ${post.language}` : ''}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <PostMenu
-                              isSaved={savedPostIds.includes(post.id)}
-                              isOwner={currentUser && (currentUser.username === post.username || currentUser.email === post.username)}
-                              onDelete={async () => {
-                                try {
-                                  if (deletePost) await deletePost(post.id);
-                                  addToast('Post deleted', 'success');
-                                } catch (e) {
-                                  addToast(e.message || 'Failed to delete post', 'error');
-                                }
-                              }}
-                              onSave={() => toggleSavePost && toggleSavePost(post.id)}
-                              onHide={() => addToast('Post hidden from feed', 'info')}
-                              onMute={() => addToast(`Muted posts from ${post.username}`, 'info')}
-                              onBlock={() => {
-                                blockUser(post.username);
-                                addToast(`Blocked ${post.username}`, 'info');
-                              }}
-                              onReport={() => setReportingPost(post)}
-                            />
-                          </div>
-                        </div>
-
-                        {/* ── EXPANDED CONTENT & REACTIONS WHEN CLICKED ── */}
-                        {isSelected && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '8px', borderTop: '1px solid #F0E8E2' }}>
-                            {post.title && (
-                              <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#181818' }}>
-                                {post.title}
-                              </div>
-                            )}
-                            <p style={{ fontSize: '12.5px', color: '#4A3E3D', margin: 0, lineHeight: 1.45 }}>
-                              {post.content}
-                            </p>
-                            {post.imageUrl && (
-                              <div style={{ marginTop: '6px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #EAE6E5' }}>
-                                <img
-                                  src={getMediaUrl(post.imageUrl)}
-                                  alt="Post attachment"
-                                  style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', display: 'block' }}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  );
-                })
+                filteredPosts.map((post) => (
+                  <TopicStreamCardItem
+                    key={post.id}
+                    post={post}
+                    isSelected={selectedPostId === post.id}
+                    onClick={() => handlePostClick(post.id)}
+                    onNavigate={onNavigate}
+                    savedPostIds={savedPostIds}
+                    currentUser={currentUser}
+                    deletePost={deletePost}
+                    toggleSavePost={toggleSavePost}
+                    blockUser={blockUser}
+                    setReportingPost={setReportingPost}
+                    addToast={addToast}
+                  />
+                ))
               ) : loading ? (
                 <div style={{ padding: '36px', textAlign: 'center', color: '#6F405F', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                   <Loader2 size={24} className="animate-spin" />
@@ -797,5 +675,184 @@ export function HomePage({ onNavigate }) {
         />
       )}
     </UserLayout>
+  );
+}
+
+function TopicStreamCardItem({
+  post,
+  isSelected,
+  onClick,
+  onNavigate,
+  savedPostIds,
+  currentUser,
+  deletePost,
+  toggleSavePost,
+  blockUser,
+  setReportingPost,
+  addToast,
+}) {
+  const { currentLanguage, translateTextAsync } = useLanguage();
+  const [translatedTitle, setTranslatedTitle] = useState(null);
+  const [translatedContent, setTranslatedContent] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const titleText = post?.title || post?.originalTitle;
+    const contentText = post?.originalContent || post?.content;
+
+    if (titleText && currentLanguage) {
+      translateTextAsync(titleText, currentLanguage).then((res) => {
+        if (isMounted && res) setTranslatedTitle(res);
+      });
+    } else {
+      setTranslatedTitle(null);
+    }
+
+    if (contentText && currentLanguage) {
+      translateTextAsync(contentText, currentLanguage).then((res) => {
+        if (isMounted && res) setTranslatedContent(res);
+      });
+    } else {
+      setTranslatedContent(null);
+    }
+
+    return () => { isMounted = false; };
+  }, [currentLanguage, post?.title, post?.originalTitle, post?.originalContent, post?.content]);
+
+  const displayTitle = translatedTitle || post.translatedTitle || post.title || post.originalTitle;
+  const displayContent = translatedContent || post.translatedContent || post.content || post.originalContent;
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <div
+        onClick={onClick}
+        style={{
+          border: isSelected ? '2px solid #6F405F' : '1px solid #E8DDD4',
+          borderRadius: '14px',
+          backgroundColor: isSelected ? '#FFFDFB' : '#FFFFFF',
+          padding: '12px 14px',
+          cursor: 'pointer',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          transition: 'all 0.2s ease',
+          boxShadow: isSelected ? '0 4px 14px rgba(111,64,95,0.12)' : '0 2px 6px rgba(0,0,0,0.02)',
+        }}
+      >
+        {/* COLLAPSED HEADER */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigate(`/profile/${post.username.replace('@', '')}`);
+              }}
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}
+              title={`View ${post.username}'s profile`}
+            >
+              <AvatarThumbnail
+                username={post.username}
+                initials={post.avatarInitials}
+                config={post.avatarConfig}
+                size={28}
+              />
+            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNavigate(`/profile/${post.username.replace('@', '')}`);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    color: '#181818',
+                    textAlign: 'left',
+                  }}
+                >
+                  {post.username}
+                </button>
+                <span
+                  style={{
+                    fontSize: '10.5px',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: '10px',
+                    backgroundColor: '#D89C7A',
+                    color: '#0B0A16',
+                  }}
+                >
+                  🏷️ {post.topic || 'General'}
+                </span>
+              </div>
+              <div style={{ fontSize: '11px', color: '#666666' }}>
+                {formatDate(post.createdAt)} {post.language ? `• 🌐 ${post.language}` : ''}
+              </div>
+            </div>
+          </div>
+
+          <div onClick={(e) => e.stopPropagation()}>
+            <PostMenu
+              isSaved={savedPostIds.includes(post.id)}
+              isOwner={currentUser && (currentUser.username === post.username || currentUser.email === post.username)}
+              onDelete={async () => {
+                try {
+                  if (deletePost) await deletePost(post.id);
+                  addToast('Post deleted', 'success');
+                } catch (e) {
+                  addToast(e.message || 'Failed to delete post', 'error');
+                }
+              }}
+              onSave={() => toggleSavePost && toggleSavePost(post.id)}
+              onHide={() => addToast('Post hidden from feed', 'info')}
+              onMute={() => addToast(`Muted posts from ${post.username}`, 'info')}
+              onBlock={() => {
+                blockUser(post.username);
+                addToast(`Blocked ${post.username}`, 'info');
+              }}
+              onReport={() => setReportingPost(post)}
+            />
+          </div>
+        </div>
+
+        {/* TITLE SUMMARY */}
+        {displayTitle && (
+          <div style={{ fontSize: '13px', fontWeight: 700, color: '#181818', margin: '2px 0 0 0' }}>
+            {displayTitle}
+          </div>
+        )}
+
+        {/* EXPANDED CONTENT WHEN CLICKED */}
+        {isSelected && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '8px', borderTop: '1px solid #F0E8E2' }}>
+            <p style={{ fontSize: '12.5px', color: '#4A3E3D', margin: 0, lineHeight: 1.45 }}>
+              {displayContent}
+            </p>
+            {post.imageUrl && (
+              <div style={{ marginTop: '6px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #EAE6E5' }}>
+                <img
+                  src={getMediaUrl(post.imageUrl)}
+                  alt="Post attachment"
+                  style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', display: 'block' }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </motion.div>
   );
 }
