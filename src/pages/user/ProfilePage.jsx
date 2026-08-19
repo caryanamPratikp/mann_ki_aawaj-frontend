@@ -213,7 +213,7 @@ export function ProfilePage({ username, onNavigate }) {
 
         {/* Profile Card Header */}
         <div className="mka-card flex-col gap-md" style={{ background: 'var(--soft-white)', borderRadius: 'var(--radius-lg)' }}>
-          <div className="flex-row items-center justify-between flex-wrap gap-md">
+          <div className="flex-row items-center justify-between flex-wrap profile-header-row" style={{ gap: '12px' }}>
             <div className="flex-row items-center gap-md">
               {/* Avatar with selected color background */}
               <InitialAvatar
@@ -235,7 +235,7 @@ export function ProfilePage({ username, onNavigate }) {
 
             {/* Action Buttons */}
             {isSelf ? (
-              <div className="flex-row items-center gap-sm">
+              <div className="flex-row items-center gap-sm profile-actions-row">
                 <Button variant="outline" size="sm" onClick={() => setIsAvatarModalOpen(true)} icon={Sparkles}>
                   Edit Avatar
                 </Button>

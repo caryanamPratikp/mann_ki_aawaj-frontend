@@ -205,7 +205,7 @@ export function HomePage({ onNavigate }) {
         }}
       >
         {/* Feed Tabs */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto' }}>
+        <div className="feed-filters-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto' }}>
           {[{key: 'Latest', label: t('latest')}, {key: 'Most Helpful', label: t('mostHelpful')}, {key: 'Following Topics', label: t('followingTopics')}].map(({key: tab, label}) => (
             <button
               key={tab}

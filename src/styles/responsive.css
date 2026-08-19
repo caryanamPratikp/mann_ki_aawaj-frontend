@@ -1,21 +1,419 @@
-/* Mobile & Responsive Rules */
+/* ============================================================
+   AAWAJ MAN KI — RESPONSIVE DESIGN SYSTEM
+   Breakpoints:
+     Mobile (sm)  : max-width 640px
+     Tablet (md)  : 641px – 900px
+     Desktop      : min-width 901px
+   ============================================================ */
+
+/* ── GLOBAL MOBILE RESET ─────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+img, video, iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── VISIBILITY HELPERS ──────────────────────────────── */
 @media (max-width: 900px) {
-  .sidebar-left {
-    display: none;
-  }
+  .desktop-only { display: none !important; }
+}
+@media (min-width: 901px) {
+  .mobile-only { display: none !important; }
+}
+@media (max-width: 640px) {
+  .tablet-and-up { display: none !important; }
+}
+
+/* ══════════════════════════════════════════════════════
+   TABLET (641px – 900px)
+   ══════════════════════════════════════════════════════ */
+@media (min-width: 641px) and (max-width: 900px) {
+
+  /* Layout */
+  .sidebar-left { display: none; }
 
   .main-wrapper {
-    padding: 16px 12px;
-    padding-bottom: 76px; /* Leave space for bottom navigation */
+    padding: 14px 12px;
+    padding-bottom: 80px;
+    gap: 14px;
   }
 
-  .desktop-only {
+  .main-content,
+  .main-content-wide {
+    max-width: 100%;
+  }
+
+  /* Cards */
+  .mka-card {
+    padding: 18px;
+    border-radius: 16px;
+  }
+
+  /* Typography */
+  .section-heading { font-size: 22px !important; }
+  .card-heading    { font-size: 17px !important; }
+
+  /* Flex row wrapping */
+  .flex-row.wrap-tablet { flex-wrap: wrap; }
+}
+
+/* ══════════════════════════════════════════════════════
+   MOBILE (≤ 640px)
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+
+  /* ── LAYOUT ───────────────────────────────────────── */
+  .sidebar-left { display: none !important; }
+
+  .main-wrapper {
+    padding: 10px 8px;
+    padding-bottom: 76px; /* bottom nav clearance */
+    gap: 10px;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .main-content,
+  .main-content-wide {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* ── CARDS ───────────────────────────────────────── */
+  .mka-card {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .mka-panel {
+    padding: 10px;
+    border-radius: 10px;
+  }
+
+  /* ── TYPOGRAPHY ──────────────────────────────────── */
+  .section-heading  { font-size: 20px !important; line-height: 1.3 !important; }
+  .card-heading     { font-size: 16px !important; }
+  .body-text        { font-size: 13px !important; }
+  .secondary-text   { font-size: 12px !important; }
+  .caption-text     { font-size: 11px !important; }
+
+  /* ── FLEX ROW → WRAP ─────────────────────────────── */
+  .flex-row.wrap-mobile,
+  .flex-row.items-center.justify-between.flex-wrap { flex-wrap: wrap; gap: 8px; }
+
+  /* ── BUTTONS ─────────────────────────────────────── */
+  .btn-full-mobile,
+  button[data-full-mobile] {
+    width: 100% !important;
+    justify-content: center;
+  }
+
+  /* ── TOP NAV ─────────────────────────────────────── */
+  .topnav-header {
+    margin: 6px auto 0 !important;
+    width: calc(100% - 16px) !important;
+    padding: 0 12px !important;
+    border-radius: 16px !important;
+  }
+
+  /* Hide brand text on very small phones */
+  .brand-name {
     display: none !important;
   }
 }
 
-@media (min-width: 901px) {
-  .mobile-only {
-    display: none !important;
+/* ══════════════════════════════════════════════════════
+   POST CARDS — MOBILE
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* Post card compact header */
+  .post-card-header {
+    gap: 8px !important;
+  }
+
+  /* Reactions: shrink font and gap */
+  .reactions-bar {
+    gap: 4px !important;
+    flex-wrap: wrap;
+  }
+
+  .reaction-btn {
+    padding: 5px 8px !important;
+    font-size: 11px !important;
+    gap: 3px !important;
+  }
+
+  .reaction-label {
+    display: none !important; /* icon-only on mobile */
+  }
+
+  /* Feed filter chips scroll row */
+  .feed-filters-row {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .feed-filters-row::-webkit-scrollbar { display: none; }
+
+  /* Post create button text */
+  .create-post-label { display: none !important; }
+}
+
+/* ══════════════════════════════════════════════════════
+   MODALS — MOBILE FULL-SCREEN
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* Make modal panels full-screen on phones */
+  [role="dialog"] > div,
+  .modal-panel {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-height: 100dvh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 20px 16px !important;
+    overflow-y: auto !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════
+   ADMIN DASHBOARD — RESPONSIVE
+   ══════════════════════════════════════════════════════ */
+
+/* Admin sidebar off-canvas */
+@media (max-width: 900px) {
+  .admin-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: -280px !important;
+    height: 100vh !important;
+    z-index: 1000 !important;
+    transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 4px 0 32px rgba(0,0,0,0.22) !important;
+  }
+
+  .admin-sidebar.open {
+    left: 0 !important;
+  }
+
+  .admin-overlay {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 999;
+  }
+
+  .admin-main {
+    margin-left: 0 !important;
+  }
+
+  .admin-header {
+    padding: 0 16px !important;
+  }
+
+  .admin-content {
+    padding: 16px !important;
+  }
+
+  /* Admin stats grid */
+  .admin-stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Admin notification dropdown */
+  .admin-notif-dropdown {
+    width: calc(100vw - 32px) !important;
+    right: -60px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-top-actions {
+    gap: 8px !important;
+  }
+
+  /* Hide "Refresh Intelligence" text label, keep icon */
+  .admin-refresh-label { display: none !important; }
+}
+
+/* ══════════════════════════════════════════════════════
+   PROFILE PAGE — MOBILE
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* Profile header: avatar + name + buttons stack vertically */
+  .profile-header-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 14px !important;
+  }
+
+  .profile-actions-row {
+    width: 100%;
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   CHAT PAGE — MOBILE SINGLE PANEL
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .chat-layout {
+    flex-direction: column !important;
+  }
+
+  .chat-sidebar {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-light) !important;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  .chat-main {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .chat-input-area {
+    padding-bottom: calc(70px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   SETTINGS PAGES — MOBILE
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* Settings section rows stack vertically */
+  .settings-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  /* Full-width select inputs */
+  .settings-select,
+  select {
+    width: 100% !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   AUTH PAGES — MOBILE
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* Auth card takes full width */
+  .auth-card {
+    width: calc(100% - 24px) !important;
+    max-width: 100% !important;
+    margin: 12px !important;
+    padding: 24px 18px !important;
+    border-radius: 20px !important;
+  }
+
+  /* OTP input boxes */
+  .otp-input {
+    width: 44px !important;
+    height: 48px !important;
+    font-size: 20px !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   PUBLIC / LANDING PAGES — MOBILE
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* Hero heading */
+  .hero-heading {
+    font-size: 28px !important;
+    line-height: 1.25 !important;
+  }
+
+  .hero-subheading {
+    font-size: 14px !important;
+  }
+
+  /* Public nav links collapse to drawer/hamburger */
+  .public-nav-links { display: none !important; }
+  .public-nav-mobile-toggle { display: flex !important; }
+
+  /* FAQ / Help accordion items */
+  .faq-item, .help-section {
+    padding: 14px !important;
+    border-radius: 12px !important;
+  }
+
+  /* Footer multi-column → single column */
+  .footer-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   MOBILE BOTTOM NAV — SAFE AREA (iPhone notch)
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .mobile-bottom-nav {
+    height: calc(60px + env(safe-area-inset-bottom)) !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   EXPLORE PAGE — MOBILE
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* Topic pills horizontal scroll */
+  .explore-topics-row {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+    gap: 6px !important;
+  }
+  .explore-topics-row::-webkit-scrollbar { display: none; }
+
+  /* Tab switcher compact */
+  .explore-tab-btn {
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   LANGUAGE SELECTOR DROPDOWN — MOBILE
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  .lang-dropdown-panel {
+    right: 0 !important;
+    left: auto !important;
+    width: calc(100vw - 24px) !important;
+    max-width: 280px !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   HORIZONTAL SCROLL UTILITY
+   ══════════════════════════════════════════════════════ */
+.scroll-x-mobile {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex-wrap: nowrap !important;
+}
+.scroll-x-mobile::-webkit-scrollbar { display: none; }

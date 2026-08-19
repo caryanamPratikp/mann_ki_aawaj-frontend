@@ -65,7 +65,11 @@ export function TopNavbar({ activeRoute, onNavigate }) {
                   borderRadius: '8px',
                 }}
               />
-              <span className="font-heading" style={{ fontSize: '22px', color: 'var(--eclipse)', letterSpacing: '-0.02em' }}>
+              {/* Hide brand text on very small phones — show logo only */}
+              <span
+                className="font-heading brand-name"
+                style={{ fontSize: '22px', color: 'var(--eclipse)', letterSpacing: '-0.02em' }}
+              >
                 Aawaj Man Ki
               </span>
             </button>

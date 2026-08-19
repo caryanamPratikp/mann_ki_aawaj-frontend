@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Shield, LayoutDashboard, Flag, FileCheck, ShieldAlert, Users, BarChart3, Settings, FileText, LogOut, Bell, ChevronDown, RefreshCw, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { Shield, LayoutDashboard, Flag, FileCheck, ShieldAlert, Users, BarChart3, Settings, FileText, LogOut, Bell, ChevronDown, RefreshCw, AlertTriangle, CheckCircle, Clock, Menu, X } from 'lucide-react';
 import logoMKA from '../../assets/logo_MKA.png';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
@@ -13,6 +13,8 @@ export function AdminLayout({ children, activeRoute, onNavigate, onRefresh, refr
   const [notifMenuOpen, setNotifMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
 
   const prevCountRef = useRef(0);
 
@@ -114,10 +116,26 @@ export function AdminLayout({ children, activeRoute, onNavigate, onRefresh, refr
         backgroundColor: 'var(--warm-off-white, #F8F5F3)',
         fontFamily: 'var(--font-sans, system-ui, -apple-system, sans-serif)',
         color: '#2D1D15',
+        position: 'relative',
       }}
     >
-      {/* ── 1. FIXED/STICKY SIDEBAR ────────────────────────────────────────── */}
+      {/* ── MOBILE OVERLAY (closes sidebar on tap) ── */}
+      {isSidebarOpen && (
+        <div
+          className="admin-overlay"
+          onClick={() => setIsSidebarOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            zIndex: 999,
+          }}
+        />
+      )}
+
+      {/* ── 1. SIDEBAR ─────────────────────────────────────────── */}
       <aside
+        className={`admin-sidebar${isSidebarOpen ? ' open' : ''}`}
         style={{
           width: '260px',
           flexShrink: 0,
@@ -134,6 +152,7 @@ export function AdminLayout({ children, activeRoute, onNavigate, onRefresh, refr
           overflowY: 'auto',
         }}
       >
+
         <div style={{ padding: '24px 20px 16px 20px' }}>
           {/* Brand Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '28px' }}>
@@ -287,9 +306,10 @@ export function AdminLayout({ children, activeRoute, onNavigate, onRefresh, refr
       </aside>
 
       {/* ── 2. MAIN CONTENT AREA WITH TOP HEADER ───────────────────────────── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div className="admin-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {/* Top Header */}
         <header
+          className="admin-header"
           style={{
             height: '72px',
             backgroundColor: '#ffffff',
@@ -303,13 +323,35 @@ export function AdminLayout({ children, activeRoute, onNavigate, onRefresh, refr
             zIndex: 90,
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: '#2D1D15', lineHeight: 1.1 }}>
-              Dashboard Overview
-            </h2>
-            <span style={{ fontSize: '12.5px', color: '#9F9794', marginTop: '2px' }}>
-              Real-time moderation & intelligence monitoring
-            </span>
+          {/* Hamburger + Title row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Hamburger — hidden on desktop via CSS */}
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="mobile-only"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '6px',
+                borderRadius: '8px',
+                color: '#2D1D15',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              {isSidebarOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: '#2D1D15', lineHeight: 1.1 }}>
+                Dashboard Overview
+              </h2>
+              <span style={{ fontSize: '12.5px', color: '#9F9794', marginTop: '2px' }}>
+                Real-time moderation & intelligence monitoring
+              </span>
+            </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', position: 'relative' }}>
@@ -493,7 +535,7 @@ export function AdminLayout({ children, activeRoute, onNavigate, onRefresh, refr
         </header>
 
         {/* Scrollable Page Viewport */}
-        <main style={{ flex: 1, padding: '32px 36px', overflowY: 'auto' }}>
+        <main className="admin-content" style={{ flex: 1, padding: '32px 36px', overflowY: 'auto' }}>
           {children}
         </main>
       </div>

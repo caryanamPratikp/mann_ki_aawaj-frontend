@@ -14,7 +14,7 @@ export function ReactionsBar({ reactions = {}, userReaction, onReact, compact = 
   const { t } = useLanguage();
 
   return (
-    <div className="flex-row items-center gap-xs flex-wrap" style={{ marginTop: '2px' }}>
+    <div className="reactions-bar flex-row items-center gap-xs" style={{ marginTop: '2px', flexWrap: 'wrap' }}>
       {REACTION_TYPES.map((type) => {
         const keyUpper = type.key;
         const keyLower = type.key.toLowerCase();
@@ -32,7 +32,7 @@ export function ReactionsBar({ reactions = {}, userReaction, onReact, compact = 
               e.stopPropagation();
               onReact(type.key);
             }}
-            className="flex-row items-center gap-xs"
+            className="reaction-btn flex-row items-center gap-xs"
             style={{
               padding: compact ? '4px 10px' : '5px 12px',
               borderRadius: '20px',
@@ -49,7 +49,8 @@ export function ReactionsBar({ reactions = {}, userReaction, onReact, compact = 
             }}
           >
             <Icon size={14} style={{ color: isActive ? type.color : '#7A6E6B' }} />
-            <span>{t(type.labelKey) || type.defaultLabel}</span>
+            {/* reaction-label hidden on mobile via CSS */}
+            <span className="reaction-label">{t(type.labelKey) || type.defaultLabel}</span>
             {displayCount > 0 && (
               <span style={{ fontSize: '11px', fontWeight: 800, color: isActive ? type.color : '#8C8385', marginLeft: '2px' }}>
                 {displayCount}

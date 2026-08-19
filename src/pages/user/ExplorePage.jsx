@@ -208,7 +208,7 @@ export function ExplorePage({ onNavigate }) {
               <h3 className="card-heading" style={{ fontSize: '16px' }}>
                 Browse Topics
               </h3>
-              <div className="flex-row gap-xs flex-wrap">
+              <div className="flex-row explore-topics-row gap-xs" style={{ flexWrap: 'wrap' }}>
                 {topicsList.map((t) => (
                   <button
                     key={t}
