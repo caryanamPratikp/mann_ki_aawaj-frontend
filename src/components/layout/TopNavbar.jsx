@@ -10,7 +10,6 @@ import { Tooltip } from '../common/Tooltip.jsx';
 import { Drawer } from '../common/Drawer.jsx';
 import { LanguageSelectorDropdown } from '../common/LanguageSelectorDropdown.jsx';
 
-
 export function TopNavbar({ activeRoute, onNavigate }) {
   const { currentUser, logout } = useAuth();
   const { unreadCount } = useNotifications();
@@ -27,292 +26,288 @@ export function TopNavbar({ activeRoute, onNavigate }) {
     }
   };
 
+  const iconBtnStyle = (active) => ({
+    padding: '8px',
+    borderRadius: 'var(--radius-md)',
+    color: active ? 'var(--deep-plum)' : 'var(--eclipse)',
+    background: active ? 'var(--deep-plum-light)' : 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    flexShrink: 0,
+  });
+
   return (
     <>
       <header
         style={{
           position: 'sticky',
-          top: '12px',
+          top: '8px',
           zIndex: 900,
-          margin: '12px auto 0',
-          width: 'calc(100% - 32px)',
+          margin: '8px auto 0',
+          width: 'calc(100% - 24px)',
           maxWidth: '1280px',
           background: 'var(--pure-white)',
           borderRadius: 'var(--radius-xl)',
           border: '1px solid var(--border-light)',
           boxShadow: 'var(--shadow-soft)',
-          padding: '0 20px',
+          padding: '0 16px',
+          /* Prevent header from overflowing viewport */
+          boxSizing: 'border-box',
+          overflow: 'hidden',
         }}
       >
         <div
-          className="flex-row items-center justify-between"
-          style={{ height: '60px' }}
+          style={{
+            height: '56px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '8px',
+            minWidth: 0,
+          }}
         >
-          {/* Logo & Brand */}
-          <div className="flex-row items-center gap-md">
-            <button
-              onClick={() => onNavigate('/')}
-              className="flex-row items-center gap-sm"
-              style={{ textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          {/* ── Logo & Brand ── */}
+          <button
+            onClick={() => onNavigate('/')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              flexShrink: 0,
+            }}
+          >
+            <img
+              src={logoMKA}
+              alt="Aawaj Man Ki"
+              style={{ width: '32px', height: '32px', objectFit: 'contain', borderRadius: '8px' }}
+            />
+            {/* Brand name — hidden on mobile phones via CSS */}
+            <span
+              className="brand-name font-heading"
+              style={{ fontSize: '20px', color: 'var(--eclipse)', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}
             >
-              <img
-                src={logoMKA}
-                alt="Aawaj Man Ki Logo"
-                style={{
-                  width: '34px',
-                  height: '34px',
-                  objectFit: 'contain',
-                  borderRadius: '8px',
-                }}
-              />
-              {/* Hide brand text on very small phones — show logo only */}
-              <span
-                className="font-heading brand-name"
-                style={{ fontSize: '22px', color: 'var(--eclipse)', letterSpacing: '-0.02em' }}
-              >
-                Aawaj Man Ki
-              </span>
-            </button>
-          </div>
+              Aawaj Man Ki
+            </span>
+          </button>
 
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} style={{ flex: '0 1 320px' }} className="desktop-only">
+          {/* ── Desktop Search Bar ── */}
+          <form onSubmit={handleSearch} style={{ flex: '0 1 300px' }} className="desktop-only">
             <div style={{ position: 'relative', width: '100%' }}>
               <Search
-                size={16}
-                style={{
-                  position: 'absolute',
-                  left: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--hurricane)',
-                }}
+                size={15}
+                style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--hurricane)', pointerEvents: 'none' }}
               />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t('searchPlaceholder')}
+                placeholder={t('searchPlaceholder') || 'Search posts...'}
                 style={{
                   width: '100%',
-                  padding: '8px 12px 8px 36px',
+                  padding: '8px 12px 8px 34px',
                   borderRadius: 'var(--radius-pill)',
                   border: '1px solid var(--border-light)',
                   background: 'var(--soft-white)',
-                  fontSize: '14px',
+                  fontSize: '13px',
                   outline: 'none',
+                  boxSizing: 'border-box',
                 }}
               />
             </div>
           </form>
 
-          {/* Main Top Nav Icons */}
-          <div className="flex-row items-center gap-md">
-            <Tooltip text={t('home')} position="bottom">
-              <button
-                onClick={() => onNavigate('/home')}
-                style={{
-                  padding: '8px',
-                  borderRadius: 'var(--radius-md)',
-                  color: activeRoute === '/home' ? 'var(--deep-plum)' : 'var(--eclipse)',
-                  background: activeRoute === '/home' ? 'var(--deep-plum-light)' : 'transparent',
-                }}
-              >
-                <Home size={22} />
-              </button>
-            </Tooltip>
+          {/* ── RIGHT SIDE ACTIONS ── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
 
-            <Tooltip text={t('explore')} position="bottom">
-              <button
-                onClick={() => onNavigate('/explore')}
-                style={{
-                  padding: '8px',
-                  borderRadius: 'var(--radius-md)',
-                  color: activeRoute === '/explore' ? 'var(--deep-plum)' : 'var(--eclipse)',
-                  background: activeRoute === '/explore' ? 'var(--deep-plum-light)' : 'transparent',
-                }}
-              >
-                <Compass size={22} />
-              </button>
-            </Tooltip>
+            {/* Desktop-only nav icons */}
+            <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+              <Tooltip text={t('home')} position="bottom">
+                <button onClick={() => onNavigate('/home')} style={iconBtnStyle(activeRoute === '/home')}>
+                  <Home size={21} />
+                </button>
+              </Tooltip>
 
-            <Tooltip text={t('messages')} position="bottom">
-              <button
-                onClick={() => onNavigate('/chat')}
-                style={{
-                  padding: '8px',
-                  borderRadius: 'var(--radius-md)',
-                  color: activeRoute?.startsWith('/chat') ? 'var(--deep-plum)' : 'var(--eclipse)',
-                  background: activeRoute?.startsWith('/chat') ? 'var(--deep-plum-light)' : 'transparent',
-                  position: 'relative',
-                }}
-              >
-                <MessageSquare size={22} />
-                {hasUnreadMessages && (
-                  <span
-                    style={{
-                      position: 'absolute',
-                      top: '4px',
-                      right: '4px',
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
+              <Tooltip text={t('explore')} position="bottom">
+                <button onClick={() => onNavigate('/explore')} style={iconBtnStyle(activeRoute === '/explore')}>
+                  <Compass size={21} />
+                </button>
+              </Tooltip>
+
+              <Tooltip text={t('messages')} position="bottom">
+                <button onClick={() => onNavigate('/chat')} style={iconBtnStyle(activeRoute?.startsWith('/chat'))}>
+                  <MessageSquare size={21} />
+                  {hasUnreadMessages && (
+                    <span style={{
+                      position: 'absolute', top: '4px', right: '4px',
+                      width: '7px', height: '7px', borderRadius: '50%',
                       backgroundColor: 'var(--error, #EF4444)',
-                      border: '1.5px solid var(--pure-white, #FFFFFF)',
-                    }}
-                  />
-                )}
-              </button>
-            </Tooltip>
+                      border: '1.5px solid var(--pure-white)',
+                    }} />
+                  )}
+                </button>
+              </Tooltip>
 
-            <Tooltip text={t('create')} position="bottom">
-              <button
-                onClick={() => onNavigate('/create-post')}
-                className="flex-row items-center gap-xs"
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: 'var(--radius-pill)',
-                  background: 'var(--deep-plum)',
-                  color: 'var(--pure-white)',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                }}
-              >
-                <PlusSquare size={18} />
-                <span className="desktop-only">{t('create')}</span>
-              </button>
-            </Tooltip>
+              <Tooltip text={t('create')} position="bottom">
+                <button
+                  onClick={() => onNavigate('/create-post')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    padding: '6px 14px',
+                    borderRadius: 'var(--radius-pill)',
+                    background: 'var(--deep-plum)',
+                    color: 'var(--pure-white)',
+                    fontSize: '13px', fontWeight: 600,
+                    border: 'none', cursor: 'pointer',
+                  }}
+                >
+                  <PlusSquare size={16} />
+                  <span>{t('create')}</span>
+                </button>
+              </Tooltip>
+            </div>
 
-            <Tooltip text={t('notifications')} position="bottom">
-              <button
-                onClick={() => onNavigate('/notifications')}
-                style={{
-                  padding: '8px',
-                  borderRadius: 'var(--radius-md)',
-                  color: activeRoute === '/notifications' ? 'var(--deep-plum)' : 'var(--eclipse)',
-                  background: activeRoute === '/notifications' ? 'var(--deep-plum-light)' : 'transparent',
-                  position: 'relative',
-                }}
-              >
-                <Bell size={22} />
-                {unreadCount > 0 && (
-                  <span
-                    style={{
-                      position: 'absolute',
-                      top: '4px',
-                      right: '4px',
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: 'var(--warning)',
-                    }}
-                  />
-                )}
-              </button>
-            </Tooltip>
+            {/* Notification Bell — ALWAYS VISIBLE (mobile + desktop) */}
+            <button
+              onClick={() => onNavigate('/notifications')}
+              title={t('notifications') || 'Notifications'}
+              style={iconBtnStyle(activeRoute === '/notifications')}
+            >
+              <Bell size={21} />
+              {unreadCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: '4px', right: '4px',
+                  minWidth: '16px', height: '16px', borderRadius: '8px',
+                  backgroundColor: 'var(--warning, #D96C3D)',
+                  color: '#fff', fontSize: '9px', fontWeight: 800,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: '1.5px solid var(--pure-white)',
+                  padding: '0 2px',
+                }}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
 
-            {/* Language Selector Dropdown */}
-            <div className="desktop-only">
+            {/* Language selector — desktop only */}
+            <div className="desktop-only" style={{ display: 'flex' }}>
               <LanguageSelectorDropdown compact={true} />
             </div>
 
+            {/* Profile Avatar — ALWAYS VISIBLE */}
             {currentUser ? (
-
-              <Tooltip text={`Profile (${currentUser.username || 'User'})`} position="bottom">
-                <button
-                  type="button"
-                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                  onClick={() => {
-                    const handle = currentUser?.username ? currentUser.username.replace('@', '') : 'me';
-                    onNavigate(`/profile/${handle}`);
-                  }}
-                >
-                  <InitialAvatar username={currentUser.username || '@user'} initials={currentUser.avatarInitials} size={34} />
-                </button>
-              </Tooltip>
+              <button
+                type="button"
+                style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', flexShrink: 0 }}
+                onClick={() => {
+                  const handle = currentUser?.username ? currentUser.username.replace('@', '') : 'me';
+                  onNavigate(`/profile/${handle}`);
+                }}
+                title={`Profile (${currentUser.username || 'User'})`}
+              >
+                <InitialAvatar
+                  username={currentUser.username || '@user'}
+                  initials={currentUser.avatarInitials}
+                  size={32}
+                />
+              </button>
             ) : (
               <button
                 onClick={() => onNavigate('/login')}
                 style={{
-                  padding: '6px 14px',
+                  padding: '6px 12px',
                   borderRadius: 'var(--radius-md)',
                   border: '1px solid var(--eclipse)',
-                  fontSize: '14px',
-                  fontWeight: 500,
+                  fontSize: '13px', fontWeight: 500,
+                  background: 'none', cursor: 'pointer',
                 }}
               >
                 Login
               </button>
             )}
 
-            {/* Mobile Drawer Toggle */}
+            {/* ☰ Hamburger — mobile-only */}
             <button
               className="mobile-only"
               onClick={() => setIsMobileDrawerOpen(true)}
-              style={{ color: 'var(--eclipse)', padding: '4px' }}
+              style={{
+                color: 'var(--eclipse)', padding: '6px',
+                background: 'none', border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}
+              title="Menu"
             >
-              <Menu size={24} />
+              <Menu size={22} />
             </button>
           </div>
         </div>
       </header>
 
-      {/* Mobile Sidebar Drawer */}
+      {/* ── Mobile Sidebar Drawer ── */}
       <Drawer
         isOpen={isMobileDrawerOpen}
         onClose={() => setIsMobileDrawerOpen(false)}
         title="Navigation"
       >
         <div className="flex-col gap-sm" style={{ padding: '8px 0' }}>
-          <button
-            onClick={() => { setIsMobileDrawerOpen(false); onNavigate('/chat'); }}
-            className="flex-row items-center gap-md"
-            style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', textAlign: 'left', fontSize: '15px' }}
-          >
-            {t('messages')}
-          </button>
-          <button
-            onClick={() => { setIsMobileDrawerOpen(false); onNavigate('/my-posts'); }}
-            className="flex-row items-center gap-md"
-            style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', textAlign: 'left', fontSize: '15px' }}
-          >
-            {t('myPosts')}
-          </button>
-          <button
-            onClick={() => { setIsMobileDrawerOpen(false); onNavigate('/saved'); }}
-            className="flex-row items-center gap-md"
-            style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', textAlign: 'left', fontSize: '15px' }}
-          >
-            {t('savedPosts')}
-          </button>
-          <button
-            onClick={() => { setIsMobileDrawerOpen(false); onNavigate('/my-reports'); }}
-            className="flex-row items-center gap-md"
-            style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', textAlign: 'left', fontSize: '15px' }}
-          >
-            {t('myReports')}
-          </button>
-          <button
-            onClick={() => { setIsMobileDrawerOpen(false); onNavigate('/settings'); }}
-            className="flex-row items-center gap-md"
-            style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', textAlign: 'left', fontSize: '15px' }}
-          >
-            {t('settings')}
-          </button>
-          <button
-            onClick={() => { setIsMobileDrawerOpen(false); onNavigate('/community-guidelines'); }}
-            className="flex-row items-center gap-md"
-            style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', textAlign: 'left', fontSize: '15px' }}
-          >
-            {t('communityGuidelines')}
-          </button>
+          {[
+            { label: t('home') || 'Home', route: '/home' },
+            { label: t('explore') || 'Explore', route: '/explore' },
+            { label: t('messages') || 'Messages', route: '/chat' },
+            { label: t('notifications') || 'Notifications', route: '/notifications' },
+            { label: t('myPosts') || 'My Posts', route: '/my-posts' },
+            { label: t('savedPosts') || 'Saved Posts', route: '/saved' },
+            { label: t('myReports') || 'My Reports', route: '/my-reports' },
+            { label: t('settings') || 'Settings', route: '/settings' },
+            { label: t('helpSupport') || 'Help & Support', route: '/help' },
+            { label: t('communityGuidelines') || 'Guidelines', route: '/community-guidelines' },
+          ].map((item) => (
+            <button
+              key={item.route}
+              onClick={() => { setIsMobileDrawerOpen(false); onNavigate(item.route); }}
+              style={{
+                padding: '12px 16px',
+                borderRadius: 'var(--radius-md)',
+                textAlign: 'left',
+                fontSize: '15px',
+                fontWeight: activeRoute === item.route ? 600 : 400,
+                color: activeRoute === item.route ? 'var(--deep-plum)' : 'var(--eclipse)',
+                background: activeRoute === item.route ? 'var(--deep-plum-light)' : 'transparent',
+                border: 'none', cursor: 'pointer', width: '100%',
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+
+          {/* Language selector in drawer */}
+          <div style={{ padding: '8px 16px', borderTop: '1px solid var(--border-light)', marginTop: '4px' }}>
+            <LanguageSelectorDropdown compact={false} />
+          </div>
+
           {currentUser && (
             <button
               onClick={() => { setIsMobileDrawerOpen(false); logout(); onNavigate('/login'); }}
-              className="flex-row items-center gap-md"
-              style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', textAlign: 'left', fontSize: '15px', color: 'var(--error)' }}
+              style={{
+                padding: '12px 16px',
+                borderRadius: 'var(--radius-md)',
+                textAlign: 'left',
+                fontSize: '15px',
+                fontWeight: 600,
+                color: 'var(--error)',
+                background: 'transparent',
+                border: 'none', cursor: 'pointer', width: '100%',
+              }}
             >
-              {t('logout')}
+              {t('logout') || 'Logout'}
             </button>
           )}
         </div>

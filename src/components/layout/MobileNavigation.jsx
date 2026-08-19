@@ -49,7 +49,7 @@ export function MobileNavigation({ activeRoute, onNavigate }) {
 
   return (
     <nav
-      className="mobile-only mobile-bottom-nav"
+      className="mobile-only"
       style={{
         position: 'fixed',
         bottom: 0,
@@ -59,11 +59,14 @@ export function MobileNavigation({ activeRoute, onNavigate }) {
         paddingBottom: 'env(safe-area-inset-bottom)',
         backgroundColor: 'var(--pure-white)',
         borderTop: '1px solid var(--border-light)',
+        /* Explicitly flex — not relying on utility class */
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-around',
         zIndex: 990,
         boxShadow: '0 -4px 20px rgba(45, 29, 21, 0.08)',
+        boxSizing: 'border-box',
+        width: '100%',
       }}
     >
       {navItems.map((item) => {

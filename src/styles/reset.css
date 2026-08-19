@@ -36,7 +36,14 @@ ul, ol {
   list-style: none;
 }
 
-img, svg {
+img {
   display: block;
   max-width: 100%;
+}
+
+/* SVG icons must stay inline for lucide-react to render correctly in flex buttons */
+svg {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
 }

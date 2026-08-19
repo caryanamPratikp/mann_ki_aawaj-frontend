@@ -1,5 +1,5 @@
-import React from 'react';
-import { LogIn, Home } from 'lucide-react';
+import React, { useState } from 'react';
+import { LogIn, Home, Menu, X } from 'lucide-react';
 import { Footer } from './Footer.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
@@ -8,6 +8,7 @@ import logoMKA from '../../assets/logo_MKA.png';
 export function PublicLayout({ children, activeRoute, onNavigate }) {
   const { currentUser, logout } = useAuth();
   const { t } = useLanguage();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const NAV_LINKS = [
     { label: t('home') || 'Home', route: currentUser ? '/home' : '/' },
@@ -18,16 +19,9 @@ export function PublicLayout({ children, activeRoute, onNavigate }) {
     { label: 'Contact', route: '/contact' },
   ];
 
-  const handleSignIn = () => {
-    if (currentUser) {
-      logout();
-    }
-    onNavigate('/login');
-  };
-
   return (
-    <div className="app-container" style={{ background: '#FFF8F2', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Public Dark Header Navbar */}
+    <div className="app-container" style={{ background: '#FFF8F2', minHeight: '100vh', display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
+      {/* ── Public Dark Header ── */}
       <header
         style={{
           position: 'sticky',
@@ -36,45 +30,42 @@ export function PublicLayout({ children, activeRoute, onNavigate }) {
           background: '#080A18',
           borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
-          padding: '0 20px',
+          padding: '0 16px',
+          width: '100%',
+          boxSizing: 'border-box',
         }}
       >
         <div
           style={{
             maxWidth: '1280px',
             margin: '0 auto',
-            height: '68px',
+            height: '60px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: '16px',
+            gap: '12px',
           }}
         >
-          {/* LEFT: Logo & Brand Name */}
+          {/* LEFT: Logo & Brand */}
           <div
             onClick={() => onNavigate(currentUser ? '/home' : '/')}
-            style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flexShrink: 0 }}
           >
             <img
               src={logoMKA}
               alt="Aawaj Man Ki Logo"
-              style={{
-                width: '42px',
-                height: '42px',
-                objectFit: 'contain',
-                borderRadius: '10px',
-              }}
+              style={{ width: '36px', height: '36px', objectFit: 'contain', borderRadius: '8px', display: 'block' }}
             />
             <span
-              className="font-playfair"
-              style={{ fontSize: '22px', fontWeight: 700, color: '#FFF8F2', letterSpacing: '-0.02em' }}
+              className="brand-name"
+              style={{ fontSize: '20px', fontWeight: 700, color: '#FFF8F2', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}
             >
               Aawaj Man Ki
             </span>
           </div>
 
-          {/* CENTER: Nav Links */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '24px' }} className="desktop-only">
+          {/* CENTER: Nav Links — desktop only */}
+          <nav className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             {NAV_LINKS.map((link) => {
               const isActive = activeRoute === link.route;
               return (
@@ -82,7 +73,7 @@ export function PublicLayout({ children, activeRoute, onNavigate }) {
                   key={link.route}
                   onClick={() => onNavigate(link.route)}
                   style={{
-                    fontSize: '14px',
+                    fontSize: '13.5px',
                     fontWeight: isActive ? 700 : 500,
                     color: isActive ? '#F2B08D' : '#FFF8F2',
                     background: 'transparent',
@@ -90,11 +81,8 @@ export function PublicLayout({ children, activeRoute, onNavigate }) {
                     padding: '6px 0',
                     cursor: 'pointer',
                     position: 'relative',
-                    transition: 'color 0.2s ease',
                     whiteSpace: 'nowrap',
                   }}
-                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = '#F2B08D'; }}
-                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = '#FFF8F2'; }}
                 >
                   {link.label}
                   {isActive && (
@@ -105,43 +93,34 @@ export function PublicLayout({ children, activeRoute, onNavigate }) {
             })}
           </nav>
 
-          {/* RIGHT: Action Buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* RIGHT: Action buttons + hamburger */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            {/* Desktop action buttons */}
             {currentUser ? (
               <button
                 type="button"
                 onClick={() => onNavigate('/home')}
+                className="desktop-only"
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  backgroundColor: '#63344F',
-                  color: '#FFF8F2',
-                  border: 'none',
-                  padding: '9px 20px',
-                  borderRadius: '24px',
-                  fontSize: '13.5px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(99, 52, 79, 0.3)',
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  backgroundColor: '#63344F', color: '#FFF8F2',
+                  border: 'none', padding: '8px 16px', borderRadius: '20px',
+                  fontSize: '13px', fontWeight: 700, cursor: 'pointer',
                 }}
               >
-                <Home size={15} />
-                Feed Dashboard
+                <Home size={14} />
+                Feed
               </button>
             ) : (
               <>
                 <button
                   type="button"
                   onClick={() => onNavigate('/login')}
+                  className="desktop-only"
                   style={{
-                    backgroundColor: 'transparent',
-                    color: '#FFF8F2',
-                    border: 'none',
-                    padding: '8px 16px',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
+                    backgroundColor: 'transparent', color: '#FFF8F2',
+                    border: 'none', padding: '7px 14px',
+                    fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                   }}
                 >
                   Login
@@ -150,28 +129,114 @@ export function PublicLayout({ children, activeRoute, onNavigate }) {
                   type="button"
                   onClick={() => onNavigate('/register')}
                   style={{
-                    backgroundColor: '#F2B08D',
-                    color: '#17151A',
-                    border: 'none',
-                    padding: '9px 20px',
-                    borderRadius: '24px',
-                    fontSize: '13.5px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 14px rgba(242, 176, 141, 0.25)',
+                    backgroundColor: '#F2B08D', color: '#17151A',
+                    border: 'none', padding: '8px 16px', borderRadius: '20px',
+                    fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   Get Started
                 </button>
               </>
             )}
+
+            {/* Hamburger — mobile only */}
+            <button
+              className="mobile-only"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '8px',
+                color: '#FFF8F2',
+                padding: '7px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile dropdown menu */}
+        {mobileMenuOpen && (
+          <div
+            className="mobile-only"
+            style={{
+              background: '#0D1025',
+              borderTop: '1px solid rgba(255,255,255,0.1)',
+              padding: '12px 16px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+            }}
+          >
+            {NAV_LINKS.map((link) => (
+              <button
+                key={link.route}
+                onClick={() => { setMobileMenuOpen(false); onNavigate(link.route); }}
+                style={{
+                  fontSize: '15px',
+                  fontWeight: activeRoute === link.route ? 700 : 500,
+                  color: activeRoute === link.route ? '#F2B08D' : '#FFF8F2',
+                  background: 'transparent',
+                  border: 'none',
+                  padding: '10px 8px',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  width: '100%',
+                }}
+              >
+                {link.label}
+              </button>
+            ))}
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '8px', paddingTop: '12px', display: 'flex', gap: '10px' }}>
+              {currentUser ? (
+                <button
+                  onClick={() => { setMobileMenuOpen(false); onNavigate('/home'); }}
+                  style={{
+                    flex: 1, backgroundColor: '#63344F', color: '#FFF8F2',
+                    border: 'none', padding: '10px 16px', borderRadius: '20px',
+                    fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  Go to Feed
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => { setMobileMenuOpen(false); onNavigate('/login'); }}
+                    style={{
+                      flex: 1, backgroundColor: 'transparent', color: '#FFF8F2',
+                      border: '1px solid rgba(255,255,255,0.3)', padding: '10px 16px', borderRadius: '20px',
+                      fontSize: '14px', fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    Login
+                  </button>
+                  <button
+                    onClick={() => { setMobileMenuOpen(false); onNavigate('/register'); }}
+                    style={{
+                      flex: 1, backgroundColor: '#F2B08D', color: '#17151A',
+                      border: 'none', padding: '10px 16px', borderRadius: '20px',
+                      fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    Get Started
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
-      <main style={{ flex: 1 }}>{children}</main>
+      <main style={{ flex: 1, overflowX: 'hidden' }}>{children}</main>
       <Footer onNavigate={onNavigate} />
     </div>
   );
 }
-
