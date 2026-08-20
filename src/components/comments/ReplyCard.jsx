@@ -35,18 +35,40 @@ export function ReplyCard({ reply, postId, commentId, onNavigate, onReplyTrigger
   const { updateReply, deleteReply, reactToReply } = useComments();
   const { blockUser } = useReports();
   const { addToast } = useToast();
-  const { t } = useLanguage();
+  const { t, currentLanguage, translateTextAsync } = useLanguage();
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(reply.content);
-  const [reportModalOpen, setReportModalOpen] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
   const [manualToggle, setManualToggle] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(reply?.content || '');
+  const [isHovered, setIsHovered] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [dynamicReplyTranslation, setDynamicReplyTranslation] = useState(null);
 
-  const displayContent = manualToggle ? (reply.originalContent || reply.content) : reply.content;
+  React.useEffect(() => {
+    let isMounted = true;
+    const sourceText = reply?.originalContent || reply?.content;
+    if (sourceText && currentLanguage && translateTextAsync) {
+      translateTextAsync(sourceText, currentLanguage)
+        .then((res) => {
+          if (isMounted && res) setDynamicReplyTranslation(res);
+        })
+        .catch(() => {
+          if (isMounted) setDynamicReplyTranslation(null);
+        });
+    } else {
+      setDynamicReplyTranslation(null);
+    }
+    return () => { isMounted = false; };
+  }, [reply, currentLanguage, translateTextAsync]);
+
+  const displayContent = manualToggle
+    ? (reply?.originalContent || reply?.content)
+    : (dynamicReplyTranslation || reply?.translatedContent || reply?.content);
+
   const isTranslated = !manualToggle && Boolean(
-    (reply.originalLanguage && reply.displayLanguage && reply.originalLanguage.toLowerCase() !== reply.displayLanguage.toLowerCase()) ||
-    (reply.translatedContent && reply.originalContent && reply.translatedContent !== reply.originalContent)
+    dynamicReplyTranslation ||
+    (reply?.originalLanguage && reply?.displayLanguage && reply.originalLanguage.toLowerCase() !== reply.displayLanguage.toLowerCase()) ||
+    (reply?.translatedContent && reply?.originalContent && reply.translatedContent !== reply.originalContent)
   );
 
   const [activeEmojis, setActiveEmojis] = useState(() => {

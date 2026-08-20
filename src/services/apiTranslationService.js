@@ -134,16 +134,16 @@ export const apiTranslationService = {
       return translationCache.get(cacheKey);
     }
 
-    // 1. Attempt primary backend translation endpoint (OpenAI / Spring Boot service)
+    // 1. Attempt primary backend translation endpoint (OpenAI / Spring Boot service) with silent error handling
     try {
       const response = await translationClient.post('/api/v1/translation/translate', {
         text: text.trim(),
         sourceLanguage: 'auto',
         targetLanguage: tgtCode,
-      });
+      }).catch(() => null);
 
       if (
-        response.data &&
+        response?.data &&
         response.data.translatedText &&
         response.data.translatedText !== text.trim() &&
         response.data.engine !== 'fallback'
@@ -153,15 +153,15 @@ export const apiTranslationService = {
         return result;
       }
     } catch (err) {
-      console.warn('[Translation] Primary backend translation service note:', err?.message || err);
+      // Handle rate limits / offline status silently
     }
 
-    // 2. Secondary Fallback: Free Google Translate GTX service (works for all languages offline/unconfigured)
+    // 2. Secondary Fallback: Free Google Translate GTX service
     try {
       const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${tgtCode.toLowerCase()}&dt=t&q=${encodeURIComponent(text.trim())}`;
-      const gtxResponse = await fetch(gtxUrl);
-      if (gtxResponse.ok) {
-        const gtxData = await gtxResponse.json();
+      const gtxResponse = await fetch(gtxUrl).catch(() => null);
+      if (gtxResponse && gtxResponse.ok) {
+        const gtxData = await gtxResponse.json().catch(() => null);
         if (Array.isArray(gtxData) && Array.isArray(gtxData[0])) {
           const translatedParts = gtxData[0]
             .filter((item) => Array.isArray(item) && item[0])
@@ -176,7 +176,7 @@ export const apiTranslationService = {
         }
       }
     } catch (fallbackErr) {
-      console.warn('[Translation] Fallback translation service note:', fallbackErr?.message || fallbackErr);
+      // Handle fallback error silently
     }
 
     return text;
@@ -211,9 +211,9 @@ export const apiTranslationService = {
         texts: unCachedTexts,
         sourceLanguage: 'auto',
         targetLanguage: tgtCode,
-      });
+      }).catch(() => null);
 
-      if (response.data && response.data.translations) {
+      if (response?.data && response.data.translations) {
         Object.entries(response.data.translations).forEach(([orig, trans]) => {
           const cacheKey = `auto_${tgtCode}_${orig}`;
           translationCache.set(cacheKey, trans);
@@ -222,10 +222,10 @@ export const apiTranslationService = {
         return resultMap;
       }
     } catch (err) {
-      console.warn('[Translation] Batch backend note:', err?.message || err);
+      // Silent catch
     }
 
-    // Fallback sequentially if batch endpoint offline
+    // Fallback sequentially if batch endpoint rate-limited or offline
     for (const txt of unCachedTexts) {
       resultMap[txt] = await this.translateText(txt, tgtCode);
     }

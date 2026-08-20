@@ -99,17 +99,17 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
         }
       }}
       style={{
-        background: isHoverActive ? '#FFFFFF' : '#FFFFFF',
-        padding: '12px 14px',
-        borderRadius: '14px',
-        border: `1.5px solid ${isHoverActive ? '#6F405F' : '#E5E0DF'}`,
+        backgroundColor: '#FFFFFF',
+        padding: '16px 18px',
+        borderRadius: '16px',
+        border: `1.5px solid ${isHoverActive ? 'var(--deep-plum)' : '#E8E2E0'}`,
         display: 'flex',
         flexDirection: 'column',
-        gap: '8px',
+        gap: '10px',
         transition: 'all 0.2s ease',
         boxShadow: isHoverActive
-          ? '0 6px 20px rgba(111,64,95,0.12)'
-          : '0 2px 6px rgba(45,29,21,0.03)',
+          ? '0 8px 24px rgba(111,64,95,0.14)'
+          : '0 4px 16px rgba(45,29,21,0.06)',
       }}
     >
       {/* ── HEADER: Avatar, Username, Topic Tag, Time, Language & Translate Button ── */}
@@ -215,17 +215,18 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
       </div>
 
       {/* ── CONTENT SNIPPET / FULL BODY ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {displayTitle && (
-          <h4 style={{ fontSize: '14px', fontWeight: 700, color: '#2D1D15', margin: 0, lineHeight: 1.3 }}>
+          <h4 style={{ fontSize: '15.5px', fontWeight: 800, color: '#000000', margin: 0, lineHeight: 1.3 }}>
             {displayTitle}
           </h4>
         )}
         <p
           style={{
-            fontSize: '12.5px',
-            lineHeight: 1.4,
-            color: '#4A3E3D',
+            fontSize: '14.5px',
+            lineHeight: 1.5,
+            color: '#111111',
+            fontWeight: 500,
             margin: 0,
             wordBreak: 'break-word',
           }}
@@ -255,10 +256,9 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
           type="button"
           onClick={(e) => {
             e.stopPropagation();
+            setShowInlineComments(!showInlineComments);
             if (onToggleComments) {
               onToggleComments(post);
-            } else {
-              setShowInlineComments(!showInlineComments);
             }
           }}
           style={{
@@ -269,28 +269,29 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
             borderRadius: '20px',
             fontSize: '12px',
             fontWeight: 700,
-            color: (activeCommentsPostId === post.id || showInlineComments) ? '#6F405F' : '#524644',
-            backgroundColor: (activeCommentsPostId === post.id || showInlineComments) ? 'rgba(111,64,95,0.1)' : '#F6F3F2',
-            border: (activeCommentsPostId === post.id || showInlineComments) ? '1.5px solid #6F405F' : '1px solid #E5E0DF',
+            color: showInlineComments ? '#6F405F' : '#524644',
+            backgroundColor: showInlineComments ? 'rgba(111,64,95,0.1)' : '#F6F3F2',
+            border: showInlineComments ? '1.5px solid #6F405F' : '1px solid #E5E0DF',
             cursor: 'pointer',
             transition: 'all 0.15s ease',
           }}
         >
-          <MessageSquare size={14} style={{ color: (activeCommentsPostId === post.id || showInlineComments) ? '#6F405F' : '#7A6E6B' }} />
+          <MessageSquare size={14} style={{ color: showInlineComments ? '#6F405F' : '#7A6E6B' }} />
           <span>{t('comments') || 'Comments'} ({matchedCommentCount})</span>
         </button>
       </div>
 
-      {/* ── EXPANDABLE INLINE COMMENT SECTION (FALLBACK WHEN NO SIDE PANEL HANDLER) ── */}
-      {!onToggleComments && showInlineComments && (
+      {/* ── EXPANDABLE INLINE COMMENT SECTION DIRECTLY BELOW THE POST ── */}
+      {showInlineComments && (
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: '10px',
-            paddingTop: '12px',
+            gap: '12px',
+            paddingTop: '14px',
             borderTop: '1.5px solid #EAE4E4',
-            marginTop: '6px',
+            marginTop: '10px',
+            animation: 'fadeIn 0.2s ease',
           }}
           onClick={(e) => e.stopPropagation()}
         >

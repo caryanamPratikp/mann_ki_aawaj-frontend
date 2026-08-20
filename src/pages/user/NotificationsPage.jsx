@@ -61,7 +61,7 @@ export function NotificationsPage({ onNavigate }) {
       <div className="flex-col gap-md">
         <div className="flex-row justify-between items-center flex-wrap gap-sm">
           <div>
-            <h1 className="page-heading">{t('notifications')}</h1>
+            <h1 className="page-heading">{t('notifications', 'Notifications')}</h1>
           </div>
 
           <div className="flex-row items-center gap-sm">
@@ -70,17 +70,18 @@ export function NotificationsPage({ onNavigate }) {
               size="sm"
               onClick={() => setFilterUnread(!filterUnread)}
             >
-              {filterUnread ? 'Show All' : 'Filter Unread'}
+              {filterUnread ? t('showAll', 'Show All') : t('filterUnread', 'Filter Unread')}
             </Button>
             <Button variant="outline" size="sm" onClick={markAllAsRead} icon={CheckCheck}>
-              Mark All Read
+              {t('markAllRead', 'Mark All Read')}
             </Button>
           </div>
         </div>
 
         {displayList.length === 0 ? (
           <EmptyState
-            title={t('noNotifications')}
+            title={t('noNotifications', 'No Notifications Yet')}
+            description={t('noNotificationsDesc', 'There are no items to display at this time.')}
             icon={Bell}
           />
         ) : (

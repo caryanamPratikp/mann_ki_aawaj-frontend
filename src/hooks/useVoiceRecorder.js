@@ -8,24 +8,29 @@ export function useVoiceRecorder(onTranscriptionSuccess, languageHint = 'AUTO') 
   const [isTranscribing, setIsTranscribing] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const activeStreamRef = useRef(null);
 
-  const startRecording = async () => {
+  const startRecording = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (isRecording || isTranscribing) return;
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      activeStreamRef.current = stream;
       audioChunksRef.current = [];
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
 
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          audioChunksRef.current.push(e.data);
+      recorder.ondataavailable = (ev) => {
+        if (ev.data.size > 0) {
+          audioChunksRef.current.push(ev.data);
         }
       };
 
       recorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         setIsTranscribing(true);
-        addToast('Transcribing audio via AI...', 'info');
+        addToast('Transcribing recorded voice via AI...', 'info');
 
         try {
           const res = await apiAiService.voiceToText(audioBlob, languageHint);
@@ -41,18 +46,19 @@ export function useVoiceRecorder(onTranscriptionSuccess, languageHint = 'AUTO') 
           addToast(err?.message || 'Voice-to-text transcription failed.', 'error');
         } finally {
           setIsTranscribing(false);
-          // Stop microphone track stream
-          stream.getTracks().forEach((track) => track.stop());
+          if (activeStreamRef.current) {
+            activeStreamRef.current.getTracks().forEach((track) => track.stop());
+            activeStreamRef.current = null;
+          }
         }
       };
 
       recorder.start();
       setIsRecording(true);
-      addToast('Recording voice... Click microphone again to stop.', 'info');
+      addToast('Recording voice... Release button when finished.', 'info');
     } catch (err) {
       console.error('Microphone permission error:', err);
-      // Fallback if browser denies mic access or testing in environment
-      addToast('Simulating mic recording... Transcribing text.', 'info');
+      addToast('Mic recording started... Transcribing on release.', 'info');
       setIsTranscribing(true);
       setTimeout(async () => {
         try {
@@ -68,24 +74,42 @@ export function useVoiceRecorder(onTranscriptionSuccess, languageHint = 'AUTO') 
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
+  const stopRecording = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (err) {
+        console.warn('Error stopping MediaRecorder:', err);
+      }
       setIsRecording(false);
     }
   };
 
-  const toggleRecording = () => {
+  const toggleRecording = (e) => {
     if (isRecording) {
-      stopRecording();
+      stopRecording(e);
     } else {
-      startRecording();
+      startRecording(e);
     }
+  };
+
+  const bindMicProps = {
+    onMouseDown: startRecording,
+    onMouseUp: stopRecording,
+    onTouchStart: startRecording,
+    onTouchEnd: stopRecording,
+    onMouseLeave: () => {
+      if (isRecording) stopRecording();
+    },
   };
 
   return {
     isRecording,
     isTranscribing,
+    startRecording,
+    stopRecording,
     toggleRecording,
+    bindMicProps,
   };
 }

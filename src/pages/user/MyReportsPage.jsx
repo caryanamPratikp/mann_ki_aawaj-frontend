@@ -17,14 +17,14 @@ export function MyReportsPage({ onNavigate }) {
     <UserLayout activeRoute="/my-reports" onNavigate={onNavigate}>
       <div className="flex-col gap-md">
         <div>
-          <h1 className="page-heading">{t('myContentReports')}</h1>
-          <p className="secondary-text">{t('trackReportsDesc')}</p>
+          <h1 className="page-heading">{t('myContentReports', 'My Safety Reports')} ({myReports.length})</h1>
+          <p className="secondary-text">{t('trackReportsDesc', 'Track status and responses for content you reported.')}</p>
         </div>
 
         {myReports.length === 0 ? (
           <EmptyState
-            title={t('noActiveReports')}
-            description={t('noActiveReportsDesc')}
+            title={t('noActiveReports', 'No Active Reports')}
+            description={t('noActiveReportsDesc', 'You have not submitted any content reports.')}
             icon={ShieldAlert}
           />
         ) : (

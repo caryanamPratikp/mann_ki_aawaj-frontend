@@ -47,8 +47,8 @@ export function SettingsPage({ onNavigate }) {
     <UserLayout activeRoute="/settings" onNavigate={onNavigate}>
       <div className="flex-col gap-md">
         <div>
-          <h1 className="page-heading">{t('settingsAndPreferences')}</h1>
-          <p className="secondary-text">{t('manageIdentitySafety')}</p>
+          <h1 className="page-heading">{t('settingsAndPreferences', 'Settings & Preferences')}</h1>
+          <p className="secondary-text">{t('manageIdentitySafety', 'Manage your private identity, safety controls, and notifications.')}</p>
         </div>
 
         <div className="flex-col gap-md">
@@ -78,10 +78,10 @@ export function SettingsPage({ onNavigate }) {
                   </div>
                   <div className="flex-col">
                     <h3 className="card-heading" style={{ fontSize: '17px' }}>
-                      {t(sec.titleKey) || sec.defaultTitle}
+                      {t(sec.titleKey, sec.defaultTitle)}
                     </h3>
                     <p className="secondary-text" style={{ fontSize: '13px' }}>
-                      {t(sec.descKey) || sec.defaultDesc}
+                      {t(sec.descKey, sec.defaultDesc)}
                     </p>
                   </div>
                 </div>

@@ -64,19 +64,20 @@ export function ReactionsBar({ reactions = {}, userReaction, onReact, compact = 
             }}
             className="reaction-btn flex-row items-center gap-xs"
             style={{
-              padding: compact ? '4px 10px' : '5px 12px',
+              padding: compact ? '4px 10px' : '6px 13px',
               borderRadius: '20px',
-              fontSize: compact ? '11.5px' : '12.5px',
-              fontWeight: isActive ? 700 : 500,
-              color: isActive ? type.color : '#524644',
-              backgroundColor: isActive ? `${type.color}18` : '#F6F3F2',
-              border: isActive ? `1.5px solid ${type.color}` : '1px solid #E5E0DF',
+              fontSize: compact ? '11.5px' : '13px',
+              fontWeight: isActive ? 700 : 600,
+              color: isActive ? type.color : '#222222',
+              backgroundColor: isActive ? `${type.color}15` : '#FFFFFF',
+              border: isActive ? `1.5px solid ${type.color}` : '1.5px solid #D4CECC',
               cursor: 'pointer',
               transition: 'all 0.1s ease',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '5px',
+              gap: '6px',
               transform: isActive ? 'scale(1.04)' : 'scale(1)',
+              boxShadow: '0 2px 5px rgba(0,0,0,0.04)',
             }}
           >
             <Icon size={14} style={{ color: isActive ? type.color : '#7A6E6B' }} />

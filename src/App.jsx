@@ -8,6 +8,7 @@ import { CommentProvider } from './context/CommentContext.jsx';
 import { NotificationProvider } from './context/NotificationContext.jsx';
 import { ReportProvider } from './context/ReportContext.jsx';
 import { ChatProvider } from './context/ChatContext.jsx';
+import { MoodMusicProvider } from './context/MoodMusicContext.jsx';
 import { AppRoutes } from './routes/AppRoutes.jsx';
 import { ToastContainer } from './components/common/Toast.jsx';
 import { GlobalTranslationOverlay } from './components/common/GlobalTranslationOverlay.jsx';
@@ -21,19 +22,21 @@ export default function App() {
       <ToastProvider>
         <AuthProvider>
           <LanguageProvider>
-            <PostProvider>
-              <CommentProvider>
-                <NotificationProvider>
-                  <ReportProvider>
-                    <ChatProvider>
-                      <AppRoutes />
-                      <ToastContainer />
-                      <GlobalTranslationOverlay />
-                    </ChatProvider>
-                  </ReportProvider>
-                </NotificationProvider>
-              </CommentProvider>
-            </PostProvider>
+            <MoodMusicProvider>
+              <PostProvider>
+                <CommentProvider>
+                  <NotificationProvider>
+                    <ReportProvider>
+                      <ChatProvider>
+                        <AppRoutes />
+                        <ToastContainer />
+                        <GlobalTranslationOverlay />
+                      </ChatProvider>
+                    </ReportProvider>
+                  </NotificationProvider>
+                </CommentProvider>
+              </PostProvider>
+            </MoodMusicProvider>
           </LanguageProvider>
         </AuthProvider>
       </ToastProvider>

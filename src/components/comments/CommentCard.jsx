@@ -49,18 +49,29 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate })
   const [manualToggle, setManualToggle] = useState(false);
   const [dynamicCommentTranslation, setDynamicCommentTranslation] = useState(null);
 
+  const isOwner = Boolean(
+    currentUser && (
+      (currentUser.id && comment.userId && String(currentUser.id) === String(comment.userId)) ||
+      (currentUser.username && comment.username && currentUser.username.toLowerCase() === comment.username.toLowerCase())
+    )
+  );
+
   React.useEffect(() => {
     let isMounted = true;
-    const sourceText = comment.originalContent || comment.content;
-    if (sourceText && currentLanguage) {
-      translateTextAsync(sourceText, currentLanguage).then((res) => {
-        if (isMounted && res) setDynamicCommentTranslation(res);
-      });
+    const sourceText = comment?.originalContent || comment?.content;
+    if (sourceText && currentLanguage && translateTextAsync) {
+      translateTextAsync(sourceText, currentLanguage)
+        .then((res) => {
+          if (isMounted && res) setDynamicCommentTranslation(res);
+        })
+        .catch(() => {
+          if (isMounted) setDynamicCommentTranslation(null);
+        });
     } else {
       setDynamicCommentTranslation(null);
     }
     return () => { isMounted = false; };
-  }, [currentLanguage, comment.originalContent, comment.content]);
+  }, [currentLanguage, comment?.originalContent, comment?.content, translateTextAsync]);
 
   const [activeEmojis, setActiveEmojis] = useState(() => {
     const list = [];

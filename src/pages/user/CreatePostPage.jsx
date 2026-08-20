@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 import { moderationCheck } from '../../utils/moderationCheck.js';
+import { SYSTEM_TOPICS } from '../../utils/topicUtils.js';
 import { ArrowLeft, Eye, ShieldAlert, Sparkles, Image as ImageIcon, Upload, Loader2, CheckCircle2, X } from 'lucide-react';
 import { Modal } from '../../components/common/Modal.jsx';
 import { apiClient } from '../../services/apiClient.js';
@@ -26,7 +27,7 @@ export function CreatePostPage({ onNavigate }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [postType, setPostType] = useState('Thought');
-  const [topic, setTopic] = useState('Life');
+  const [topic, setTopic] = useState('GENERAL');
   const [imageUrl, setImageUrl] = useState('');
   const [allowComments, setAllowComments] = useState(true);
 
@@ -34,8 +35,21 @@ export function CreatePostPage({ onNavigate }) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const postTypes = ['Thought', 'Question', 'Experience', 'Need Advice', 'Confession', 'Something I Learned', 'Positive Note', 'Personal Challenge'];
-  const topics = ['Life', 'Career', 'Relationships', 'Education', 'Student Life', 'Personal Growth', 'Workplace', 'Parenting', 'Technology', 'Creativity', 'Books', 'Entertainment', 'Financial Experiences', 'Positive Thoughts'];
+  const postTypes = [
+    { value: 'Thought', label: t('Thought', 'Thought') },
+    { value: 'Question', label: t('Question', 'Question') },
+    { value: 'Experience', label: t('Experience', 'Experience') },
+    { value: 'Need Advice', label: t('Need Advice', 'Need Advice') },
+    { value: 'Confession', label: t('Confession', 'Confession') },
+    { value: 'Something I Learned', label: t('Something I Learned', 'Something I Learned') },
+    { value: 'Positive Note', label: t('Positive Note', 'Positive Note') },
+    { value: 'Personal Challenge', label: t('Personal Challenge', 'Personal Challenge') },
+  ];
+
+  const topics = SYSTEM_TOPICS.map((tKey) => ({
+    value: tKey,
+    label: t(tKey, tKey),
+  }));
 
   const fullText = `${title} ${content}`;
   const modResult = moderationCheck(fullText);

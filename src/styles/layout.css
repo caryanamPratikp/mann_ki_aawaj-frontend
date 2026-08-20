@@ -3,7 +3,8 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: var(--swiss-coffee);
+  background: linear-gradient(180deg, #FAF4F8 0%, #F3E6EF 25%, #E8D3E2 50%, #D6B7CD 75%, #C29BB7 100%);
+  background-attachment: fixed;
 }
 
 .user-layout {

@@ -91,9 +91,9 @@ export function HelpSupportPage({ onNavigate }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <HelpCircle size={28} color="#FFD1E8" />
             <div>
-              <h1 style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>{t('helpAndSupportCenter')}</h1>
+              <h1 style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>{t('helpAndSupportCenter', 'Help & Support Center')}</h1>
               <p style={{ fontSize: '13px', color: '#E0C8D6', margin: 0 }}>
-                {t('findAnswersDesc')}
+                {t('findAnswersDesc', 'Find answers, safety guidelines, and support.')}
               </p>
             </div>
           </div>
@@ -105,7 +105,7 @@ export function HelpSupportPage({ onNavigate }) {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('searchHelpArticles')}
+              placeholder={t('searchHelpArticles', 'Search help topics and FAQs...')}
               style={{
                 width: '100%',
                 padding: '11px 16px 11px 42px',
@@ -135,9 +135,9 @@ export function HelpSupportPage({ onNavigate }) {
                   <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'var(--deep-plum-light)', color: 'var(--deep-plum)' }}>
                     <Icon size={18} />
                   </div>
-                  <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--eclipse)' }}>{t(cat.titleKey) || cat.defaultTitle}</h3>
+                  <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--eclipse)' }}>{t(cat.titleKey, cat.defaultTitle)}</h3>
                 </div>
-                <p style={{ fontSize: '12.5px', color: 'var(--hurricane)', margin: 0, lineHeight: 1.4 }}>{t(cat.descKey) || cat.defaultDesc}</p>
+                <p style={{ fontSize: '12.5px', color: 'var(--hurricane)', margin: 0, lineHeight: 1.4 }}>{t(cat.descKey, cat.defaultDesc)}</p>
               </div>
             );
           })}
@@ -146,7 +146,7 @@ export function HelpSupportPage({ onNavigate }) {
         {/* FAQ Accordion */}
         <div className="mka-card flex-col gap-md">
           <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--eclipse)' }}>
-            {t('frequentlyAskedQuestions')}
+            {t('frequentlyAskedQuestions', 'Frequently Asked Questions')}
           </h2>
 
           <div className="flex-col gap-xs">

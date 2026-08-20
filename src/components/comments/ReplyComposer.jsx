@@ -14,6 +14,16 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
   const initialTag = targetUsername ? (targetUsername.startsWith('@') ? `${targetUsername} ` : `@${targetUsername} `) : '';
   const [text, setText] = useState(initialTag);
   const [submitting, setSubmitting] = useState(false);
+  const inputRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+      const len = inputRef.current.value.length;
+      inputRef.current.setSelectionRange(len, len);
+      inputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, []);
 
   const { isRecording, isTranscribing, toggleRecording } = useVoiceRecorder((transcribedText) => {
     setText((prev) => (prev ? `${prev} ${transcribedText}` : transcribedText));
@@ -43,6 +53,7 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
   return (
     <form onSubmit={handleSubmit} className="flex-col gap-xs" style={{ marginTop: '4px', width: '100%' }}>
       <textarea
+        ref={inputRef}
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="Write a reply..."

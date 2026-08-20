@@ -211,16 +211,28 @@ export function ChatProvider({ children }) {
 
     socket.on('user_presence_changed', (presence) => {
       console.log('[Socket] Presence changed:', presence);
-      if (presence && presence.username) {
-        const cleanKey = presence.username.toLowerCase().replace('@', '');
-        setOnlineUsers((prev) => ({
-          ...prev,
-          [cleanKey]: {
-            isOnline: Boolean(presence.isOnline || presence.status === 'ONLINE'),
-            lastSeen: presence.lastSeen || new Date().toISOString(),
-            status: presence.status || (presence.isOnline ? 'ONLINE' : 'OFFLINE'),
-          },
-        }));
+      if (presence) {
+        const isOnline = Boolean(presence.isOnline || presence.status === 'ONLINE');
+        const lastSeen = presence.lastSeen || new Date().toISOString();
+        const statusStr = presence.status || (isOnline ? 'ONLINE' : 'OFFLINE');
+
+        const updateData = { isOnline, lastSeen, status: statusStr };
+
+        setOnlineUsers((prev) => {
+          const next = { ...prev };
+          if (presence.username) {
+            const cleanKey = presence.username.toLowerCase().replace('@', '');
+            next[cleanKey] = updateData;
+          }
+          if (presence.userHandle) {
+            const cleanKey = presence.userHandle.toLowerCase().replace('@', '');
+            next[cleanKey] = updateData;
+          }
+          if (presence.userId) {
+            next[`user_${presence.userId}`] = updateData;
+          }
+          return next;
+        });
       }
     });
 

@@ -37,8 +37,8 @@ export function SleekCommentSidePanel({ post, onClose, onNavigate }) {
               left: 0,
               right: 0,
               width: '100%',
-              maxHeight: '82vh',
-              height: '82vh',
+              maxHeight: '88vh',
+              height: '88vh',
               backgroundColor: '#FFFFFF',
               borderTopLeftRadius: '20px',
               borderTopRightRadius: '20px',
@@ -46,30 +46,30 @@ export function SleekCommentSidePanel({ post, onClose, onNavigate }) {
               padding: '16px 16px 24px 16px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '12px',
+              gap: '10px',
               zIndex: 1100,
               overflowY: 'auto',
             }
           : {
-              width: '360px',
-              maxWidth: '100%',
+              position: 'fixed',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: '440px',
+              maxWidth: '90vw',
+              height: '100vh',
               backgroundColor: '#FFFFFF',
-              borderRadius: '16px',
-              border: '1px solid #EDE8E6',
-              boxShadow: '0 4px 24px rgba(45,29,21,0.08)',
-              padding: '16px',
+              boxShadow: '-8px 0 36px rgba(45, 29, 21, 0.25)',
+              padding: '20px 24px',
               display: 'flex',
               flexDirection: 'column',
               gap: '12px',
-              position: 'sticky',
-              top: '84px',
-              alignSelf: 'flex-start',
-              maxHeight: 'calc(100vh - 100px)',
+              zIndex: 1100,
               overflowY: 'auto',
+              overflowX: 'hidden',
             }
       }
     >
-      {/* Mobile Drawer Pull Indicator Handle */}
       {isMobile && (
         <div
           style={{
@@ -83,14 +83,14 @@ export function SleekCommentSidePanel({ post, onClose, onNavigate }) {
         />
       )}
 
-      {/* ── HEADER: Title & Close Button ── */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          paddingBottom: '10px',
+          paddingBottom: '8px',
           borderBottom: '1px solid #EDE8E6',
+          flexShrink: 0,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -106,93 +106,72 @@ export function SleekCommentSidePanel({ post, onClose, onNavigate }) {
           style={{
             background: '#F5F2F0',
             border: 'none',
-            color: '#2D1D15',
-            cursor: 'pointer',
-            padding: '6px',
             borderRadius: '50%',
+            width: '28px',
+            height: '28px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            cursor: 'pointer',
+            color: '#6F405F',
           }}
-          title="Close Comments"
         >
-          <X size={18} />
+          <X size={15} />
         </button>
       </div>
 
-      {/* ── POST PREVIEW BADGE ── */}
       <div
         style={{
+          padding: '10px 12px',
+          borderRadius: '12px',
+          backgroundColor: '#FAF6F8',
+          border: '1px solid #EFE8EA',
+          fontSize: '12.5px',
+          lineHeight: '1.4',
+          color: '#2D1D15',
           display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '8px 10px',
-          borderRadius: '10px',
-          backgroundColor: '#FAF7F6',
-          border: '1px solid #EFEAE8',
+          flexDirection: 'column',
+          gap: '4px',
+          flexShrink: 0,
         }}
       >
-        <AvatarThumbnail username={post.username} initials={post.avatarInitials} size={24} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ fontSize: '11px', fontWeight: 700, color: '#6F405F', display: 'block' }}>
-            {post.username}
-          </span>
-          <span
-            style={{
-              fontSize: '12px',
-              color: '#2D1D15',
-              fontWeight: 500,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              display: 'block',
-            }}
-          >
-            {displayTitle}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <AvatarThumbnail
+            username={post.username || post.authorUsername || '@writer'}
+            initials={post.avatarInitials || 'AN'}
+            config={post.avatarConfig}
+            size={22}
+          />
+          <span style={{ fontWeight: 700, color: '#6F405F' }}>{post.username || post.authorUsername || '@anonymous'}</span>
+        </div>
+        <div style={{ fontWeight: 600, color: '#4A3E3D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {displayTitle}
         </div>
       </div>
 
-      {/* ── COMPACT COMMENT COMPOSER ── */}
-      <CommentComposer
-        postId={post.id}
-        postAuthorUsername={post.username}
-        onSubmit={async (text) => {
-          await createComment(post.id, text, post.username);
-        }}
-        onNavigate={onNavigate}
-        placeholder="Write a comment..."
-      />
+      <div style={{ flexShrink: 0 }}>
+        <CommentComposer postId={post.id} />
+      </div>
 
-      {/* ── COMMENT LIST ── */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        <CommentList
-          postId={post.id}
-          postAuthorUsername={post.username}
-          onNavigate={onNavigate}
-        />
+        <CommentList postId={post.id} onNavigate={onNavigate} />
       </div>
     </aside>
   );
 
-  if (isMobile) {
-    return (
-      <>
-        {/* Semi-transparent Backdrop for Mobile Overlay */}
-        <div
-          onClick={onClose}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.45)',
-            backdropFilter: 'blur(3px)',
-            zIndex: 1099,
-          }}
-        />
-        {panelContent}
-      </>
-    );
-  }
-
-  return panelContent;
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(45, 29, 21, 0.4)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 1099,
+        }}
+      />
+      {panelContent}
+    </>
+  );
 }

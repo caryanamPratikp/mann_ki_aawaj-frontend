@@ -9,14 +9,19 @@ import { PostCard } from '../../components/posts/PostCard.jsx';
 import { Button } from '../../components/common/Button.jsx';
 import { Modal } from '../../components/common/Modal.jsx';
 import { useReports } from '../../context/ReportContext.jsx';
-import { Edit3, Trash2, Calendar, Globe, Heart, MessageSquare, AlertTriangle, Check, Sparkles, Volume2, VolumeX, ShieldOff } from 'lucide-react';
+import { Edit3, Trash2, Calendar, Globe, Heart, AlertTriangle, Check, Sparkles, Volume2, VolumeX, ShieldOff, Clock, Flame, MessageSquare, RefreshCw, Info } from 'lucide-react';
 import { formatDate } from '../../utils/formatDate.js';
+import { generateUsernameSuggestions } from '../../utils/generateUsername.js';
+import { validateUsernameString, getSuggestedNumberVariants } from '../../utils/usernameValidation.js';
 import { EmptyState } from '../../components/common/EmptyState.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 import { LanguageSelectorDropdown } from '../../components/common/LanguageSelectorDropdown.jsx';
 import { SleekCommentSidePanel } from '../../components/posts/SleekCommentSidePanel.jsx';
-import { SUPPORTED_LANGUAGES } from '../../utils/translations.js';
 import { editProfileSchema } from '../../utils/validationSchemas.js';
+import { TopicBackgroundRotator } from '../../components/topics/TopicBackgroundRotator.jsx';
+import { AnimatedTopicActivityPanel } from '../../components/topics/AnimatedTopicActivityPanel.jsx';
+import { AvatarStudioModal } from '../../components/avatar/AvatarStudioModal.jsx';
+import { SYSTEM_TOPICS } from '../../utils/topicUtils.js';
 
 const AVATAR_COLORS = [
   { id: 'plum', hex: '#6F405F', name: 'Deep Plum' },
@@ -27,59 +32,61 @@ const AVATAR_COLORS = [
   { id: 'indigo', hex: '#4A3B6F', name: 'Indigo' },
 ];
 
-import { InstagramChatPopup } from '../../components/chat/InstagramChatPopup.jsx';
-import { AvatarStudioModal } from '../../components/avatar/AvatarStudioModal.jsx';
-
 export function ProfilePage({ username, onNavigate }) {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, updateProfile, deleteAccount, logout } = useAuth();
   const { posts } = usePosts();
-  const { mutedUsers = [], unmuteUser } = useReports();
-  const { t, changeLanguage, currentLanguage, supportedLanguages } = useLanguage();
   const { addToast } = useToast();
-
+  const { mutedUsers = [], unmuteUser } = useReports();
+  const { t } = useLanguage();
 
   const [activeTab, setActiveTab] = useState('Posts');
   const [profileData, setProfileData] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
-  // Modals & Popups state
+  // Edit Profile Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isChatPopupOpen, setIsChatPopupOpen] = useState(false);
-  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
-
-  // Edit Form state
   const [editUsername, setEditUsername] = useState('');
   const [editBio, setEditBio] = useState('');
-  const [editAvatar, setEditAvatar] = useState(AVATAR_COLORS[0].hex);
-  const [editPreferredLanguage, setEditPreferredLanguage] = useState('EN');
-  const [editErrors, setEditErrors] = useState({});
+  const [editAvatar, setEditAvatar] = useState('');
+  const [editAvatarConfig, setEditAvatarConfig] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [editErrors, setEditErrors] = useState({});
+
+  // Avatar Studio Modal State
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+
+  // Delete Account Modal State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingProfile, setDeletingProfile] = useState(false);
-  const [isChangingLang, setIsChangingLang] = useState(false);
+
+  // Side Panel Comments State
   const [activeCommentsPost, setActiveCommentsPost] = useState(null);
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
 
-  const targetUsername = username
-    ? (username.startsWith('@') ? username.slice(1) : username)
-    : (currentUser?.username ? currentUser.username.replace('@', '') : null);
+  const targetUsername = username || currentUser?.username?.replace(/^@/, '');
+  const isSelf = !username || username.toLowerCase() === currentUser?.username?.toLowerCase().replace(/^@/, '');
+  const isTopicRoute = Boolean(targetUsername) && SYSTEM_TOPICS.some((t) => t.toLowerCase() === targetUsername.toLowerCase());
 
-  const isSelf = !username || (currentUser?.username && currentUser.username.toLowerCase().replace('@', '') === targetUsername?.toLowerCase());
-
-  // Fetch Profile data
   useEffect(() => {
     let isMounted = true;
     async function loadProfile() {
       setLoadingProfile(true);
       try {
         if (isSelf) {
-          const res = await apiProfileService.getMyProfile().catch(() => null);
-          if (isMounted && res?.data) {
-            setProfileData(res.data);
-            setEditUsername(res.data.username || currentUser?.username || '');
-            setEditBio(res.data.bio || '');
-            if (res.data.avatar) setEditAvatar(res.data.avatar);
-            if (res.data.preferredLanguage) setEditPreferredLanguage(res.data.preferredLanguage);
-          } else if (isMounted) {
+          if (currentUser) {
+            setProfileData({
+              username: currentUser.username ? (currentUser.username.startsWith('@') ? currentUser.username : `@${currentUser.username}`) : '@user',
+              fullName: currentUser.fullName || 'Private User',
+              bio: currentUser.bio || 'Anonymous author on Man Ki Aavaj',
+              joinedDate: currentUser.createdAt || new Date().toISOString(),
+              avatar: currentUser.avatar || AVATAR_COLORS[0].hex,
+              avatarConfig: currentUser.avatarConfig || null,
+            });
+            setEditUsername(currentUser.username ? currentUser.username.replace(/^@/, '') : '');
+            setEditBio(currentUser.bio || '');
+            setEditAvatar(currentUser.avatar || AVATAR_COLORS[0].hex);
+            setEditAvatarConfig(currentUser.avatarConfig || null);
+          } else {
             setProfileData({
               username: currentUser?.username || '@user',
               fullName: currentUser?.fullName || 'Private User',
@@ -91,17 +98,30 @@ export function ProfilePage({ username, onNavigate }) {
             setEditBio(currentUser?.bio || '');
           }
         } else if (targetUsername) {
-          const res = await apiProfileService.getPublicProfile(targetUsername).catch(() => null);
-          if (isMounted && res?.data) {
-            setProfileData(res.data);
-          } else if (isMounted) {
-            setProfileData({
-              username: `@${targetUsername}`,
-              fullName: 'Anonymous Author',
-              bio: 'Anonymous author on Man Ki Aavaj',
-              joinedDate: new Date().toISOString(),
-              avatar: AVATAR_COLORS[0].hex,
-            });
+          const isTopicRoute = SYSTEM_TOPICS.some((t) => t.toLowerCase() === targetUsername.toLowerCase());
+          if (isTopicRoute) {
+            if (isMounted) {
+              setProfileData({
+                username: `#${targetUsername.toUpperCase()}`,
+                fullName: `${targetUsername.toUpperCase()} Stream`,
+                bio: 'Topic discussion stream on Man Ki Aavaj',
+                joinedDate: new Date().toISOString(),
+                avatar: AVATAR_COLORS[0].hex,
+              });
+            }
+          } else {
+            const res = await apiProfileService.getPublicProfile(targetUsername).catch(() => null);
+            if (isMounted && res?.data) {
+              setProfileData(res.data);
+            } else if (isMounted) {
+              setProfileData({
+                username: `@${targetUsername}`,
+                fullName: 'Public Profile',
+                bio: 'Member profile on Man Ki Aavaj',
+                joinedDate: new Date().toISOString(),
+                avatar: AVATAR_COLORS[0].hex,
+              });
+            }
           }
         }
       } catch (err) {
@@ -112,39 +132,62 @@ export function ProfilePage({ username, onNavigate }) {
     }
     loadProfile();
     return () => { isMounted = false; };
-  }, [username, currentUser, isSelf]);
+  }, [username, currentUser, isSelf, targetUsername]);
 
   const cleanProfileUname = profileData?.username?.toLowerCase().replace(/^@/, '');
   const cleanTargetUname = targetUsername?.toLowerCase().replace(/^@/, '');
 
+  // Filter posts matching topic name or user username
   const userPosts = posts.filter((p) => {
     if (p.status !== 'PUBLISHED' && p.status !== 'ACTIVE') return false;
     if (isSelf && currentUser?.id && (p.userId === currentUser.id || String(p.userId) === String(currentUser.id))) {
       return true;
     }
-    const postUname = (p.username || '').toLowerCase().replace(/^@/, '');
-    if (cleanProfileUname && postUname === cleanProfileUname) return true;
-    if (cleanTargetUname && postUname === cleanTargetUname) return true;
+    const pAuthor = (p.username || p.authorUsername || p.handle || '').toLowerCase().replace(/^@/, '');
+    const pTopic = (p.topic || '').toLowerCase();
+
+    if (cleanTargetUname && (pAuthor === cleanTargetUname || pTopic === cleanTargetUname)) {
+      return true;
+    }
+    if (cleanProfileUname && (pAuthor === cleanProfileUname || pTopic === cleanProfileUname)) {
+      return true;
+    }
     return false;
   });
 
-  // Handle Edit Profile Save (PUT /api/profile or POST /api/profile)
+  const lastPostTime = userPosts.length > 0 && userPosts[0].createdAt
+    ? formatDate(userPosts[0].createdAt)
+    : 'Recently updated';
+
+  const getDaysLeftForChange = () => {
+    const userId = currentUser?.id || currentUser?.userId;
+    const lastChangeStr = currentUser?.lastUsernameChangeDate || (userId ? localStorage.getItem(`last_username_change_${userId}`) : null);
+    if (!lastChangeStr) return 0;
+    const lastChange = new Date(lastChangeStr).getTime();
+    if (isNaN(lastChange)) return 0;
+    const elapsedDays = (Date.now() - lastChange) / (1000 * 60 * 60 * 24);
+    const daysLeft = Math.ceil(14 - elapsedDays);
+    return daysLeft > 0 ? daysLeft : 0;
+  };
+
+  const daysLeftForChange = getDaysLeftForChange();
+
   const handleSaveEdit = async (e) => {
     e.preventDefault();
-    const cleanUname = editUsername.startsWith('@') ? editUsername.slice(1) : editUsername;
+
     const result = editProfileSchema.safeParse({
-      username: cleanUname,
-      bio: editBio.trim(),
-      avatar: editAvatar,
+      username: editUsername,
+      bio: editBio,
     });
 
     if (!result.success) {
-      const errMap = {};
-      const issues = result.error?.issues || result.error?.errors || [];
-      issues.forEach((err) => {
-        if (err.path && err.path[0]) errMap[err.path[0]] = err.message;
+      const fieldErrors = {};
+      result.error.issues.forEach((issue) => {
+        if (issue.path[0]) {
+          fieldErrors[issue.path[0]] = issue.message;
+        }
       });
-      setEditErrors(errMap);
+      setEditErrors(fieldErrors);
       return;
     }
 
@@ -152,53 +195,35 @@ export function ProfilePage({ username, onNavigate }) {
     setSavingEdit(true);
 
     try {
-      const payload = {
-        username: cleanUname,
+      const updatedUser = await updateProfile({
+        username: editUsername.trim(),
         bio: editBio.trim(),
         avatar: editAvatar,
-        preferredLanguage: editPreferredLanguage,
-      };
+        avatarConfig: editAvatarConfig,
+      });
 
-      // Try PUT first, fallback to POST if profile didn't exist yet
-      let res;
-      try {
-        res = await apiProfileService.updateProfile(payload);
-      } catch (putErr) {
-        res = await apiProfileService.createProfile(payload).catch(() => null);
-      }
+      setProfileData((prev) => ({
+        ...prev,
+        username: `@${updatedUser.username}`,
+        bio: updatedUser.bio,
+        avatar: updatedUser.avatar,
+        avatarConfig: updatedUser.avatarConfig,
+      }));
 
-      if (changeLanguage && editPreferredLanguage) {
-        await changeLanguage(editPreferredLanguage);
-      }
-
-      addToast('Profile updated successfully!', 'success');
-      const updatedData = {
-        ...profileData,
-        ...payload,
-        username: `@${cleanUname}`,
-      };
-      setProfileData(updatedData);
-      if (currentUser?.id) {
-        localStorage.setItem(`user_profile_${currentUser.id}`, JSON.stringify(updatedData));
-      }
-      localStorage.setItem('user_profile', JSON.stringify(updatedData));
       setIsEditModalOpen(false);
+      addToast('Profile details updated successfully.', 'success');
     } catch (err) {
       console.error(err);
-      addToast('Profile updated locally.', 'info');
-      setIsEditModalOpen(false);
     } finally {
       setSavingEdit(false);
     }
   };
 
-  // Handle Delete Profile (DELETE /api/profile)
-  const handleDeleteConfirm = async () => {
+  const handleDeleteProfile = async () => {
     setDeletingProfile(true);
     try {
-      await apiProfileService.deleteProfile().catch(() => null);
-      addToast('Your profile has been deleted.', 'info');
-      logout();
+      await deleteAccount();
+      addToast('Profile deleted successfully.', 'success');
       onNavigate('/login');
     } catch (err) {
       console.error(err);
@@ -212,374 +237,384 @@ export function ProfilePage({ username, onNavigate }) {
   };
 
   return (
-    <UserLayout activeRoute={`/profile/${targetUsername}`} onNavigate={onNavigate}>
-      <div className="flex-col gap-md">
+    <UserLayout activeRoute={`/profile/${targetUsername}`} onNavigate={onNavigate} wide={true}>
+      <TopicBackgroundRotator topicName={targetUsername || 'GENERAL'}>
+        <div className="flex-col gap-md" style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
 
-        {/* Profile Card Header */}
-        <div className="mka-card flex-col gap-md" style={{ background: 'var(--soft-white)', borderRadius: 'var(--radius-lg)' }}>
-          <div className="flex-row items-center justify-between flex-wrap profile-header-row" style={{ gap: '12px' }}>
-            <div className="flex-row items-center gap-md">
-              {/* Avatar with selected color background */}
+          {/* ── 1. TOPIC OR USER PROFILE DETAIL BANNER ── */}
+          <div
+            style={{
+              padding: '24px 20px',
+              backgroundColor: '#3D2B24',
+              color: '#FFFFFF',
+              borderRadius: '16px',
+              border: '1px solid #4D3830',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '16px',
+              boxShadow: '0 8px 30px rgba(0,0,0,0.18)',
+              width: '100%',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <InitialAvatar
-                username={profileData?.username || targetUsername}
-                avatarConfig={currentUser?.avatarConfig || profileData?.avatarConfig}
-                size={72}
+                username={targetUsername || 'USER'}
+                avatarConfig={profileData?.avatarConfig}
+                size={68}
               />
 
-              <div className="flex-col">
-                <h1 className="card-heading" style={{ fontSize: '24px', margin: 0 }}>
-                  {profileData?.username?.startsWith('@') ? profileData.username : `@${profileData?.username || targetUsername}`}
-                </h1>
-                <div className="flex-row items-center gap-xs caption-text" style={{ marginTop: '4px' }}>
-                  <Calendar size={13} />
-                  <span>Joined {formatDate(profileData?.joinedDate || new Date().toISOString())}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h1 style={{ fontSize: '26px', fontWeight: 800, margin: 0, color: '#FFFFFF', letterSpacing: '0.02em' }}>
+                    {isTopicRoute
+                      ? `#${t((targetUsername || 'GENERAL').toUpperCase(), (targetUsername || 'GENERAL').toUpperCase())}`
+                      : (targetUsername ? `@${targetUsername.replace(/^@/, '')}` : '@user')}
+                  </h1>
+                  <span style={{ fontSize: '11px', fontWeight: 800, padding: '3px 10px', borderRadius: '12px', background: isTopicRoute ? '#D96C3D' : '#3F7772', color: '#FFFFFF', textTransform: 'uppercase' }}>
+                    {isTopicRoute ? t('trendingTopic', 'Trending Topic') : t('authorProfile', 'Author Profile')}
+                  </span>
+                </div>
+
+                {!isTopicRoute && profileData?.bio && (
+                  <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.85)', margin: 0 }}>
+                    {profileData.bio}
+                  </p>
+                )}
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '13px', color: 'rgba(255,255,255,0.92)', marginTop: '2px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <Clock size={14} />
+                    <span>{t('lastPost', 'Last post')} {lastPostTime}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <Flame size={14} />
+                    <span>{userPosts.length} {t('thoughtsShared', 'Thoughts shared')}</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Action Buttons */}
-            {isSelf ? (
-              <div className="flex-row items-center gap-sm profile-actions-row">
-                <LanguageSelectorDropdown compact={false} />
-                <Button variant="outline" size="sm" onClick={() => setIsAvatarModalOpen(true)} icon={Sparkles}>
-                  Edit Avatar
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setIsEditModalOpen(true)} icon={Edit3}>
-                  Edit Profile
-                </Button>
-                <button
-                  type="button"
-                  onClick={() => setIsDeleteModalOpen(true)}
-                  style={{
-                    padding: '8px 14px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--error-bg)',
-                    background: 'var(--error-bg)',
-                    color: 'var(--error)',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <Trash2 size={14} /> Delete
-                </button>
-              </div>
-            ) : (
-              <div className="flex-row items-center gap-sm">
+            {/* Action Buttons: Topic Create button for Topics, Edit/Mute buttons for User Profiles */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {isTopicRoute ? (
                 <Button
                   variant="primary"
                   size="md"
-                  onClick={() => {
-                    const handle = targetUsername ? targetUsername.replace('@', '') : '';
-                    if (handle) onNavigate(`/chat/${handle}`);
-                  }}
-                  icon={MessageSquare}
+                  onClick={() => onNavigate(`/home?create=true&topic=${encodeURIComponent((targetUsername || 'GENERAL').toUpperCase())}`)}
                 >
-                  Message
+                  {t('addYourThought', '+ Add Your Thought')}
                 </Button>
-                <Button
-                  variant="outline"
-                  size="md"
-                  onClick={() => setIsChatPopupOpen(true)}
-                  icon={MessageSquare}
-                >
-                  Quick Popup
-                </Button>
-              </div>
-            )}
+              ) : (
+                isSelf ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <LanguageSelectorDropdown compact={false} />
+                    <button
+                      type="button"
+                      onClick={() => setIsEditModalOpen(true)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 18px',
+                        borderRadius: '20px',
+                        background: '#FFFFFF',
+                        color: '#6F405F',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        border: 'none',
+                        boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
+                        cursor: 'pointer',
+                        transition: 'transform 0.15s ease',
+                      }}
+                    >
+                      <Edit3 size={15} />
+                      <span>{t('editProfile', 'Edit Profile')}</span>
+                    </button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addToast(`Muted posts from @${targetUsername}`, 'info')}
+                    style={{ borderColor: 'rgba(255,255,255,0.4)', color: '#FFF' }}
+                  >
+                    Mute Handle
+                  </Button>
+                )
+              )}
+            </div>
           </div>
 
-          {/* Bio */}
-          {profileData?.bio && (
-            <p className="body-text" style={{ fontSize: '14px', lineHeight: 1.5, margin: 0, color: 'var(--eclipse)' }}>
-              {profileData.bio}
-            </p>
-          )}
-
-          {/* Preferred Language Selector — visible only for own profile */}
-          {isSelf && (
-            <div className="flex-row items-center gap-sm" style={{ marginTop: '4px' }}>
-              <Globe size={15} style={{ color: isChangingLang ? 'var(--warning)' : 'var(--deep-plum)' }} />
-              <select
-                value={supportedLanguages.find(l => l.label.toLowerCase() === (currentLanguage || '').toLowerCase() || l.code.toLowerCase() === (currentLanguage || '').toLowerCase())?.code || 'EN'}
-                disabled={isChangingLang}
-                onChange={async (e) => {
-                  setIsChangingLang(true);
-                  try {
-                    await changeLanguage(e.target.value);
-                  } finally {
-                    setIsChangingLang(false);
-                  }
-                }}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: 'var(--radius-pill)',
-                  border: '1px solid var(--border-light)',
-                  background: 'var(--soft-white)',
-                  color: 'var(--eclipse)',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  cursor: isChangingLang ? 'wait' : 'pointer',
-                  outline: 'none',
-                  opacity: isChangingLang ? 0.6 : 1,
-                }}
-                aria-label="Preferred Language"
-              >
-                {supportedLanguages.map((lang) => (
-                  <option key={lang.code} value={lang.code}>
-                    {lang.native} ({lang.label || lang.code})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-
-        {/* Profile Tabs */}
-        <div className="flex-row items-center gap-xs border-b" style={{ borderBottom: '1px solid var(--border-light)' }}>
-          {[(isSelf ? 'My Thoughts' : 'Thoughts'), 'Muted Users'].map((tab) => {
-            const isTabActive = activeTab === 'Posts' ? (tab === 'My Thoughts' || tab === 'Thoughts') : (activeTab === tab);
-            return (
+          {/* ── 2. FULL-WIDTH POSTS FEED (RIGHT SIDE COMMENT BOX & EXTRA TOPICS STREAM REMOVED) ── */}
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Navigation Tabs */}
+            <div
+              style={{
+                display: 'flex',
+                gap: '8px',
+                borderBottom: '1.5px solid #EDE8E6',
+                paddingBottom: '2px',
+                height: '38px',
+                alignItems: 'center',
+              }}
+            >
               <button
-                key={tab}
-                onClick={() => setActiveTab(tab === 'Muted Users' ? 'Muted' : 'Posts')}
+                onClick={() => setActiveTab('Posts')}
                 style={{
-                  padding: '10px 16px',
+                  padding: '8px 16px',
                   fontSize: '14px',
-                  fontWeight: isTabActive ? 600 : 400,
-                  color: isTabActive ? 'var(--deep-plum)' : 'var(--hurricane)',
-                  borderBottom: isTabActive ? '2px solid var(--deep-plum)' : '2px solid transparent',
-                  background: 'transparent',
+                  fontWeight: activeTab === 'Posts' ? 700 : 500,
+                  color: activeTab === 'Posts' ? '#6F405F' : '#6E625F',
+                  borderBottom: activeTab === 'Posts' ? '2.5px solid #6F405F' : 'none',
+                  background: 'none',
+                  border: 'none',
                   cursor: 'pointer',
                 }}
               >
-                {tab === 'Muted Users' ? t('mutedUsers', 'Muted Users') : tab}
+                {isTopicRoute ? `${t('topicPosts', 'Topic Posts')} (${userPosts.length})` : `${t('myPosts', 'User Thoughts')} (${userPosts.length})`}
               </button>
-            );
-          })}
-        </div>
 
-        {/* Tab Content */}
-        {activeTab === 'Posts' && (
-          <div className="flex-col gap-md">
-            {userPosts.length === 0 ? (
-              <EmptyState
-                title="No Public Posts"
-                description={`@${targetUsername} has not published any posts yet.`}
-              />
-            ) : (
-              <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: '320px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {userPosts.map((post) => (
+              {isSelf && (
+                <button
+                  onClick={() => setActiveTab('Muted')}
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    fontWeight: activeTab === 'Muted' ? 700 : 500,
+                    color: activeTab === 'Muted' ? '#6F405F' : '#6E625F',
+                    borderBottom: activeTab === 'Muted' ? '2.5px solid #6F405F' : 'none',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Muted Handles ({mutedUsers.length})
+                </button>
+              )}
+            </div>
+
+            {/* Tab Content: Posts Stream */}
+            {activeTab === 'Posts' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+                {userPosts.length === 0 ? (
+                  <EmptyState
+                    title={t('noThoughtsTopicYet', 'No thoughts under this topic yet')}
+                    description={t('beFirstAuthor', 'Be the first author to post a thought under this topic category.')}
+                    icon={Calendar}
+                  />
+                ) : (
+                  userPosts.map((post) => (
                     <PostCard
                       key={post.id}
                       post={post}
                       onNavigate={onNavigate}
-                      onToggleComments={(p) => {
-                        if (activeCommentsPost?.id === p.id) setActiveCommentsPost(null);
-                        else setActiveCommentsPost(p);
+                      onToggleComments={() => {
+                        if (activeCommentsPost?.id === post.id) setActiveCommentsPost(null);
+                        else setActiveCommentsPost(post);
                       }}
                       activeCommentsPostId={activeCommentsPost?.id}
                     />
-                  ))}
-                </div>
+                  ))
+                )}
+              </div>
+            )}
 
-                {activeCommentsPost && (
-                  <SleekCommentSidePanel
-                    post={activeCommentsPost}
-                    onClose={() => setActiveCommentsPost(null)}
-                    onNavigate={onNavigate}
-                  />
+            {activeTab === 'Muted' && isSelf && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+                {mutedUsers.length === 0 ? (
+                  <EmptyState title="No muted handles" description="Handles you mute will appear here." icon={VolumeX} />
+                ) : (
+                  mutedUsers.map((handle) => (
+                    <div
+                      key={handle}
+                      className="mka-card"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 16px',
+                      }}
+                    >
+                      <span style={{ fontWeight: 600, color: 'var(--eclipse)' }}>
+                        {handle.startsWith('@') ? handle : `@${handle}`}
+                      </span>
+                      <Button size="sm" variant="outline" onClick={() => unmuteUser(handle)}>
+                        Unmute
+                      </Button>
+                    </div>
+                  ))
                 )}
               </div>
             )}
           </div>
-        )}
-
-        {activeTab === 'Muted' && (
-          <div className="flex-col gap-md">
-            {mutedUsers.length === 0 ? (
-              <EmptyState
-                title="No Muted Members"
-                description="You haven't muted any members yet. When you mute a user from post options, they will appear here."
-              />
-            ) : (
-              <div className="flex-col gap-sm">
-                {[...new Set(mutedUsers.map((u) => u.replace('@', '')))].map((cleanHandle) => {
-                  return (
-                    <div
-                      key={cleanHandle}
-                      className="mka-card flex-row items-center justify-between"
-                      style={{ padding: '14px 18px', borderRadius: '12px', background: '#FFFFFF', border: '1px solid #EAE5E3' }}
-                    >
-                      <div className="flex-row items-center gap-sm">
-                        <InitialAvatar username={cleanHandle} size={40} />
-                        <div>
-                          <div style={{ fontSize: '15px', fontWeight: 700, color: '#2D1D15' }}>
-                            @{cleanHandle}
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#8C8385' }}>
-                            Muted • Posts hidden from feed
-                          </div>
-                        </div>
-                      </div>
-
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        icon={Volume2}
-                        onClick={() => unmuteUser(cleanHandle)}
-                      >
-                        Unmute
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+        </div>
+      </TopicBackgroundRotator>
 
 
-      </div>
-
-      {/* ── EDIT PROFILE MODAL ────────────────────────────────────── */}
-      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Anonymous Profile">
+      {/* Edit Profile Modal */}
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Profile">
         <form onSubmit={handleSaveEdit} className="flex-col gap-md">
-
-          {/* Avatar Color Picker */}
-          <div className="flex-col gap-xs">
-            <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--eclipse)' }}>
-              Avatar Color Theme
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--eclipse)', display: 'block', marginBottom: '6px' }}>
+              Anonymous Handle (Editable Input Field)
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px' }}>
-              {AVATAR_COLORS.map((c) => {
-                const isSelected = editAvatar === c.hex;
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setEditAvatar(c.hex)}
-                    title={c.name}
-                    style={{
-                      height: '36px',
-                      borderRadius: '8px',
-                      background: c.hex,
-                      border: isSelected ? '3px solid var(--eclipse)' : '2px solid transparent',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <span style={{ position: 'absolute', left: '12px', top: '10px', fontSize: '14px', fontWeight: 800, color: '#6F405F' }}>@</span>
+                  <input
+                    type="text"
+                    value={editUsername}
+                    disabled={daysLeftForChange > 0}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/^@/, '');
+                      setEditUsername(val);
+                      const err = validateUsernameString(val, currentUser?.fullName);
+                      setEditErrors((prev) => ({ ...prev, username: err }));
                     }}
-                  >
-                    {isSelected && <Check size={16} color="#fff" strokeWidth={3} />}
-                  </button>
-                );
-              })}
+                    placeholder="captainamerica or cyberninja"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px 8px 28px',
+                      borderRadius: '10px',
+                      border: editErrors.username ? '1.5px solid #B33A3A' : '1.5px solid #6F405F',
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      outline: 'none',
+                      backgroundColor: daysLeftForChange > 0 ? '#F5EFF3' : '#FFFFFF',
+                      color: daysLeftForChange > 0 ? '#8C8385' : '#2D1D15',
+                      cursor: daysLeftForChange > 0 ? 'not-allowed' : 'text',
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  disabled={daysLeftForChange > 0}
+                  onClick={() => {
+                    if (daysLeftForChange > 0) {
+                      addToast(`Handle can only be changed once every 14 days. Available in ${daysLeftForChange} days.`, 'info');
+                      return;
+                    }
+                    const newSuggestions = generateUsernameSuggestions(1);
+                    if (newSuggestions.length > 0) {
+                      const uname = newSuggestions[0].replace('@', '');
+                      setEditUsername(uname);
+                      setEditErrors((prev) => ({ ...prev, username: null }));
+                    }
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    background: daysLeftForChange > 0 ? '#C4B9BE' : '#6F405F',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: daysLeftForChange > 0 ? 'not-allowed' : 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <RefreshCw size={13} />
+                  <span>Shuffle</span>
+                </button>
+              </div>
+
+              {/* Validation Error Message */}
+              {editErrors.username && (
+                <div style={{ fontSize: '11.5px', color: '#B33A3A', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <AlertTriangle size={13} color="#B33A3A" />
+                  <span>{editErrors.username}</span>
+                </div>
+              )}
+
+              {/* Suggested Number Variants Pills */}
+              {editUsername && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
+                  <span style={{ fontSize: '11px', color: '#6F405F', fontWeight: 700 }}>Suggestions:</span>
+                  {getSuggestedNumberVariants(editUsername, 3).map((numSug) => (
+                    <button
+                      key={numSug}
+                      type="button"
+                      disabled={daysLeftForChange > 0}
+                      onClick={() => {
+                        setEditUsername(numSug);
+                        setEditErrors((prev) => ({ ...prev, username: null }));
+                      }}
+                      style={{
+                        padding: '3px 9px',
+                        borderRadius: '12px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        color: '#6F405F',
+                        background: '#F3EBF0',
+                        border: '1px solid rgba(111, 64, 95, 0.25)',
+                        cursor: daysLeftForChange > 0 ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      @{numSug}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 14-Day Cooldown Note */}
+            <div style={{ marginTop: '8px', fontSize: '11.5px', color: daysLeftForChange > 0 ? '#B33A3A' : '#6E625F', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Info size={13} style={{ color: daysLeftForChange > 0 ? '#B33A3A' : '#6F405F', flexShrink: 0 }} />
+              <span>
+                {daysLeftForChange > 0
+                  ? t('usernameCooldownLeft', `Note: Anonymous handle can only be updated once every 14 days. Next change available in ${daysLeftForChange} days.`)
+                  : t('usernameCooldownNote', 'Note: You get 1 free edit after onboarding. Subsequent edits require a 14-day wait.')}
+              </span>
             </div>
           </div>
 
-          {/* Username */}
-          <div className="flex-col gap-xs">
-            <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--eclipse)' }}>
-              Platform Username (3–30 chars)
-            </label>
-            <input
-              type="text"
-              value={editUsername}
-              onChange={(e) => setEditUsername(e.target.value)}
-              placeholder="aman_sharma"
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: 'var(--radius-md)',
-                border: editErrors.username ? '1.5px solid var(--error)' : '1px solid var(--border-light)',
-                fontSize: '14px',
-              }}
-            />
-            {editErrors.username && <span style={{ fontSize: '12px', color: 'var(--error)' }}>{editErrors.username}</span>}
-          </div>
-
-          {/* Bio */}
-          <div className="flex-col gap-xs">
-            <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--eclipse)' }}>
-              Anonymous Bio (max 200 chars)
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--eclipse)', display: 'block', marginBottom: '4px' }}>
+              Bio / Tagline
             </label>
             <textarea
+              rows={3}
               value={editBio}
               onChange={(e) => setEditBio(e.target.value)}
-              placeholder="Share your thoughts or interests..."
-              rows={3}
-              maxLength={200}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: 'var(--radius-md)',
-                border: editErrors.bio ? '1.5px solid var(--error)' : '1px solid var(--border-light)',
-                fontSize: '14px',
-                fontFamily: 'inherit',
-                resize: 'vertical',
-              }}
+              style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #D4CECC', fontSize: '13px' }}
             />
-            {editErrors.bio && <span style={{ fontSize: '12px', color: 'var(--error)' }}>{editErrors.bio}</span>}
           </div>
 
-
-          {/* Modal Actions */}
-          <div className="flex-row justify-end gap-sm" style={{ marginTop: '10px' }}>
-            <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary" disabled={savingEdit}>
-              {savingEdit ? 'Updating Profile...' : 'Save & Update'}
-            </Button>
-          </div>
-
-        </form>
-      </Modal>
-
-      {/* ── DELETE PROFILE CONFIRMATION MODAL ─────────────────────── */}
-      <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Delete Anonymous Profile">
-        <div className="flex-col gap-md">
-          <div className="flex-row items-center gap-md" style={{ padding: '12px', background: 'var(--error-bg)', borderRadius: 'var(--radius-md)', color: 'var(--error)' }}>
-            <AlertTriangle size={24} style={{ flexShrink: 0 }} />
-            <div className="flex-col">
-              <span className="bold" style={{ fontSize: '14px' }}>Are you sure you want to delete your profile?</span>
-              <span className="caption-text" style={{ fontSize: '12px' }}>This action is permanent and cannot be undone.</span>
-            </div>
-          </div>
-
-          <div className="flex-row justify-end gap-sm" style={{ marginTop: '10px' }}>
-            <Button type="button" variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+            <Button type="button" variant="secondary" onClick={() => setIsEditModalOpen(false)}>
               Cancel
             </Button>
             <Button
-              type="button"
-              variant="danger"
-              disabled={deletingProfile}
-              onClick={handleDeleteConfirm}
+              type="submit"
+              variant="primary"
+              disabled={savingEdit || Boolean(editErrors.username) || (daysLeftForChange > 0 && editUsername !== profileData?.username?.replace(/^@/, ''))}
             >
-              {deletingProfile ? 'Deleting...' : 'Yes, Delete Profile'}
+              {savingEdit ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
-        </div>
+        </form>
       </Modal>
-      {/* ── AVATAR STUDIO MODAL ── */}
-      <AvatarStudioModal
-        isOpen={isAvatarModalOpen}
-        onClose={() => setIsAvatarModalOpen(false)}
-      />
 
-      {/* ── INSTAGRAM STYLE CHAT POPUP ── */}
-      {isChatPopupOpen && (
-        <InstagramChatPopup
-          targetUsername={targetUsername}
-          onClose={() => setIsChatPopupOpen(false)}
-          onNavigate={onNavigate}
+      {/* Avatar Studio Modal */}
+      {isAvatarModalOpen && (
+        <AvatarStudioModal
+          isOpen={isAvatarModalOpen}
+          onClose={() => setIsAvatarModalOpen(false)}
+          currentUsername={currentUser?.username || '@user'}
+          currentConfig={currentUser?.avatarConfig}
+          onSave={async (newConfig) => {
+            await updateProfile({ avatarConfig: newConfig });
+            setEditAvatarConfig(newConfig);
+            setProfileData((prev) => ({ ...prev, avatarConfig: newConfig }));
+            setIsAvatarModalOpen(false);
+          }}
         />
       )}
     </UserLayout>

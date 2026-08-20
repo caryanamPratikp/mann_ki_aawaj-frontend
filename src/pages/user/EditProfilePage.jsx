@@ -4,20 +4,48 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 import { Textarea } from '../../components/common/Textarea.jsx';
 import { Button } from '../../components/common/Button.jsx';
-import { ArrowLeft, Save, Globe } from 'lucide-react';
+import { ArrowLeft, Save, Globe, RefreshCw, Info } from 'lucide-react';
 import { ModerationIndicator } from '../../components/common/ModerationIndicator.jsx';
 import { moderationCheck } from '../../utils/moderationCheck.js';
+import { generateUsernameSuggestions } from '../../utils/generateUsername.js';
+import { useToast } from '../../context/ToastContext.jsx';
 
 export function EditProfilePage({ onNavigate }) {
   const { currentUser, updateProfile } = useAuth();
-  const { currentLanguage, changeLanguage, supportedLanguages } = useLanguage();
+  const { currentLanguage, changeLanguage, supportedLanguages, t } = useLanguage();
+  const { addToast } = useToast();
 
+  const [currentUsername, setCurrentUsername] = useState(currentUser?.username || '@user');
   const [bio, setBio] = useState(currentUser?.bio || '');
   const [preferredLang, setPreferredLang] = useState(currentUser?.preferredLanguage || currentLanguage || 'English');
   const [submitting, setSubmitting] = useState(false);
 
   const modResult = moderationCheck(bio);
   const isBlocked = modResult.status === 'BLOCKED';
+
+  const getDaysLeftForChange = () => {
+    const userId = currentUser?.id || currentUser?.userId;
+    const lastChangeStr = currentUser?.lastUsernameChangeDate || (userId ? localStorage.getItem(`last_username_change_${userId}`) : null);
+    if (!lastChangeStr) return 0;
+    const lastChange = new Date(lastChangeStr).getTime();
+    if (isNaN(lastChange)) return 0;
+    const elapsedDays = (Date.now() - lastChange) / (1000 * 60 * 60 * 24);
+    const daysLeft = Math.ceil(14 - elapsedDays);
+    return daysLeft > 0 ? daysLeft : 0;
+  };
+
+  const daysLeftForChange = getDaysLeftForChange();
+
+  const handleShuffleUsername = () => {
+    if (daysLeftForChange > 0) {
+      addToast(`Handle can only be changed once every 14 days. Available in ${daysLeftForChange} days.`, 'info');
+      return;
+    }
+    const newSuggestions = generateUsernameSuggestions(1);
+    if (newSuggestions.length > 0) {
+      setCurrentUsername(newSuggestions[0]);
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -26,11 +54,20 @@ export function EditProfilePage({ onNavigate }) {
     setSubmitting(true);
     try {
       changeLanguage(preferredLang);
+      
+      if (currentUsername.trim() !== (currentUser?.username || '')) {
+        const userId = currentUser?.id || currentUser?.userId;
+        if (userId) {
+          localStorage.setItem(`last_username_change_${userId}`, new Date().toISOString());
+        }
+      }
+
       await updateProfile({
+        username: currentUsername.replace('@', ''),
         bio: bio.trim(),
         preferredLanguage: preferredLang,
       });
-      onNavigate(`/profile/${currentUser?.username.replace('@', '')}`);
+      onNavigate(`/profile/${currentUsername.replace('@', '')}`);
     } catch (err) {
       console.error('Error saving profile settings:', err);
     } finally {
@@ -49,9 +86,44 @@ export function EditProfilePage({ onNavigate }) {
         </div>
 
         <form onSubmit={handleSave} className="mka-card flex-col gap-md">
-          <div className="mka-panel">
-            <span className="caption-text bold">Platform Username (Anonymous):</span>
-            <p className="bold" style={{ fontSize: '16px', marginTop: '4px' }}>{currentUser?.username}</p>
+          <div className="mka-panel flex-col gap-xs" style={{ padding: '12px 16px' }}>
+            <div className="flex-row justify-between items-center" style={{ width: '100%' }}>
+              <div>
+                <span className="caption-text bold">Platform Username (Anonymous):</span>
+                <p className="bold" style={{ fontSize: '16px', marginTop: '2px', color: '#6F405F' }}>{currentUsername}</p>
+              </div>
+              <button
+                type="button"
+                disabled={daysLeftForChange > 0}
+                onClick={handleShuffleUsername}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 14px',
+                  borderRadius: '16px',
+                  background: daysLeftForChange > 0 ? '#C4B9BE' : '#6F405F',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: daysLeftForChange > 0 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <RefreshCw size={14} />
+                <span>Shuffle Handle</span>
+              </button>
+            </div>
+
+            {/* 14-Day Restriction Note */}
+            <div style={{ marginTop: '6px', fontSize: '11.5px', color: daysLeftForChange > 0 ? '#B33A3A' : '#6E625F', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Info size={13} style={{ color: daysLeftForChange > 0 ? '#B33A3A' : '#6F405F', flexShrink: 0 }} />
+              <span>
+                {daysLeftForChange > 0
+                  ? t('usernameCooldownLeft', `Note: Anonymous handle can only be changed once every 14 days. Next change available in ${daysLeftForChange} days.`)
+                  : t('usernameCooldownNote', 'Note: Anonymous handles can only be changed once every 14 days.')}
+              </span>
+            </div>
           </div>
 
           {/* Preferred Language Selector */}

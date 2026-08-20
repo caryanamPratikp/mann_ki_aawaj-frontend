@@ -447,6 +447,47 @@ export function ProfileSetupWizardPage({ onNavigate }) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--eclipse)' }}>
+                Preferred Topics * (Select 3-4 topics)
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
+                {['BOLLYWOOD', 'CRICKET', 'TECHNOLOGY', 'POLITICS', 'LIFESTYLE', 'ENTERTAINMENT', 'SPORTS', 'NEWS', 'GENERAL'].map((topic) => {
+                  const selectedTopics = (bio.match(/\[Topics: (.*?)\]/)?.[1] || '').split(',').map(t => t.trim()).filter(Boolean);
+                  const isSelected = selectedTopics.includes(topic);
+                  return (
+                    <button
+                      key={topic}
+                      type="button"
+                      onClick={() => {
+                        let next;
+                        if (isSelected) {
+                          next = selectedTopics.filter(t => t !== topic);
+                        } else {
+                          next = [...selectedTopics, topic];
+                        }
+                        const cleanBio = bio.replace(/\n?\[Topics: .*?\]/, '');
+                        setBio(next.length > 0 ? `${cleanBio}\n[Topics: ${next.join(', ')}]` : cleanBio);
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '20px',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        border: isSelected ? '2px solid var(--deep-plum)' : '1px solid var(--border-light)',
+                        background: isSelected ? 'var(--deep-plum-light)' : 'var(--pure-white)',
+                        color: isSelected ? 'var(--deep-plum)' : 'var(--eclipse)',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {topic} {isSelected ? '✓' : '+'}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--eclipse)' }}>
                 Preferred Language *
               </label>
               <select

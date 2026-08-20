@@ -1,11 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useMemo } from 'react';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { PostCard } from '../../components/posts/PostCard.jsx';
-import { PostMenu } from '../../components/posts/PostMenu.jsx';
-import { ReportModal } from '../../components/reports/ReportModal.jsx';
-import { LargeDiscussionWindow } from '../../components/posts/LargeDiscussionWindow.jsx';
-import { AvatarThumbnail } from '../../components/avatar/AvatarThumbnail.jsx';
 import { Modal } from '../../components/common/Modal.jsx';
 import { usePosts } from '../../context/PostContext.jsx';
 import { useComments } from '../../context/CommentContext.jsx';
@@ -15,43 +10,49 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
 import { useSpokenLanguage } from '../../hooks/useSpokenLanguage.js';
-import { SpokenLanguageSelector } from '../../components/common/SpokenLanguageSelector.jsx';
-import { PlusSquare, Sparkles, Filter, TrendingUp, MessageSquare, Edit3, Mic, MicOff, Loader2, Upload, X, ShieldAlert } from 'lucide-react';
+import { PlusSquare, TrendingUp, Mic, MicOff, Loader2, Upload, X, ShieldAlert, Clock, MessageSquare, Sparkles, Search } from 'lucide-react';
 import { EmptyState } from '../../components/common/EmptyState.jsx';
-import { SUPPORTED_LANGUAGES } from '../../utils/translations.js';
 import { formatDate } from '../../utils/formatDate.js';
 import { apiClient } from '../../services/apiClient.js';
 import { getMediaUrl } from '../../config/env.js';
+import { SleekCommentSidePanel } from '../../components/posts/SleekCommentSidePanel.jsx';
+import { AvatarThumbnail } from '../../components/avatar/AvatarThumbnail.jsx';
+import { SYSTEM_TOPICS, computeTopicStats, saveCustomTopic } from '../../utils/topicUtils.js';
+import { TopicBackgroundRotator } from '../../components/topics/TopicBackgroundRotator.jsx';
+import { useMoodMusic } from '../../context/MoodMusicContext.jsx';
 
 export function HomePage({ onNavigate }) {
-  const { posts, loading, isFetching, createPost, deletePost, toggleSavePost, savedPostIds = [] } = usePosts();
-  const { commentsByPost, fetchComments, createComment, reactToComment } = useComments();
+  const { posts, loading, createPost } = usePosts();
+  const { commentsByPost } = useComments();
   const { currentUser } = useAuth();
-  const { blockedUsers, mutedUsers = [], blockUser } = useReports();
+  const { blockedUsers, mutedUsers = [] } = useReports();
   const { addToast } = useToast();
-
-  const { currentLanguage, t } = useLanguage();
-  const [spokenLanguage, setSpokenLanguage] = useSpokenLanguage();
-  const [reportingPost, setReportingPost] = useState(null);
+  const { t } = useLanguage();
+  const [spokenLanguage] = useSpokenLanguage();
+  const { isPlaying, currentTrack } = useMoodMusic();
 
   const [activeTab, setActiveTab] = useState('Latest');
   const [selectedTopic, setSelectedTopic] = useState('All');
-  const [selectedType, setSelectedType] = useState('All');
-  const [selectedLanguageFilter, setSelectedLanguageFilter] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCommentsPost, setActiveCommentsPost] = useState(null);
 
-  // Currently selected active post (click again to collapse / set null)
-  const [selectedPostId, setSelectedPostId] = useState(null);
+  // Check URL param ?create=true
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(() => {
+    return window.location.search.includes('create=true');
+  });
 
-  // Modal State
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [postTitle, setPostTitle] = useState('');
   const [postContent, setPostContent] = useState('');
-  const [postTopic, setPostTopic] = useState('General');
+  const [postTopic, setPostTopic] = useState('GENERAL');
+  const [customTopic, setCustomTopic] = useState('');
   const [postType, setPostType] = useState('Thought');
-  const [postLanguage, setPostLanguage] = useState('EN');
   const [imageUrl, setImageUrl] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Manual Create Topic Modal state
+  const [isCreateTopicModalOpen, setIsCreateTopicModalOpen] = useState(false);
+  const [newTopicInput, setNewTopicInput] = useState('');
 
   const isUserMuted = Boolean(
     (currentUser?.mutedUntil && new Date(currentUser.mutedUntil) > new Date()) ||
@@ -60,17 +61,22 @@ export function HomePage({ onNavigate }) {
     currentUser?.isMuted
   );
 
+  // Compute 100% dynamic topic stats and sort Trending/New topics to the top
+  const sortedTopics = useMemo(() => {
+    return computeTopicStats(posts);
+  }, [posts]);
+
   const handleImageFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      addToast(t('imageUploadError') || 'Only valid image files (JPEG, PNG, WEBP) are allowed.', 'error');
+      addToast('Only valid image files (JPEG, PNG, WEBP) are allowed.', 'error');
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      addToast(t('imageSizeError') || 'Image size must be less than 5MB.', 'error');
+      addToast('Image size must be less than 5MB.', 'error');
       return;
     }
 
@@ -87,7 +93,7 @@ export function HomePage({ onNavigate }) {
       if (response.data?.success && response.data?.data?.imageUrl) {
         const uploadedUrl = response.data.data.imageUrl;
         setImageUrl(uploadedUrl);
-        addToast(t('imageUploadSuccess') || 'Image uploaded & verified by AI safety.', 'success');
+        addToast('Image uploaded & verified by AI safety.', 'success');
       } else {
         throw new Error(response.data?.message || 'Failed to upload image');
       }
@@ -100,25 +106,10 @@ export function HomePage({ onNavigate }) {
     }
   };
 
-  // Voice to text recorder for post creation using dedicated spoken language state
-  const { isRecording, isTranscribing, toggleRecording } = useVoiceRecorder((transcribedText) => {
+  const { isRecording, isTranscribing, bindMicProps } = useVoiceRecorder((transcribedText) => {
     setPostContent((prev) => (prev ? `${prev} ${transcribedText}` : transcribedText));
     setIsCreateModalOpen(true);
   }, spokenLanguage);
-
-  // Fetch comments when active post changes
-  useEffect(() => {
-    if (selectedPostId) {
-      fetchComments(selectedPostId);
-    }
-  }, [selectedPostId, fetchComments]);
-
-  const activePost = posts.find((p) => p.id === selectedPostId) || null;
-  const activePostComments = selectedPostId ? (commentsByPost[selectedPostId] || []) : [];
-
-  const handlePostClick = (postId) => {
-    setSelectedPostId((prev) => (prev === postId ? null : postId));
-  };
 
   const handlePublish = async (e) => {
     e.preventDefault();
@@ -128,45 +119,35 @@ export function HomePage({ onNavigate }) {
     }
     setSubmitting(true);
     try {
-      const newPost = await createPost({
+      const finalTopic = postTopic === 'CUSTOM'
+        ? (customTopic.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '') || 'GENERAL')
+        : postTopic;
+
+      if (postTopic === 'CUSTOM' && finalTopic !== 'GENERAL') {
+        saveCustomTopic(finalTopic);
+      }
+
+      await createPost({
         title: postTitle.trim(),
         content: postContent.trim(),
-        topic: postTopic,
+        topic: finalTopic,
         postType: postType,
         imageUrl: imageUrl.trim() || null,
       });
 
-      if (newPost?.id) {
-        setSelectedPostId(newPost.id);
-      }
       setPostTitle('');
       setPostContent('');
+      setCustomTopic('');
+      setPostTopic('GENERAL');
       setImageUrl('');
       setIsCreateModalOpen(false);
+      addToast('Thought shared successfully!', 'success');
     } catch (err) {
       console.error(err);
     } finally {
       setSubmitting(false);
     }
   };
-
-  const handleAddComment = (postId, text) => {
-    try {
-      const targetPost = posts.find((p) => p.id === postId);
-      createComment(postId, text, targetPost?.username);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleReactComment = (commentId, emoji) => {
-    if (reactToComment) {
-      reactToComment(commentId, emoji);
-    }
-  };
-
-  const topics = ['All', 'General', 'Mental Health', 'Career', 'Relationships', 'Tech & Society', 'Confessions'];
-  const postTypes = ['All', 'Thought', 'Question', 'Vent', 'Story', 'Advice'];
 
   // Filter posts
   const filteredPosts = isUserMuted
@@ -182,260 +163,521 @@ export function HomePage({ onNavigate }) {
 
         if (isBlockedOrMuted) return false;
 
+        if (activeTab === 'My Topics') {
+          const favTopics = currentUser?.preferredTopics?.length
+            ? currentUser.preferredTopics
+            : ['BOLLYWOOD', 'CRICKET', 'POLITICS', 'TECHNOLOGY'];
+          const pTopic = (p.topic || 'GENERAL').toUpperCase();
+          if (!favTopics.some((fav) => fav.toUpperCase() === pTopic)) {
+            return false;
+          }
+        }
+
         if (selectedTopic !== 'All') {
-          const pTopic = (p.topic || 'General').toLowerCase();
+          const pTopic = (p.topic || 'GENERAL').toLowerCase();
           const sTopic = selectedTopic.toLowerCase();
           if (pTopic !== sTopic && !pTopic.includes(sTopic) && !sTopic.includes(pTopic)) return false;
         }
-        if (selectedType !== 'All' && p.postType !== selectedType) return false;
-        if (selectedLanguageFilter !== 'ALL' && selectedLanguageFilter !== 'All' && (p.language || 'EN') !== selectedLanguageFilter) return false;
+
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase().trim();
+          const title = (p.title || '').toLowerCase();
+          const content = (p.content || '').toLowerCase();
+          const author = (p.username || p.authorUsername || p.handle || '').toLowerCase();
+          const topic = (p.topic || '').toLowerCase();
+          if (!title.includes(q) && !content.includes(q) && !author.includes(q) && !topic.includes(q)) {
+            return false;
+          }
+        }
         return true;
       });
 
   return (
     <UserLayout activeRoute="/home" onNavigate={onNavigate} wide={true}>
-      {/* ── TOP ACTION BAR: Feed Tabs (Left) & Quick Prompt Bar (Right) ── */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '12px',
-          marginBottom: '12px',
-          flexWrap: 'wrap',
-        }}
-      >
-        {/* Feed Tabs */}
-        <div className="feed-filters-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto' }}>
-          {[{key: 'Latest', label: t('latest')}, {key: 'Most Helpful', label: t('mostHelpful')}, {key: 'Following Topics', label: t('followingTopics')}].map(({key: tab, label}) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '20px',
-                fontSize: '12.5px',
-                fontWeight: activeTab === tab ? 700 : 500,
-                color: activeTab === tab ? '#FFFFFF' : '#6E625F',
-                backgroundColor: activeTab === tab ? '#6F405F' : '#FFFFFF',
-                border: '1px solid #D4CECC',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+      <TopicBackgroundRotator topicName={selectedTopic === 'All' ? 'ALL' : selectedTopic}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
 
-        {/* Quick Share Prompt Bar with Voice-to-Text Microphone */}
+        {isUserMuted && (
+          <div
+            style={{
+              padding: '16px 20px',
+              borderRadius: '14px',
+              backgroundColor: 'rgba(239, 68, 68, 0.08)',
+              border: '1.5px solid rgba(239, 68, 68, 0.3)',
+              color: '#DC2626',
+              fontSize: '13.5px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+            }}
+          >
+            <ShieldAlert size={22} color="#DC2626" />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '14.5px' }}>Account Restricted</div>
+              <div>Your account is currently restricted from creating or viewing thoughts due to a safety warning.</div>
+            </div>
+          </div>
+        )}
+
+        {/* ── TOP ACTION BAR: Simple Clean Action Bar ── */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            backgroundColor: '#FFFFFF',
-            padding: '4px 8px 4px 6px',
-            borderRadius: '24px',
-            border: '1.5px solid #D4CECC',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
-            transition: 'all 0.15s ease',
+            justifyContent: 'space-between',
+            gap: '12px',
+            flexWrap: 'wrap',
+            padding: '10px 16px',
+            borderRadius: '20px',
+            background: '#FFFFFF',
+            border: '1px solid var(--border-light)',
+            boxShadow: '0 4px 14px rgba(45, 29, 21, 0.04)',
           }}
         >
-          <div
-            onClick={() => setIsCreateModalOpen(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
-          >
-            <AvatarThumbnail
-              username={currentUser?.username || '@writer'}
-              initials={currentUser?.avatarInitials || 'AN'}
-              config={currentUser?.avatarConfig}
-              size={28}
-            />
-            <span style={{ fontSize: '12.5px', color: '#7A6E6B', fontWeight: 500 }}>
-              {t('shareUnspokenThought')}
-            </span>
+          {/* Simple Filter Pills */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {['Latest', 'Most Helpful', 'Trending', 'My Topics'].map((tab) => {
+              const isSelected = activeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  style={{
+                    padding: '7px 16px',
+                    borderRadius: '20px',
+                    fontSize: '13px',
+                    fontWeight: isSelected ? 700 : 500,
+                    color: isSelected ? '#FFFFFF' : 'var(--eclipse)',
+                    background: isSelected ? 'var(--deep-plum)' : '#FAF8F7',
+                    border: isSelected ? 'none' : '1px solid var(--border-light)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {
+                    tab === 'Latest' ? t('latest', 'Latest') :
+                    tab === 'Most Helpful' ? t('mostHelpful', 'Most Helpful') :
+                    tab === 'Trending' ? t('trending', 'Trending') :
+                    t('myTopics', 'My Topics')
+                  }
+                </button>
+              );
+            })}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {/* Voice to text mic icon button */}
+          {/* Right Action Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {/* Mic Dictation Button */}
             <button
               type="button"
-              onClick={toggleRecording}
-              disabled={isTranscribing}
-              title={isRecording ? 'Click to stop recording' : 'Speak thought (Voice-to-Text)'}
+              {...bindMicProps}
+              title={isRecording ? 'Release to stop recording' : 'Hold microphone to speak'}
               style={{
-                width: '28px',
-                height: '28px',
+                width: '38px',
+                height: '38px',
                 borderRadius: '50%',
-                backgroundColor: isRecording ? '#B33A3A' : 'rgba(111,64,95,0.10)',
+                backgroundColor: isRecording ? '#B33A3A' : 'rgba(111,64,95,0.12)',
                 color: isRecording ? '#FFFFFF' : '#6F405F',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 border: 'none',
                 cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                userSelect: 'none',
               }}
             >
-              {isTranscribing ? (
-                <Loader2 size={13} className="spin-animation" />
-              ) : isRecording ? (
-                <MicOff size={13} />
-              ) : (
-                <Mic size={13} />
-              )}
+              {isTranscribing ? <Loader2 size={16} className="spin-animation" /> : isRecording ? <MicOff size={16} /> : <Mic size={16} />}
+            </button>
+
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '20px',
+                background: 'var(--deep-plum)',
+                color: '#FFF',
+                fontWeight: 700,
+                fontSize: '13px',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <PlusSquare size={16} /> {t('createThought', '+ Create Thought')}
             </button>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setIsCreateModalOpen(true)}
-            style={{
-              fontSize: '11.5px',
-              fontWeight: 700,
-              backgroundColor: '#6F405F',
-              color: '#FFFFFF',
-              padding: '4px 12px',
-              borderRadius: '16px',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-            }}
-          >
-            <Edit3 size={12} /> {t('post')}
-          </button>
-        </div>
-      </div>
-
-      {/* ── 2-COLUMN MAIN CONTENT ── */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(340px, 1.2fr) minmax(320px, 1fr)',
-          gap: '16px',
-          alignItems: 'start',
-        }}
-      >
-        {/* ── LEFT COLUMN: LARGE LIVE DISCUSSION WINDOW ── */}
-        <div>
-          <LargeDiscussionWindow
-            post={activePost}
-            comments={activePostComments}
-            onAddComment={handleAddComment}
-            onReactComment={handleReactComment}
-            onNavigate={onNavigate}
-          />
         </div>
 
-        {/* ── RIGHT COLUMN: ANIMATED TOPIC STREAM ── */}
-        <div
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderRadius: '16px',
-            border: '1px solid #EDE8E6',
-            padding: '16px',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-          }}
-        >
-          {/* Right Header: Filter & Count */}
+        {/* ── SINGLE-LINE COLLAPSED TOPICS STRIP (WHEN A TOPIC IS OPENED) ── */}
+        {selectedTopic !== 'All' && (
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              paddingBottom: '10px',
-              borderBottom: '1px solid #EDE8E6',
+              gap: '12px',
+              padding: '10px 16px',
+              borderRadius: '20px',
+              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 242, 246, 0.95) 100%)',
+              border: '1.5px solid rgba(111, 64, 95, 0.18)',
+              boxShadow: '0 4px 16px rgba(45, 29, 21, 0.05)',
+              overflowX: 'auto',
             }}
+            className="hide-scrollbar"
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <TrendingUp size={16} color="#6F405F" />
-              <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#2D1D15', margin: 0 }}>
-                {t('topicsStream')}
-              </h3>
-            </div>
-
-            {/* Filter Dropdown */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <select
-                value={selectedTopic}
-                onChange={(e) => setSelectedTopic(e.target.value)}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#2D1D15' }}>Active Topic:</span>
+              <span
                 style={{
-                  fontSize: '11.5px',
-                  fontWeight: 600,
-                  padding: '4px 8px',
-                  borderRadius: '12px',
-                  border: '1px solid #D4CECC',
-                  backgroundColor: '#F7F4F3',
-                  color: '#2D1D15',
-                  outline: 'none',
-                  cursor: 'pointer',
+                  fontSize: '12.5px',
+                  fontWeight: 800,
+                  color: '#FFFFFF',
+                  background: 'linear-gradient(135deg, #6F405F 0%, #3D2334 100%)',
+                  padding: '4px 12px',
+                  borderRadius: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
                 }}
               >
-                {topics.map((topic) => (
-                  <option key={topic} value={topic}>
-                    {t('topicPrefix')}{topic}
-                  </option>
-                ))}
-              </select>
+                #{t(selectedTopic, selectedTopic)}
+              </span>
+            </div>
+
+            {/* Horizontal Topics Stream Pills */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto' }} className="hide-scrollbar">
+              <button
+                onClick={() => setSelectedTopic('All')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '14px',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  color: '#6F405F',
+                  background: '#F3EBF0',
+                  border: '1px solid rgba(111, 64, 95, 0.2)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                ✕ View All Topics
+              </button>
+              {sortedTopics.map((tStat) => {
+                const isSelected = selectedTopic.toUpperCase() === tStat.name;
+                return (
+                  <button
+                    key={tStat.name}
+                    onClick={() => setSelectedTopic(isSelected ? 'All' : tStat.name)}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '14px',
+                      fontSize: '12px',
+                      fontWeight: isSelected ? 800 : 600,
+                      color: isSelected ? '#FFFFFF' : '#4A3E3D',
+                      background: isSelected ? 'linear-gradient(135deg, #6F405F 0%, #3D2334 100%)' : '#FFFFFF',
+                      border: isSelected ? 'none' : '1.5px solid #EFEAE8',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      boxShadow: isSelected ? '0 3px 10px rgba(111, 64, 95, 0.3)' : 'none',
+                    }}
+                  >
+                    #{t(tStat.name, tStat.name)} ({tStat.count})
+                  </button>
+                );
+              })}
             </div>
           </div>
+        )}
 
-          {/* Animated Posts Stream List */}
+        {/* ── MAIN LAYOUT: Fixed 2-Column Layout (Feed + Fixed Right Topics Stream) ── */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) 340px',
+            gap: '20px',
+            alignItems: 'flex-start',
+            width: '100%',
+          }}
+        >
+          {/* ── LEFT COLUMN: MAIN POSTS FEED ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+            {filteredPosts.length === 0 ? (
+              <EmptyState
+                icon={MessageSquare}
+                title="No thoughts found"
+                description="Be the first author to share a thought under this topic."
+                actionLabel="Share Thought"
+                onAction={() => setIsCreateModalOpen(true)}
+              />
+            ) : (
+              filteredPosts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  onNavigate={onNavigate}
+                  onToggleComments={() => {
+                    if (activeCommentsPost?.id === post.id) setActiveCommentsPost(null);
+                    else setActiveCommentsPost(post);
+                  }}
+                  activeCommentsPostId={activeCommentsPost?.id}
+                />
+              ))
+            )}
+          </div>
+
+          {/* ── RIGHT COLUMN: FEATURED TOPICS STREAM (FIXED ON MAIN PAGE AT ALL TIMES) ── */}
           <div
             style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px',
-              maxHeight: 'calc(100vh - 200px)',
-              overflowY: 'auto',
-              paddingRight: '2px',
-            }}
-          >
-            <AnimatePresence initial={false}>
-              {filteredPosts.length > 0 ? (
-                filteredPosts.map((post) => (
-                  <TopicStreamCardItem
-                    key={post.id}
-                    post={post}
-                    isSelected={selectedPostId === post.id}
-                    onClick={() => handlePostClick(post.id)}
-                    onNavigate={onNavigate}
-                    savedPostIds={savedPostIds}
-                    currentUser={currentUser}
-                    deletePost={deletePost}
-                    toggleSavePost={toggleSavePost}
-                    blockUser={blockUser}
-                    setReportingPost={setReportingPost}
-                    addToast={addToast}
-                  />
-                ))
-              ) : loading ? (
-                <div style={{ padding: '36px', textAlign: 'center', color: '#6F405F', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                  <Loader2 size={24} className="animate-spin" />
-                  <span style={{ fontSize: '13px', fontWeight: 600 }}>{t('updatingTranslations')}</span>
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px',
+                position: 'sticky',
+                top: '80px',
+                padding: '18px',
+                borderRadius: '24px',
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 242, 246, 0.95) 100%)',
+                backdropFilter: 'blur(16px)',
+                border: '1.5px solid rgba(111, 64, 95, 0.18)',
+                boxShadow: '0 12px 36px rgba(45, 29, 21, 0.08)',
+              }}
+            >
+              {/* Header */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingBottom: '12px',
+                  borderBottom: '1.5px solid rgba(111, 64, 95, 0.12)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '12px',
+                      background: 'linear-gradient(135deg, rgba(111, 64, 95, 0.16) 0%, rgba(217, 108, 61, 0.22) 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 8px rgba(111, 64, 95, 0.12)',
+                    }}
+                  >
+                    <Sparkles size={18} color="#6F405F" />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#2D1D15', margin: 0, letterSpacing: '-0.01em' }}>
+                      Topics Stream
+                    </h3>
+                    <p style={{ fontSize: '11px', color: '#8C8385', margin: '2px 0 0 0', fontWeight: 600 }}>
+                      Explore Anonymous Discussions
+                    </p>
+                  </div>
                 </div>
-              ) : (
-                <EmptyState
-                  icon={MessageSquare}
-                  title={t('noThoughtsFound')}
-                  description={t('firstToShare')}
-                  actionLabel={t('shareThought')}
-                  onAction={() => setIsCreateModalOpen(true)}
-                />
-              )}
-            </AnimatePresence>
+
+                <button
+                  type="button"
+                  onClick={() => setIsCreateTopicModalOpen(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '7px 14px',
+                    borderRadius: '20px',
+                    background: 'linear-gradient(135deg, #6F405F 0%, #4A2840 100%)',
+                    color: '#FFFFFF',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(111, 64, 95, 0.25)',
+                    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                    letterSpacing: '0.01em',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-1.5px) scale(1.02)';
+                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(111, 64, 95, 0.35)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(111, 64, 95, 0.25)';
+                  }}
+                >
+                  <PlusSquare size={14} color="#FFF" />
+                  <span>{t('createTopic', 'Create Topic')}</span>
+                </button>
+              </div>
+
+              {/* Dynamic Topic Cards List */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                  maxHeight: 'calc(100vh - 200px)',
+                  overflowY: 'auto',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none',
+                }}
+                className="hide-scrollbar"
+              >
+                {sortedTopics.map((tStat) => {
+                  const isSelected = selectedTopic.toUpperCase() === tStat.name;
+
+                  return (
+                    <div
+                      key={tStat.name}
+                      onClick={() => {
+                        setSelectedTopic(isSelected ? 'All' : tStat.name);
+                        onNavigate(`/profile/${tStat.name.toLowerCase()}`);
+                      }}
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: '16px',
+                        backgroundColor: isSelected
+                          ? 'linear-gradient(135deg, #6F405F 0%, #3D2334 100%)'
+                          : '#FFFFFF',
+                        background: isSelected
+                          ? 'linear-gradient(135deg, #6F405F 0%, #3D2334 100%)'
+                          : '#FFFFFF',
+                        border: isSelected ? '1.5px solid #6F405F' : '1.5px solid #EFEAE8',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        boxShadow: isSelected
+                          ? '0 6px 18px rgba(111, 64, 95, 0.35)'
+                          : '0 2px 6px rgba(0, 0, 0, 0.02)',
+                        transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.transform = 'translateX(4px) translateY(-1.5px)';
+                          e.currentTarget.style.borderColor = '#6F405F';
+                          e.currentTarget.style.boxShadow = '0 6px 16px rgba(111, 64, 95, 0.12)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.transform = 'translateX(0) translateY(0)';
+                          e.currentTarget.style.borderColor = '#EFEAE8';
+                          e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.02)';
+                        }
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span
+                          style={{
+                            fontSize: '14px',
+                            fontWeight: 800,
+                            color: isSelected ? '#FFFFFF' : '#2D1D15',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                          }}
+                        >
+                          <span style={{ color: isSelected ? '#FF9933' : '#6F405F', fontWeight: 900 }}>#</span>
+                          {t(tStat.name, tStat.name)}
+                        </span>
+                        
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                          {tStat.isUserAdded && (
+                            <span
+                              style={{
+                                fontSize: '9px',
+                                fontWeight: 900,
+                                padding: '2px 7px',
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, #6F405F 0%, #3D2334 100%)',
+                                color: '#FFFFFF',
+                                boxShadow: '0 2px 6px rgba(111, 64, 95, 0.3)',
+                                letterSpacing: '0.03em',
+                                border: '1px solid rgba(255, 255, 255, 0.4)',
+                              }}
+                            >
+                              👤 USER ADDED
+                            </span>
+                          )}
+                          {tStat.isTrending && (
+                            <span
+                              style={{
+                                fontSize: '9px',
+                                fontWeight: 900,
+                                padding: '2px 7px',
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, #FF9933 0%, #D96C3D 100%)',
+                                color: '#FFFFFF',
+                                boxShadow: '0 2px 6px rgba(255, 153, 51, 0.3)',
+                                letterSpacing: '0.03em',
+                              }}
+                            >
+                              🔥 {t('trending', 'TRENDING')}
+                            </span>
+                          )}
+                          {tStat.isNew && (
+                            <span
+                              style={{
+                                fontSize: '9px',
+                                fontWeight: 900,
+                                padding: '2px 7px',
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                                color: '#FFFFFF',
+                                boxShadow: '0 2px 6px rgba(16, 185, 129, 0.3)',
+                                letterSpacing: '0.03em',
+                              }}
+                            >
+                              ✨ NEW
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          fontSize: '11px',
+                          color: isSelected ? 'rgba(255, 255, 255, 0.85)' : '#8C8385',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Clock size={11} color={isSelected ? '#FFFFFF' : '#8C8385'} />
+                          <span>
+                            {tStat.lastPostTime
+                              ? `${t('lastPost', 'Last post')} ${formatDate(tStat.lastPostTime)}`
+                              : t('noThoughtsTopicYet', 'No posts yet')}
+                          </span>
+                        </div>
+                        <span
+                          style={{
+                            fontWeight: 800,
+                            color: isSelected ? '#FFFFFF' : '#6F405F',
+                            background: isSelected ? 'rgba(255, 255, 255, 0.2)' : '#F3EBF0',
+                            padding: '2px 8px',
+                            borderRadius: '10px',
+                          }}
+                        >
+                          {tStat.count} {t('posts', 'posts')}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
           </div>
         </div>
       </div>
+    </TopicBackgroundRotator>
 
-      {/* ── CREATE POST MODAL OVERLAY ── */}
-      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title={t('createAnonymousThought')}>
+      {/* ── CREATE POST MODAL OVERLAY WITH BLUR BACKDROP & GOOGLE MIC INPUT ── */}
+      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title={t('createAnonymousThought', 'Create Anonymous Thought')}>
         <form onSubmit={handlePublish} className="flex-col gap-sm">
           <div className="flex-row items-center gap-sm" style={{ borderBottom: '1px solid #E1DCDB', paddingBottom: '8px' }}>
             <AvatarThumbnail
@@ -445,155 +687,117 @@ export function HomePage({ onNavigate }) {
               size={32}
             />
             <span style={{ fontSize: '13px', fontWeight: 600, color: '#2D1D15' }}>
-              {t('postingAs')} <span style={{ color: '#6F405F' }}>{currentUser?.username || '@anonymous'}</span>
+              {t('postingAs', 'Posting as')} <span style={{ color: '#6F405F' }}>{currentUser?.username || '@anonymous'}</span>
             </span>
           </div>
 
           <input
             type="text"
-            placeholder={t('titlePlaceholder')}
+            placeholder={t('titlePlaceholder', 'Title / Headline (optional)...')}
             value={postTitle}
             onChange={(e) => setPostTitle(e.target.value)}
             style={{
               padding: '8px 12px',
               borderRadius: '8px',
               border: '1px solid #D4CECC',
-              fontSize: '13.5px',
+              fontSize: '13px',
+              outline: 'none',
             }}
           />
 
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', width: '100%' }}>
             <textarea
               rows={4}
-              placeholder={
-                isRecording
-                  ? t('recordingSpokenThought')
-                  : isTranscribing
-                  ? t('transcribingAudio')
-                  : t('shareThoughtsFreely')
-              }
+              placeholder={t('shareThoughtsFreely', "What's on your mind? Share your unspoken thoughts anonymously...")}
               value={postContent}
               onChange={(e) => setPostContent(e.target.value)}
+              required
               style={{
                 width: '100%',
-                padding: '10px 42px 10px 12px',
+                padding: '10px 40px 10px 12px',
                 borderRadius: '8px',
-                border: isRecording ? '1.5px solid #B33A3A' : '1px solid #D4CECC',
+                border: '1px solid #D4CECC',
                 fontSize: '13.5px',
+                outline: 'none',
                 resize: 'vertical',
                 boxSizing: 'border-box',
-                backgroundColor: isRecording ? 'rgba(179,58,58,0.05)' : '#FFFFFF',
               }}
             />
 
-            <div style={{ position: 'absolute', right: '10px', bottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              {/* Voice-to-Text Microphone button inside textarea */}
-              <button
-                type="button"
-                onClick={toggleRecording}
-                disabled={isTranscribing}
-                title={isRecording ? 'Stop recording' : 'Speak thought'}
-                style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '50%',
-                  backgroundColor: isRecording ? '#B33A3A' : 'rgba(111,64,95,0.10)',
-                  color: isRecording ? '#FFFFFF' : '#6F405F',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                {isTranscribing ? (
-                  <Loader2 size={14} className="spin-animation" />
-                ) : isRecording ? (
-                  <MicOff size={14} />
-                ) : (
-                  <Mic size={14} />
-                )}
-              </button>
-            </div>
+            {/* Google-Style Mic Button inside Modal Overlay (Press & Hold to Speak) */}
+            <button
+              type="button"
+              {...bindMicProps}
+              title={isRecording ? 'Release to stop recording' : 'Hold microphone to speak'}
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '10px',
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                backgroundColor: isRecording ? '#B33A3A' : 'rgba(111,64,95,0.12)',
+                color: isRecording ? '#FFFFFF' : '#6F405F',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: 'none',
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              {isTranscribing ? <Loader2 size={14} className="spin-animation" /> : isRecording ? <MicOff size={14} /> : <Mic size={14} />}
+            </button>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '11px', fontWeight: 700, color: '#6F405F', display: 'block', marginBottom: '4px' }}>
-                {t('topicLabel')}
-              </label>
-              <select
-                value={postTopic}
-                onChange={(e) => setPostTopic(e.target.value)}
-                style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #D4CECC', fontSize: '12px' }}
-              >
-                {topics.filter(topic => topic !== 'All').map(topic => (
-                  <option key={topic} value={topic}>{topic}</option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '11px', fontWeight: 700, color: '#6F405F', display: 'block', marginBottom: '4px' }}>
-                {t('postTypeLabel')}
-              </label>
-              <select
-                value={postType}
-                onChange={(e) => setPostType(e.target.value)}
-                style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #D4CECC', fontSize: '12px' }}
-              >
-                {postTypes.filter(pType => pType !== 'All').map(pType => (
-                  <option key={pType} value={pType}>{pType}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* File Upload Field for Image */}
-          <div style={{ marginTop: '4px' }}>
-            <label style={{ fontSize: '11px', fontWeight: 700, color: '#6F405F', display: 'block', marginBottom: '4px' }}>
-              {t('uploadImage') || 'Upload Image'}
+          {/* Image File Attachment Field */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#6F405F' }}>
+              {t('uploadImage', 'Attach Image (Optional)')}
             </label>
-
             {imageUrl ? (
-              <div style={{ position: 'relative', display: 'inline-block', width: '100%', maxWidth: '280px' }}>
+              <div style={{ position: 'relative', display: 'inline-block', maxWidth: '240px' }}>
                 <img
                   src={getMediaUrl(imageUrl)}
-                  alt="Uploaded attachment"
-                  style={{ width: '100%', maxHeight: '160px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #D4CECC' }}
+                  alt="Attachment preview"
+                  style={{ width: '100%', maxHeight: '140px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #D4CECC' }}
                 />
                 <button
                   type="button"
                   onClick={() => setImageUrl('')}
                   style={{
                     position: 'absolute',
-                    top: '6px',
-                    right: '6px',
-                    background: 'rgba(0,0,0,0.65)',
-                    color: '#ffffff',
+                    top: '4px',
+                    right: '4px',
+                    background: 'rgba(0,0,0,0.7)',
+                    color: '#FFF',
                     border: 'none',
                     borderRadius: '50%',
-                    width: '24px',
-                    height: '24px',
+                    width: '22px',
+                    height: '22px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <X size={14} />
+                  <X size={12} />
                 </button>
               </div>
             ) : (
-              <div
+              <label
                 style={{
-                  border: '1.5px dashed #D4CECC',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 12px',
                   borderRadius: '8px',
-                  padding: '10px',
-                  textAlign: 'center',
-                  background: '#FFFDFB',
+                  border: '1.5px dashed #D4CECC',
+                  background: '#FAF8F7',
                   cursor: 'pointer',
-                  position: 'relative',
+                  fontSize: '12.5px',
+                  color: '#6F405F',
+                  fontWeight: 600,
                 }}
               >
                 <input
@@ -601,246 +805,168 @@ export function HomePage({ onNavigate }) {
                   accept="image/*"
                   onChange={handleImageFileChange}
                   disabled={uploadingImage}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    opacity: 0,
-                    cursor: uploadingImage ? 'wait' : 'pointer',
-                  }}
+                  style={{ display: 'none' }}
                 />
                 {uploadingImage ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#6F405F', fontSize: '12px', fontWeight: 600 }}>
+                  <>
                     <Loader2 size={16} className="spin-animation" />
-                    <span>{t('uploadingImage') || 'Moderating & Uploading Image...'}</span>
-                  </div>
+                    <span>{t('uploadingImage', 'Uploading Image...')}</span>
+                  </>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
-                    <Upload size={18} style={{ color: '#8C8385' }} />
-                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#6F405F' }}>
-                      {t('chooseImage') || 'Choose Image File'}
-                    </span>
-                    <span style={{ fontSize: '10.5px', color: '#8C8385' }}>
-                      PNG, JPG, WEBP (Max 5MB) • Verified by AI Safety
-                    </span>
-                  </div>
+                  <>
+                    <Upload size={16} />
+                    <span>{t('chooseImage', 'Attach Image (JPEG, PNG, WEBP)')}</span>
+                  </>
                 )}
+              </label>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '11px', fontWeight: 700, color: '#6F405F', display: 'block', marginBottom: '2px' }}>
+              {t('contentTopic', 'Content Topic')} *
+            </label>
+            <select
+              value={postTopic}
+              onChange={(e) => setPostTopic(e.target.value)}
+              style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #D4CECC', fontSize: '12.5px', fontWeight: 600 }}
+            >
+              {SYSTEM_TOPICS.map(tKey => (
+                <option key={tKey} value={tKey}>{t(tKey, tKey)}</option>
+              ))}
+              <option value="CUSTOM">✨ + Create Custom Topic...</option>
+            </select>
+
+            {postTopic === 'CUSTOM' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#6F405F' }}>#</span>
+                <input
+                  type="text"
+                  placeholder="e.g. MEDITATION, POETRY, GAMING..."
+                  value={customTopic}
+                  onChange={(e) => setCustomTopic(e.target.value.toUpperCase().replace(/\s+/g, '_'))}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #6F405F',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    outline: 'none',
+                  }}
+                />
               </div>
             )}
           </div>
 
-          <button
-            type="submit"
-            disabled={submitting || uploadingImage}
-            style={{
-              padding: '10px',
-              borderRadius: '8px',
-              border: 'none',
-              backgroundColor: submitting || uploadingImage ? '#A0959A' : '#6F405F',
-              color: '#FFFFFF',
-              fontWeight: 700,
-              fontSize: '14px',
-              cursor: submitting || uploadingImage ? 'default' : 'pointer',
-              marginTop: '10px',
-            }}
-          >
-            {submitting ? t('publishing') : t('publishAnonymously')}
-          </button>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(false)}
+              style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #D4CECC', background: '#FFF', fontSize: '13px' }}
+            >
+              {t('cancel', 'Cancel')}
+            </button>
+            <button
+              type="submit"
+              disabled={submitting || !postContent.trim()}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                background: 'var(--deep-plum)',
+                color: '#FFF',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              {submitting ? t('publishing', 'Publishing...') : t('publishThought', 'Publish Thought')}
+            </button>
+          </div>
         </form>
       </Modal>
 
-      {reportingPost && (
-        <ReportModal
-          isOpen={Boolean(reportingPost)}
-          onClose={() => setReportingPost(null)}
-          contentType="POST"
-          targetId={reportingPost.id}
-          postId={reportingPost.id}
-          reportedContent={reportingPost.content || reportingPost.title}
-          authorUsername={reportingPost.username}
-        />
-      )}
-    </UserLayout>
-  );
-}
-
-function TopicStreamCardItem({
-  post,
-  isSelected,
-  onClick,
-  onNavigate,
-  savedPostIds,
-  currentUser,
-  deletePost,
-  toggleSavePost,
-  blockUser,
-  setReportingPost,
-  addToast,
-}) {
-  const { currentLanguage, translateTextAsync } = useLanguage();
-  const [translatedTitle, setTranslatedTitle] = useState(null);
-  const [translatedContent, setTranslatedContent] = useState(null);
-
-  useEffect(() => {
-    let isMounted = true;
-    const titleText = post?.title || post?.originalTitle;
-    const contentText = post?.originalContent || post?.content;
-
-    if (titleText && currentLanguage) {
-      translateTextAsync(titleText, currentLanguage).then((res) => {
-        if (isMounted && res) setTranslatedTitle(res);
-      });
-    } else {
-      setTranslatedTitle(null);
-    }
-
-    if (contentText && currentLanguage) {
-      translateTextAsync(contentText, currentLanguage).then((res) => {
-        if (isMounted && res) setTranslatedContent(res);
-      });
-    } else {
-      setTranslatedContent(null);
-    }
-
-    return () => { isMounted = false; };
-  }, [currentLanguage, post?.title, post?.originalTitle, post?.originalContent, post?.content]);
-
-  const displayTitle = translatedTitle || post.translatedTitle || post.title || post.originalTitle;
-  const displayContent = translatedContent || post.translatedContent || post.content || post.originalContent;
-
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-    >
-      <div
-        onClick={onClick}
-        style={{
-          border: isSelected ? '2px solid #6F405F' : '1px solid #E8DDD4',
-          borderRadius: '14px',
-          backgroundColor: isSelected ? '#FFFDFB' : '#FFFFFF',
-          padding: '12px 14px',
-          cursor: 'pointer',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          transition: 'all 0.2s ease',
-          boxShadow: isSelected ? '0 4px 14px rgba(111,64,95,0.12)' : '0 2px 6px rgba(0,0,0,0.02)',
-        }}
+      {/* Create Custom Topic Modal */}
+      <Modal
+        isOpen={isCreateTopicModalOpen}
+        onClose={() => setIsCreateTopicModalOpen(false)}
+        title="Create New Custom Topic"
       >
-        {/* COLLAPSED HEADER */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!newTopicInput.trim()) {
+              addToast('Please enter a valid topic name.', 'error');
+              return;
+            }
+            const cleanName = newTopicInput.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '');
+            if (!cleanName) {
+              addToast('Invalid topic name. Use letters, numbers, and underscores.', 'error');
+              return;
+            }
+            saveCustomTopic(cleanName);
+            setSelectedTopic(cleanName);
+            setNewTopicInput('');
+            setIsCreateTopicModalOpen(false);
+            addToast(`Topic #${cleanName} created! Marked with 👤 USER ADDED badge.`, 'success');
+          }}
+          style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
+        >
+          <div>
+            <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#6F405F', display: 'block', marginBottom: '6px' }}>
+              Topic Category Name *
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '15px', fontWeight: 900, color: '#6F405F' }}>#</span>
+              <input
+                type="text"
+                placeholder="e.g. PHILOSOPHY, MEDITATION, STARTUPS..."
+                value={newTopicInput}
+                onChange={(e) => setNewTopicInput(e.target.value.toUpperCase().replace(/\s+/g, '_'))}
+                required
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  border: '1.5px solid #6F405F',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  outline: 'none',
+                }}
+              />
+            </div>
+            <p style={{ fontSize: '11.5px', color: '#8C8385', margin: '6px 0 0 0' }}>
+              User-created topics are visible to all users with a <strong>👤 USER ADDED</strong> badge in the corner.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onNavigate(`/profile/${post.username.replace('@', '')}`);
-              }}
-              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}
-              title={`View ${post.username}'s profile`}
+              onClick={() => setIsCreateTopicModalOpen(false)}
+              style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #D4CECC', background: '#FFF', fontSize: '13px' }}
             >
-              <AvatarThumbnail
-                username={post.username}
-                initials={post.avatarInitials}
-                config={post.avatarConfig}
-                size={28}
-              />
+              Cancel
             </button>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onNavigate(`/profile/${post.username.replace('@', '')}`);
-                  }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    color: '#181818',
-                    textAlign: 'left',
-                  }}
-                >
-                  {post.username}
-                </button>
-                <span
-                  style={{
-                    fontSize: '10.5px',
-                    fontWeight: 700,
-                    padding: '2px 8px',
-                    borderRadius: '10px',
-                    backgroundColor: '#D89C7A',
-                    color: '#0B0A16',
-                  }}
-                >
-                  🏷️ {post.topic || 'General'}
-                </span>
-              </div>
-              <div style={{ fontSize: '11px', color: '#666666' }}>
-                {formatDate(post.createdAt)} {post.language ? `• 🌐 ${post.language}` : ''}
-              </div>
-            </div>
-          </div>
-
-          <div onClick={(e) => e.stopPropagation()}>
-            <PostMenu
-              isSaved={savedPostIds.includes(post.id)}
-              isOwner={currentUser && (currentUser.username === post.username || currentUser.email === post.username)}
-              onDelete={async () => {
-                try {
-                  if (deletePost) await deletePost(post.id);
-                  addToast('Post deleted', 'success');
-                } catch (e) {
-                  addToast(e.message || 'Failed to delete post', 'error');
-                }
+            <button
+              type="submit"
+              style={{
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                background: 'linear-gradient(135deg, #6F405F 0%, #3D2334 100%)',
+                color: '#FFF',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
               }}
-              onSave={() => toggleSavePost && toggleSavePost(post.id)}
-              onHide={() => addToast('Post hidden from feed', 'info')}
-              onMute={() => addToast(`Muted posts from ${post.username}`, 'info')}
-              onBlock={() => {
-                blockUser(post.username);
-                addToast(`Blocked ${post.username}`, 'info');
-              }}
-              onReport={() => setReportingPost(post)}
-            />
+            >
+              Create Topic
+            </button>
           </div>
-        </div>
-
-        {/* TITLE SUMMARY */}
-        {displayTitle && (
-          <div style={{ fontSize: '13px', fontWeight: 700, color: '#181818', margin: '2px 0 0 0' }}>
-            {displayTitle}
-          </div>
-        )}
-
-        {/* EXPANDED CONTENT WHEN CLICKED */}
-        {isSelected && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '8px', borderTop: '1px solid #F0E8E2' }}>
-            <p style={{ fontSize: '12.5px', color: '#4A3E3D', margin: 0, lineHeight: 1.45 }}>
-              {displayContent}
-            </p>
-            {post.imageUrl && (
-              <div style={{ marginTop: '6px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #EAE6E5' }}>
-                <img
-                  src={getMediaUrl(post.imageUrl)}
-                  alt="Post attachment"
-                  style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', display: 'block' }}
-                />
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </motion.div>
+        </form>
+      </Modal>
+    </UserLayout>
   );
 }

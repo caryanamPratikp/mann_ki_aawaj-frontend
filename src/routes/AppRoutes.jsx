@@ -151,16 +151,17 @@ export function AppRoutes() {
     return <ExplorePage onNavigate={navigate} />;
   }
   if (normalizedPath === '/create-post') {
-    return <CreatePostPage onNavigate={navigate} />;
+    return <HomePage onNavigate={navigate} />;
   }
   if (normalizedPath.startsWith('/post/')) {
     const postId = normalizedPath.split('/post/')[1];
     return <PostDetailsPage postId={postId} onNavigate={navigate} />;
   }
-  if (normalizedPath.startsWith('/chat')) {
-    const usernameParam = normalizedPath.startsWith('/chat/') ? normalizedPath.split('/chat/')[1] : null;
-    return <ChatPage targetUsername={usernameParam} onNavigate={navigate} />;
-  }
+  // 1-on-1 Direct Chat route disabled as per topic-based platform requirements
+  // if (normalizedPath.startsWith('/chat')) {
+  //   const usernameParam = normalizedPath.startsWith('/chat/') ? normalizedPath.split('/chat/')[1] : null;
+  //   return <ChatPage targetUsername={usernameParam} onNavigate={navigate} />;
+  // }
   if (normalizedPath === '/notifications') {
     return <NotificationsPage onNavigate={navigate} />;
   }

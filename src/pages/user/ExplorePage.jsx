@@ -1,16 +1,14 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { PostCard } from '../../components/posts/PostCard.jsx';
-import { InitialAvatar } from '../../components/profile/InitialAvatar.jsx';
 import { usePosts } from '../../context/PostContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useReports } from '../../context/ReportContext.jsx';
-import { apiProfileService } from '../../services/apiProfileService.js';
-import { Compass, Search, TrendingUp, Users, MessageSquare, ArrowRight, ShieldAlert } from 'lucide-react';
-import { Button } from '../../components/common/Button.jsx';
+import { Compass, Search, Flame, Clock, Sparkles, Tag } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext.jsx';
-
 import { SleekCommentSidePanel } from '../../components/posts/SleekCommentSidePanel.jsx';
+import { TopicBackgroundRotator } from '../../components/topics/TopicBackgroundRotator.jsx';
+import { formatDate } from '../../utils/formatDate.js';
 
 export function ExplorePage({ onNavigate }) {
   const { posts } = usePosts();
@@ -19,352 +17,233 @@ export function ExplorePage({ onNavigate }) {
   const { t } = useLanguage();
   const searchParams = new URLSearchParams(window.location.search);
   const [query, setQuery] = useState(searchParams.get('q') || '');
-  const [activeTab, setActiveTab] = useState('Posts'); // Posts, Members
   const [activeTopic, setActiveTopic] = useState('All');
-  const [userBios, setUserBios] = useState({});
   const [activeCommentsPost, setActiveCommentsPost] = useState(null);
 
-  const isUserMuted = Boolean(
-    (currentUser?.mutedUntil && new Date(currentUser.mutedUntil) > new Date()) ||
-    currentUser?.warningCount >= 3 ||
-    currentUser?.active === false ||
-    currentUser?.isMuted
-  );
-
-  const topicsList = [
-    'All', 'Life', 'Career', 'Relationships', 'Education', 'Personal Growth',
-    'Workplace', 'Parenting', 'Technology', 'Creativity', 'Books', 'Entertainment', 'Financial Experiences', 'Positive Thoughts'
+  const TOPIC_PRESETS = [
+    { name: 'BOLLYWOOD', category: 'Entertainment', categoryKey: 'ENTERTAINMENT_CAT', isTrending: true, isNew: false, defaultTime: '2mins ago' },
+    { name: 'CRICKET', category: 'Sports', categoryKey: 'SPORTS_CAT', isTrending: true, isNew: true, defaultTime: '5mins ago' },
+    { name: 'TECHNOLOGY', category: 'Innovation', categoryKey: 'INNOVATION_CAT', isTrending: false, isNew: true, defaultTime: '12mins ago' },
+    { name: 'POLITICS', category: 'News', categoryKey: 'NEWS_CAT', isTrending: true, isNew: false, defaultTime: '18mins ago' },
+    { name: 'ENTERTAINMENT', category: 'Media', categoryKey: 'MEDIA_CAT', isTrending: false, isNew: false, defaultTime: '25mins ago' },
+    { name: 'LIFESTYLE', category: 'Personal', categoryKey: 'PERSONAL_CAT', isTrending: false, isNew: true, defaultTime: '35mins ago' },
+    { name: 'SPORTS', category: 'Fitness', categoryKey: 'FITNESS_CAT', isTrending: false, isNew: false, defaultTime: '42mins ago' },
+    { name: 'NEWS', category: 'Current Affairs', categoryKey: 'CURRENT_AFFAIRS_CAT', isTrending: true, isNew: false, defaultTime: '1h ago' },
+    { name: 'GENERAL', category: 'Community', categoryKey: 'COMMUNITY_CAT', isTrending: false, isNew: false, defaultTime: '2h ago' },
   ];
 
-  let displayPosts = isUserMuted
-    ? []
-    : posts.filter((p) => {
-        if (!p) return false;
-        const authorHandle = (p.username || p.authorUsername || p.handle || '').toLowerCase().replace(/^@/, '').trim();
-        const isBlockedOrMuted =
-          Boolean(authorHandle) && (
-            blockedUsers.some((b) => (b || '').toLowerCase().replace(/^@/, '').trim() === authorHandle) ||
-            mutedUsers.some((m) => (m || '').toLowerCase().replace(/^@/, '').trim() === authorHandle)
-          ) || p.isMuted || p.muted;
-        return p.status === 'PUBLISHED' && !isBlockedOrMuted;
-      });
+  // Dynamic calculation of topic statistics from real posts
+  const topicStats = useMemo(() => {
+    const statsMap = {};
+    TOPIC_PRESETS.forEach(tItem => {
+      statsMap[tItem.name] = { count: 0, lastPostTime: tItem.defaultTime, isNew: tItem.isNew, isTrending: tItem.isTrending };
+    });
 
-
-  // Extract unique authors dynamically from the real database posts
-  const dbUsers = useMemo(() => {
-    const uniqueUsersMap = new Map();
-
-    posts.forEach((p) => {
-      if (p.username && p.status === 'PUBLISHED') {
-        const usernameKey = p.username.toLowerCase();
-        
-        // Exclude the current logged-in user
-        if (currentUser?.username && usernameKey === currentUser.username.toLowerCase()) {
-          return;
-        }
-
-        if (!uniqueUsersMap.has(usernameKey)) {
-          uniqueUsersMap.set(usernameKey, {
-            id: `db_user_${p.username.replace('@', '')}`,
-            username: p.username,
-            avatarInitials: p.avatarInitials || p.username.replace('@', '').slice(0, 2).toUpperCase(),
-            avatarConfig: p.avatarConfig,
-            bio: '',
-          });
-        }
+    posts.forEach(p => {
+      const topicName = (p.topic || 'GENERAL').toUpperCase();
+      if (!statsMap[topicName]) {
+        statsMap[topicName] = { count: 0, lastPostTime: 'Just now', isNew: true, isTrending: false };
+      }
+      statsMap[topicName].count += 1;
+      if (p.createdAt) {
+        statsMap[topicName].lastPostTime = formatDate(p.createdAt);
       }
     });
-    return Array.from(uniqueUsersMap.values());
-  }, [posts, currentUser]);
 
-  // Load bios dynamically from database profiles
-  useEffect(() => {
-    dbUsers.forEach((u) => {
-      const usernameClean = u.username.replace('@', '');
-      if (usernameClean && !(usernameClean in userBios)) {
-        // Set sentinel to prevent duplicate API requests
-        setUserBios((prev) => ({ ...prev, [usernameClean]: '...' }));
-        apiProfileService.getPublicProfile(usernameClean)
-          .then((res) => {
-            const bio = res?.data?.bio || res?.bio || 'No bio written yet.';
-            setUserBios((prev) => ({ ...prev, [usernameClean]: bio }));
-          })
-          .catch((err) => {
-            console.warn('[ExplorePage] Failed to fetch bio for', usernameClean, err);
-            setUserBios((prev) => ({ ...prev, [usernameClean]: 'Anonymous author' }));
-          });
-      }
-    });
-  }, [dbUsers, userBios]);
+    return statsMap;
+  }, [posts]);
 
-  let displayUsers = dbUsers;
+  // Filter posts
+  let displayPosts = posts.filter((p) => {
+    if (!p) return false;
+    const authorHandle = (p.username || p.authorUsername || '').toLowerCase().replace(/^@/, '').trim();
+    const isBlockedOrMuted =
+      Boolean(authorHandle) && (
+        blockedUsers.some((b) => (b || '').toLowerCase().replace(/^@/, '').trim() === authorHandle) ||
+        mutedUsers.some((m) => (m || '').toLowerCase().replace(/^@/, '').trim() === authorHandle)
+      );
+    return p.status === 'PUBLISHED' && !isBlockedOrMuted;
+  });
 
   if (query.trim()) {
     const qLower = query.toLowerCase();
     displayPosts = displayPosts.filter(
       (p) => p.title?.toLowerCase().includes(qLower) || p.content.toLowerCase().includes(qLower) || p.topic.toLowerCase().includes(qLower)
     );
-    displayUsers = displayUsers.filter(
-      (u) => u.username.toLowerCase().includes(qLower) || 
-             (u.bio || userBios[u.username.replace('@', '')] || '').toLowerCase().includes(qLower)
-    );
   }
 
   if (activeTopic !== 'All') {
-    displayPosts = displayPosts.filter((p) => p.topic === activeTopic);
+    displayPosts = displayPosts.filter((p) => (p.topic || '').toUpperCase() === activeTopic.toUpperCase());
   }
 
+  // Filter topic cards by search query
+  const filteredTopicPresets = TOPIC_PRESETS.filter(tItem => {
+    if (!query.trim()) return true;
+    const q = query.toLowerCase();
+    const translatedName = t(tItem.name, tItem.name).toLowerCase();
+    return tItem.name.toLowerCase().includes(q) || translatedName.includes(q) || tItem.category.toLowerCase().includes(q);
+  });
+
   return (
-    <UserLayout activeRoute="/explore" onNavigate={onNavigate}>
-      <div className="flex-col gap-lg">
-        {isUserMuted && (
-          <div
-            style={{
-              padding: '16px 20px',
-              borderRadius: '14px',
-              backgroundColor: 'rgba(239, 68, 68, 0.08)',
-              border: '1.5px solid rgba(239, 68, 68, 0.3)',
-              color: '#DC2626',
-              fontSize: '13.5px',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              marginBottom: '16px',
-            }}
-          >
-            <ShieldAlert size={22} color="#DC2626" />
-            <div>
-              <div style={{ fontWeight: 700, fontSize: '14.5px' }}>Account Muted / Restricted</div>
-              <div>Your account is currently muted due to a safety warning. Explore posts are hidden.</div>
-            </div>
-          </div>
-        )}
-
-        {/* Explore Header */}
-        <div className="mka-card flex-col gap-md" style={{ background: 'var(--soft-white)' }}>
-          <div className="flex-row items-center gap-sm">
-            <Compass size={28} style={{ color: 'var(--deep-plum)' }} />
-            <div>
-              <h1 className="section-heading" style={{ fontSize: '28px' }}>
-                {t('explore')} Thoughts & Members
-              </h1>
-              <p className="secondary-text">Discover perspectives across personal growth, career, and find members anonymously.</p>
-            </div>
-          </div>
-
-          {/* Search Bar */}
-          <div style={{ position: 'relative', width: '100%' }}>
-            <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--hurricane)' }} />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t('searchPlaceholder')}
-              style={{
-                width: '100%',
-                padding: '12px 14px 12px 44px',
-                borderRadius: 'var(--radius-pill)',
-                border: '1px solid var(--border-light)',
-                background: 'var(--pure-white)',
-                fontSize: '15px',
-                outline: 'none',
-              }}
-            />
-          </div>
-        </div>
-
-        {/* View Switcher: Posts vs Members */}
-        <div className="flex-row items-center gap-md border-b" style={{ borderBottom: '1px solid var(--border-light)' }}>
-          <button
-            onClick={() => setActiveTab('Posts')}
-            style={{
-              padding: '10px 16px',
-              fontSize: '15px',
-              fontWeight: activeTab === 'Posts' ? 600 : 400,
-              color: activeTab === 'Posts' ? 'var(--deep-plum)' : 'var(--hurricane)',
-              borderBottom: activeTab === 'Posts' ? '2px solid var(--deep-plum)' : '2px solid transparent',
-              background: 'transparent',
-            }}
-          >
-            Posts ({displayPosts.length})
-          </button>
-
-          <button
-            onClick={() => setActiveTab('Members')}
-            style={{
-              padding: '10px 16px',
-              fontSize: '15px',
-              fontWeight: activeTab === 'Members' ? 600 : 400,
-              color: activeTab === 'Members' ? 'var(--deep-plum)' : 'var(--hurricane)',
-              borderBottom: activeTab === 'Members' ? '2px solid var(--deep-plum)' : '2px solid transparent',
-              background: 'transparent',
-            }}
-          >
-            Anonymous Members ({displayUsers.length})
-          </button>
-        </div>
-
-        {activeTab === 'Posts' && (
-          <div className="flex-col gap-md">
-            {/* Topic Cards Selector */}
-            <div className="flex-col gap-sm">
-              <h3 className="card-heading" style={{ fontSize: '16px' }}>
-                Browse Topics
-              </h3>
-              <div className="flex-row explore-topics-row gap-xs" style={{ flexWrap: 'wrap' }}>
-                {topicsList.map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setActiveTopic(t)}
-                    className="badge"
-                    style={{
-                      padding: '6px 14px',
-                      borderRadius: 'var(--radius-pill)',
-                      fontSize: '13px',
-                      cursor: 'pointer',
-                      fontWeight: activeTopic === t ? 600 : 400,
-                      background: activeTopic === t ? 'var(--deep-plum)' : 'var(--pure-white)',
-                      color: activeTopic === t ? 'var(--pure-white)' : 'var(--eclipse)',
-                      border: '1px solid var(--border-light)',
-                    }}
-                  >
-                    {t}
-                  </button>
-                ))}
+    <UserLayout activeRoute="/explore" onNavigate={onNavigate} wide={true}>
+      <TopicBackgroundRotator topicName="EXPLORE">
+        <div className="flex-col gap-lg" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          {/* Explore Header & Search */}
+          <div className="mka-card" style={{ background: '#FFFDFB', borderRadius: '16px', padding: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <Compass size={32} style={{ color: 'var(--deep-plum)' }} />
+              <div>
+                <h1 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--eclipse)', margin: 0 }}>
+                  {t('exploreTopicsDiscussions', 'Explore Topics & Discussions')}
+                </h1>
+                <p style={{ fontSize: '13.5px', color: 'var(--hurricane)', margin: '4px 0 0 0' }}>
+                  {t('exploreSubtitle', 'Search topics, view last post timestamps, and join conversations across Bollywood, Cricket, Politics, and Tech.')}
+                </p>
               </div>
             </div>
 
-            {displayPosts.length === 0 ? (
-              <div className="mka-card p-lg text-center secondary-text">
-                No matching discussions found. Try clearing your search query or choosing another topic.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: '320px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {displayPosts.map((post) => (
-                    <PostCard
-                      key={post.id}
-                      post={post}
-                      onNavigate={onNavigate}
-                      onToggleComments={(p) => {
-                        if (activeCommentsPost?.id === p.id) setActiveCommentsPost(null);
-                        else setActiveCommentsPost(p);
-                      }}
-                      activeCommentsPostId={activeCommentsPost?.id}
-                    />
-                  ))}
-                </div>
-
-                {activeCommentsPost && (
-                  <SleekCommentSidePanel
-                    post={activeCommentsPost}
-                    onClose={() => setActiveCommentsPost(null)}
-                    onNavigate={onNavigate}
-                  />
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'Members' && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'flex-start' }}>
-            {displayUsers.map((user) => (
-              <div
-                key={user.id}
-                className="mka-card"
+            {/* Search Bar */}
+            <div style={{ position: 'relative', width: '100%' }}>
+              <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--hurricane)' }} />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t('searchTopicsPlaceholder', 'Search topics (e.g. Bollywood, Cricket, Technology)...')}
                 style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '18px 12px',
-                  backgroundColor: '#FFFFFF',
-                  border: '1px solid var(--border-light)',
-                  borderRadius: '12px',
-                  textAlign: 'center',
-                  width: '200px',
-                  height: '200px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-                  flexShrink: 0,
+                  width: '100%',
+                  padding: '12px 14px 12px 44px',
+                  borderRadius: 'var(--radius-pill)',
+                  border: '1.5px solid var(--border-light)',
+                  background: 'var(--pure-white)',
+                  fontSize: '14.5px',
+                  outline: 'none',
                 }}
-              >
-                {/* Avatar & Info */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '100%' }}>
-                  <button
-                    onClick={() => onNavigate(`/profile/${user.username.replace('@', '')}`)}
-                    style={{ display: 'block', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                  >
-                    <InitialAvatar username={user.username} initials={user.avatarInitials} size={52} />
-                  </button>
-                  <div style={{ width: '100%' }}>
-                    <span className="bold" style={{ fontSize: '14.0px', color: 'var(--eclipse)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {user.username}
-                    </span>
-                    <p
-                      className="secondary-text"
-                      style={{
-                        fontSize: '11.0px',
-                        margin: '4px 0 0 0',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        lineHeight: '1.35',
-                        height: '30px',
-                      }}
-                    >
-                      {user.bio || userBios[user.username.replace('@', '')] || 'No bio written yet.'}
-                    </p>
-                  </div>
-                </div>
+              />
+            </div>
+          </div>
 
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: '6px', width: '100%', marginTop: '10px' }}>
-                  <button
-                    onClick={() => onNavigate(`/profile/${user.username.replace('@', '')}`)}
-                    style={{
-                      flex: 1,
-                      padding: '6px 10px',
-                      borderRadius: '20px',
-                      border: '1px solid var(--border-light)',
-                      backgroundColor: '#FFFFFF',
-                      color: 'var(--eclipse)',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
+          {/* ── TOPIC OPTIONS & DISCOVERY GRID ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--eclipse)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Tag size={20} color="var(--deep-plum)" /> {t('featuredTopics', 'Featured Topics')}
+              </h3>
+              {activeTopic !== 'All' && (
+                <button
+                  onClick={() => setActiveTopic('All')}
+                  style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--deep-plum)', background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  {t('clearTopicFilter', 'Clear Topic Filter')} ({t(activeTopic, activeTopic)})
+                </button>
+              )}
+            </div>
+
+            {/* Topic Cards Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '14px' }}>
+              {filteredTopicPresets.map((tItem) => {
+                const stat = topicStats[tItem.name] || { count: 0, lastPostTime: tItem.defaultTime };
+                const isSelected = activeTopic === tItem.name;
+
+                return (
+                  <div
+                    key={tItem.name}
+                    onClick={() => {
+                      setActiveTopic(isSelected ? 'All' : tItem.name);
+                      onNavigate(`/profile/${tItem.name.toLowerCase()}`);
                     }}
-                  >
-                    Profile
-                  </button>
-                  <button
-                    onClick={() => onNavigate(`/chat/${user.username.replace('@', '')}`)}
                     style={{
-                      flex: 1,
-                      padding: '6px 10px',
-                      borderRadius: '20px',
-                      border: 'none',
-                      backgroundColor: 'var(--deep-plum)',
-                      color: '#FFFFFF',
-                      fontSize: '11px',
-                      fontWeight: 600,
+                      padding: '16px',
+                      borderRadius: '14px',
+                      backgroundColor: isSelected ? 'var(--deep-plum-light)' : '#FFFFFF',
+                      border: isSelected ? '2px solid var(--deep-plum)' : '1px solid var(--border-light)',
                       cursor: 'pointer',
                       display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '4px',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
                     }}
                   >
-                    <MessageSquare size={10} /> Chat
-                  </button>
-                </div>
-              </div>
-            ))}
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--hurricane)', textTransform: 'uppercase' }}>
+                          {t(tItem.categoryKey, tItem.category)}
+                        </span>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          {tItem.isTrending && (
+                            <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 6px', borderRadius: '8px', background: '#D96C3D', color: '#FFF' }}>
+                              {t('trending', 'TRENDING')}
+                            </span>
+                          )}
+                          {tItem.isNew && (
+                            <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 6px', borderRadius: '8px', background: '#3F7772', color: '#FFF' }}>
+                              {t('new', 'NEW')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <h4 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--eclipse)', margin: 0 }}>
+                        #{t(tItem.name, tItem.name)}
+                      </h4>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: 'var(--hurricane)', borderTop: '1px solid var(--border-light)', paddingTop: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Clock size={13} />
+                        <span>{stat.lastPostTime}</span>
+                      </div>
+                      <span style={{ fontWeight: 700, color: 'var(--deep-plum)' }}>
+                        {stat.count} {t('posts', 'posts')}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* ── SEARCH RESULTS / POST LISTING ── */}
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--eclipse)', margin: 0 }}>
+                {t('recentThoughts', 'Recent Thoughts')} {activeTopic !== 'All' ? `under #${t(activeTopic, activeTopic)}` : ''} ({displayPosts.length})
+              </h3>
+
+              {displayPosts.length === 0 ? (
+                <div className="mka-card text-center secondary-text" style={{ padding: '36px', background: '#FFF' }}>
+                  {t('noThoughtsFound', 'No thoughts found')}
+                </div>
+              ) : (
+                displayPosts.map((post) => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    onNavigate={onNavigate}
+                    onToggleComments={() => {
+                      if (activeCommentsPost?.id === post.id) setActiveCommentsPost(null);
+                      else setActiveCommentsPost(post);
+                    }}
+                    activeCommentsPostId={activeCommentsPost?.id}
+                  />
+                ))
+              )}
+            </div>
+
+            {activeCommentsPost && (
+              <SleekCommentSidePanel
+                post={activeCommentsPost}
+                onClose={() => setActiveCommentsPost(null)}
+                onNavigate={onNavigate}
+              />
+            )}
+          </div>
+
+        </div>
+      </TopicBackgroundRotator>
     </UserLayout>
   );
 }

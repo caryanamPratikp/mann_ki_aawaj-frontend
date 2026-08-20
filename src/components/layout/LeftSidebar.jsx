@@ -1,114 +1,185 @@
-import React from 'react';
-import { MessageSquare, FileText, Bookmark, ShieldAlert, Settings, HelpCircle, LogOut } from 'lucide-react';
+import React, { useState } from 'react';
+import { Home, Compass, FileText, Bookmark, ShieldAlert, Settings, HelpCircle, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
-import { useChat } from '../../context/ChatContext.jsx';
 
 export function LeftSidebar({ activeRoute, onNavigate }) {
   const { currentUser, logout } = useAuth();
   const { t } = useLanguage();
-  const chatContext = useChat();
-  const hasUnreadMessages = chatContext?.hasUnreadMessages || false;
+  const [hoveredIdx, setHoveredIdx] = useState(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const currentPath = (activeRoute || window.location.pathname || '').toLowerCase();
+
+  // Topic page matcher: /profile/{topicName} (collapses into hover strip ONLY on topic pages)
+  const isTopicPage = Boolean(
+    currentPath.startsWith('/profile/') &&
+    currentPath !== '/profile' &&
+    currentPath !== '/profile/' &&
+    currentPath !== '/profile/me' &&
+    !currentPath.includes('/edit') &&
+    !currentPath.includes('/settings')
+  );
 
   const menuItems = [
-    { label: t('messages'), icon: MessageSquare, route: '/chat' },
-    { label: t('myPosts'), icon: FileText, route: '/my-posts' },
-    { label: t('savedPosts'), icon: Bookmark, route: '/saved' },
-    { label: t('myReports'), icon: ShieldAlert, route: '/my-reports' },
-    { label: t('settings'), icon: Settings, route: '/settings' },
-    { label: t('helpSupport'), icon: HelpCircle, route: '/help' },
+    { label: t('home', 'Home'), icon: Home, route: '/home' },
+    { label: t('explore', 'Explore'), icon: Compass, route: '/explore' },
+    { label: t('myPosts', 'My Thoughts'), icon: FileText, route: '/my-posts' },
+    { label: t('savedPosts', 'Saved Posts'), icon: Bookmark, route: '/saved' },
+    { label: t('myReports', 'My Reports'), icon: ShieldAlert, route: '/my-reports' },
+    { label: t('settings', 'Settings'), icon: Settings, route: '/settings' },
+    { label: t('helpSupport', 'Help & Support'), icon: HelpCircle, route: '/help' },
   ];
 
   return (
-    <aside className="sidebar-left" style={{ width: '240px', maxWidth: '240px', flexShrink: 0 }}>
+    <aside
+      className="desktop-only"
+      onMouseEnter={() => isTopicPage && setIsExpanded(true)}
+      onMouseLeave={() => isTopicPage && setIsExpanded(false)}
+      style={{
+        position: 'fixed',
+        left: isTopicPage ? 0 : '16px',
+        top: '80px',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        transform: isTopicPage
+          ? (isExpanded ? 'translateX(10px)' : 'translateX(-58px)')
+          : 'none',
+        transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), left 0.3s ease',
+        cursor: isTopicPage ? 'pointer' : 'default',
+      }}
+    >
       <div
         className="mka-card"
         style={{
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          padding: '16px',
-          borderRadius: 'var(--radius-lg)',
+          padding: '16px 8px',
+          borderRadius: '20px',
           minHeight: 'calc(100vh - 110px)',
-          background: '#FFFDFB',
-          width: '100%',
+          background: 'linear-gradient(180deg, #6F405F 0%, #3D2334 100%)',
+          border: '1.5px solid #5A334D',
+          width: '68px',
+          boxShadow: isTopicPage
+            ? (isExpanded ? '12px 16px 40px rgba(61, 35, 52, 0.45)' : '4px 6px 20px rgba(61, 35, 52, 0.25)')
+            : '6px 10px 28px rgba(61, 35, 52, 0.35)',
+          transition: 'box-shadow 0.3s ease',
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ padding: '4px 10px 8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--hurricane)', fontWeight: 700 }}>
-            {t('personalSpace')}
-          </div>
-
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
           {menuItems.map((item, idx) => {
             const Icon = item.icon;
             const isActive = activeRoute === item.route;
+            const isItemHovered = hoveredIdx === idx;
+
             return (
-              <button
-                key={idx}
-                onClick={() => onNavigate(item.route)}
-                className="flex-row items-center gap-md"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '14px',
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? 'var(--deep-plum)' : 'var(--eclipse)',
-                  background: isActive ? 'var(--deep-plum-light)' : 'transparent',
-                  textAlign: 'left',
-                  transition: 'background var(--transition-fast)',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive) e.currentTarget.style.background = 'var(--soft-white)';
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) e.currentTarget.style.background = 'transparent';
-                }}
-              >
-                <Icon size={18} style={{ color: isActive ? 'var(--deep-plum)' : 'var(--hurricane)' }} />
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  {item.label}
-                  {item.route === '/chat' && hasUnreadMessages && (
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        width: '7px',
-                        height: '7px',
-                        borderRadius: '50%',
-                        backgroundColor: 'var(--error, #EF4444)',
-                      }}
-                    />
-                  )}
-                </span>
-              </button>
+              <div key={idx} style={{ position: 'relative', width: '100%' }}>
+                <button
+                  onClick={() => onNavigate(item.route)}
+                  onMouseEnter={() => setHoveredIdx(idx)}
+                  onMouseLeave={() => setHoveredIdx(null)}
+                  style={{
+                    width: '100%',
+                    height: '44px',
+                    borderRadius: 'var(--radius-md)',
+                    color: '#FFFFFF',
+                    background: isActive
+                      ? 'rgba(255, 255, 255, 0.28)'
+                      : isItemHovered
+                      ? 'rgba(255, 255, 255, 0.16)'
+                      : 'transparent',
+                    boxShadow: isActive ? '0 2px 8px rgba(0, 0, 0, 0.22)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    border: 'none',
+                    transition: 'all var(--transition-fast)',
+                  }}
+                >
+                  <Icon size={21} style={{ color: '#FFFFFF', strokeWidth: isActive ? 2.5 : 2 }} />
+                </button>
+
+                {/* Floating Tooltip Label (Shows on Hover without expanding sidebar) */}
+                {isItemHovered && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: '60px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'var(--eclipse)',
+                      color: 'var(--pure-white)',
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      fontSize: '12.5px',
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                      boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
+                      zIndex: 100,
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    {item.label}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
 
         {currentUser && (
-          <div style={{ paddingTop: '16px', borderTop: '1px solid var(--border-light)', marginTop: 'auto' }}>
-            <button
-              onClick={() => {
-                logout();
-                onNavigate('/login');
-              }}
-              className="flex-row items-center gap-md"
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: 'var(--radius-md)',
-                fontSize: '14px',
-                fontWeight: 500,
-                color: 'var(--error)',
-                textAlign: 'left',
-                transition: 'background var(--transition-fast)',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(196, 111, 118, 0.12)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              <LogOut size={18} />
-              <span>{t('logout')}</span>
-            </button>
+          <div style={{ paddingTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.18)', marginTop: 'auto', width: '100%', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ position: 'relative', width: '100%' }}>
+              <button
+                onClick={() => {
+                  logout();
+                  onNavigate('/login');
+                }}
+                onMouseEnter={() => setHoveredIdx('logout')}
+                onMouseLeave={() => setHoveredIdx(null)}
+                style={{
+                  width: '100%',
+                  height: '44px',
+                  borderRadius: 'var(--radius-md)',
+                  color: '#FFADAD',
+                  background: hoveredIdx === 'logout' ? 'rgba(255, 173, 173, 0.2)' : 'transparent',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  border: 'none',
+                  transition: 'background var(--transition-fast)',
+                }}
+              >
+                <LogOut size={20} style={{ color: '#FFADAD' }} />
+              </button>
+
+              {hoveredIdx === 'logout' && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: '60px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'var(--error)',
+                    color: 'var(--pure-white)',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
+                    zIndex: 100,
+                    pointerEvents: 'none',
+                  }}
+                >
+                  {t('logout', 'Logout')}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

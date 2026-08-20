@@ -7,13 +7,19 @@ import { MessageSquare } from 'lucide-react';
 
 export function CommentList({ postId, postAuthorUsername, onNavigate }) {
   const { commentsByPost, fetchComments } = useComments();
-  const [sortBy, setSortBy] = useState('Most Helpful');
+  const [sortBy, setSortBy] = useState('Latest');
 
   useEffect(() => {
     fetchComments(postId, sortBy);
   }, [postId, sortBy, fetchComments]);
 
-  const comments = commentsByPost[postId] || [];
+  const rawComments = commentsByPost[postId] || [];
+  const comments = [...rawComments].sort((a, b) => {
+    if (sortBy === 'Latest') {
+      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    }
+    return 0;
+  });
 
   return (
     <div className="flex-col gap-md" style={{ marginTop: '20px' }}>

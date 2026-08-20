@@ -8,7 +8,6 @@ import { useChat } from '../../context/ChatContext.jsx';
 import { InitialAvatar } from '../profile/InitialAvatar.jsx';
 import { Tooltip } from '../common/Tooltip.jsx';
 import { Drawer } from '../common/Drawer.jsx';
-import { LanguageSelectorDropdown } from '../common/LanguageSelectorDropdown.jsx';
 
 export function TopNavbar({ activeRoute, onNavigate }) {
   const { currentUser, logout } = useAuth();
@@ -18,6 +17,47 @@ export function TopNavbar({ activeRoute, onNavigate }) {
   const hasUnreadMessages = chatContext?.hasUnreadMessages || false;
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  React.useEffect(() => {
+    const handleScroll = () => {
+      const top = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      // Smoothly interpolate ratio from 0 to 1 over 700px of scrolling down the feed
+      const maxScroll = 700;
+      const ratio = Math.min(1, Math.max(0, top / maxScroll));
+      setScrollProgress(ratio);
+    };
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+    document.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll, { capture: true });
+      document.removeEventListener('scroll', handleScroll, { capture: true });
+    };
+  }, []);
+
+  // Continuous RGB Math for Gradient (Pure White -> Deep Plum #6F405F & #3D2334)
+  const r1 = Math.round(255 - (255 - 111) * scrollProgress);
+  const g1 = Math.round(255 - (255 - 64) * scrollProgress);
+  const b1 = Math.round(255 - (255 - 95) * scrollProgress);
+
+  const r2 = Math.round(250 - (250 - 61) * scrollProgress);
+  const g2 = Math.round(248 - (248 - 35) * scrollProgress);
+  const b2 = Math.round(247 - (247 - 52) * scrollProgress);
+
+  const rText = Math.round(45 + (255 - 45) * scrollProgress);
+  const gText = Math.round(29 + (255 - 29) * scrollProgress);
+  const bText = Math.round(21 + (255 - 21) * scrollProgress);
+
+  const headerBackground = `linear-gradient(135deg, rgb(${r1}, ${g1}, ${b1}) 0%, rgb(${r2}, ${g2}, ${b2}) 100%)`;
+  const textColor = `rgb(${rText}, ${gText}, ${bText})`;
+  const isDarkNavbar = scrollProgress > 0.45;
+
+  const placeholderColor = `rgba(${rText}, ${gText}, ${bText}, ${0.65 + 0.3 * scrollProgress})`;
+  const searchBg = `rgba(${Math.round(255 - 194 * scrollProgress)}, ${Math.round(255 - 220 * scrollProgress)}, ${Math.round(255 - 203 * scrollProgress)}, ${0.9 + 0.1 * scrollProgress})`;
+  const searchBorder = `1.5px solid rgba(${Math.round(111 + 144 * scrollProgress)}, ${Math.round(64 + 191 * scrollProgress)}, ${Math.round(95 + 160 * scrollProgress)}, ${0.2 + 0.2 * scrollProgress})`;
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -29,8 +69,8 @@ export function TopNavbar({ activeRoute, onNavigate }) {
   const iconBtnStyle = (active) => ({
     padding: '8px',
     borderRadius: 'var(--radius-md)',
-    color: active ? 'var(--deep-plum)' : 'var(--eclipse)',
-    background: active ? 'var(--deep-plum-light)' : 'transparent',
+    color: textColor,
+    background: active ? (isDarkNavbar ? 'rgba(255, 255, 255, 0.25)' : 'rgba(111, 64, 95, 0.12)') : 'transparent',
     border: 'none',
     cursor: 'pointer',
     display: 'flex',
@@ -38,10 +78,20 @@ export function TopNavbar({ activeRoute, onNavigate }) {
     justifyContent: 'center',
     position: 'relative',
     flexShrink: 0,
+    transition: 'all 0.15s ease',
   });
 
   return (
     <>
+      <style>{`
+        .dynamic-navbar-search-input::placeholder {
+          color: ${placeholderColor} !important;
+          opacity: 1 !important;
+          transition: color 0.15s ease;
+        }
+      `}</style>
+
+      {/* ── DYNAMICALLY GRADUAL PURPLE SHIFTING TOP NAVBAR ── */}
       <header
         style={{
           position: 'sticky',
@@ -50,14 +100,20 @@ export function TopNavbar({ activeRoute, onNavigate }) {
           margin: '8px auto 0',
           width: 'calc(100% - 24px)',
           maxWidth: '1280px',
-          background: 'var(--pure-white)',
-          borderRadius: 'var(--radius-xl)',
-          border: '1px solid var(--border-light)',
-          boxShadow: 'var(--shadow-soft)',
-          padding: '0 16px',
-          /* Prevent header from overflowing viewport */
+          background: headerBackground,
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          borderRadius: '20px',
+          border: isDarkNavbar
+            ? `1.5px solid rgba(255, 255, 255, ${0.1 + 0.25 * scrollProgress})`
+            : '1.5px solid rgba(111, 64, 95, 0.16)',
+          boxShadow: isDarkNavbar
+            ? `0 12px 36px rgba(61, 35, 52, ${0.15 + 0.3 * scrollProgress})`
+            : '0 6px 24px rgba(45, 29, 21, 0.06)',
+          padding: '0 18px',
           boxSizing: 'border-box',
           overflow: 'hidden',
+          transition: 'border 0.2s ease, box-shadow 0.2s ease',
         }}
       >
         <div
@@ -66,17 +122,17 @@ export function TopNavbar({ activeRoute, onNavigate }) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: '8px',
+            gap: '12px',
             minWidth: 0,
           }}
         >
-          {/* ── Logo & Brand ── */}
+          {/* ── Logo & Brand Badge ── */}
           <button
             onClick={() => onNavigate('/')}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
+              gap: '10px',
               background: 'none',
               border: 'none',
               cursor: 'pointer',
@@ -84,97 +140,77 @@ export function TopNavbar({ activeRoute, onNavigate }) {
               flexShrink: 0,
             }}
           >
-            <img
-              src={logoMKA}
-              alt="Aawaj Man Ki"
-              style={{ width: '32px', height: '32px', objectFit: 'contain', borderRadius: '8px' }}
-            />
-            {/* Brand name — hidden on mobile phones via CSS */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <img
+                src={logoMKA}
+                alt="Aawaj Man Ki"
+                style={{
+                  width: '34px',
+                  height: '34px',
+                  objectFit: 'contain',
+                  borderRadius: '10px',
+                  border: '1.5px solid #FF9933',
+                  boxShadow: '0 2px 8px rgba(255, 153, 51, 0.3)',
+                }}
+              />
+            </div>
+            {/* Brand Name */}
             <span
               className="brand-name font-heading"
-              style={{ fontSize: '20px', color: 'var(--eclipse)', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}
+              style={{
+                fontSize: '21px',
+                fontWeight: 800,
+                color: textColor,
+                letterSpacing: '-0.02em',
+                whiteSpace: 'nowrap',
+              }}
             >
               Aawaj Man Ki
             </span>
           </button>
 
           {/* ── Desktop Search Bar ── */}
-          <form onSubmit={handleSearch} style={{ flex: '0 1 300px' }} className="desktop-only">
+          <form onSubmit={handleSearch} style={{ flex: '0 1 340px' }} className="desktop-only">
             <div style={{ position: 'relative', width: '100%' }}>
               <Search
                 size={15}
-                style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--hurricane)', pointerEvents: 'none' }}
+                style={{
+                  position: 'absolute',
+                  left: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: textColor,
+                  pointerEvents: 'none',
+                  transition: 'color 0.15s ease',
+                }}
               />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t('searchPlaceholder') || 'Search posts...'}
+                placeholder={t('searchPlaceholder') || 'Search thoughts, questions, members...'}
+                className="dynamic-navbar-search-input"
                 style={{
                   width: '100%',
-                  padding: '8px 12px 8px 34px',
-                  borderRadius: 'var(--radius-pill)',
-                  border: '1px solid var(--border-light)',
-                  background: 'var(--soft-white)',
+                  padding: '8px 14px 8px 36px',
+                  borderRadius: '24px',
+                  border: searchBorder,
+                  background: searchBg,
+                  color: textColor,
                   fontSize: '13px',
                   outline: 'none',
                   boxSizing: 'border-box',
+                  boxShadow: isDarkNavbar ? '0 2px 10px rgba(0,0,0,0.15)' : '0 2px 8px rgba(0, 0, 0, 0.04)',
+                  transition: 'all 0.15s ease',
                 }}
               />
             </div>
           </form>
 
           {/* ── RIGHT SIDE ACTIONS ── */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
 
-            {/* Desktop-only nav icons */}
-            <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-              <Tooltip text={t('home')} position="bottom">
-                <button onClick={() => onNavigate('/home')} style={iconBtnStyle(activeRoute === '/home')}>
-                  <Home size={21} />
-                </button>
-              </Tooltip>
-
-              <Tooltip text={t('explore')} position="bottom">
-                <button onClick={() => onNavigate('/explore')} style={iconBtnStyle(activeRoute === '/explore')}>
-                  <Compass size={21} />
-                </button>
-              </Tooltip>
-
-              <Tooltip text={t('messages')} position="bottom">
-                <button onClick={() => onNavigate('/chat')} style={iconBtnStyle(activeRoute?.startsWith('/chat'))}>
-                  <MessageSquare size={21} />
-                  {hasUnreadMessages && (
-                    <span style={{
-                      position: 'absolute', top: '4px', right: '4px',
-                      width: '7px', height: '7px', borderRadius: '50%',
-                      backgroundColor: 'var(--error, #EF4444)',
-                      border: '1.5px solid var(--pure-white)',
-                    }} />
-                  )}
-                </button>
-              </Tooltip>
-
-              <Tooltip text={t('create')} position="bottom">
-                <button
-                  onClick={() => onNavigate('/create-post')}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '6px',
-                    padding: '6px 14px',
-                    borderRadius: 'var(--radius-pill)',
-                    background: 'var(--deep-plum)',
-                    color: 'var(--pure-white)',
-                    fontSize: '13px', fontWeight: 600,
-                    border: 'none', cursor: 'pointer',
-                  }}
-                >
-                  <PlusSquare size={16} />
-                  <span>{t('create')}</span>
-                </button>
-              </Tooltip>
-            </div>
-
-            {/* Notification Bell — ALWAYS VISIBLE (mobile + desktop) */}
+            {/* Notification Bell — ALWAYS VISIBLE */}
             <button
               onClick={() => onNavigate('/notifications')}
               title={t('notifications') || 'Notifications'}
@@ -185,10 +221,10 @@ export function TopNavbar({ activeRoute, onNavigate }) {
                 <span style={{
                   position: 'absolute', top: '4px', right: '4px',
                   minWidth: '16px', height: '16px', borderRadius: '8px',
-                  backgroundColor: 'var(--warning, #D96C3D)',
+                  backgroundColor: '#FF9933',
                   color: '#fff', fontSize: '9px', fontWeight: 800,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '1.5px solid var(--pure-white)',
+                  border: '1.5px solid #FFFFFF',
                   padding: '0 2px',
                 }}>
                   {unreadCount > 9 ? '9+' : unreadCount}
@@ -196,12 +232,19 @@ export function TopNavbar({ activeRoute, onNavigate }) {
               )}
             </button>
 
-
             {/* Profile Avatar — ALWAYS VISIBLE */}
             {currentUser ? (
               <button
                 type="button"
-                style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', flexShrink: 0 }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '2px',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  borderRadius: '50%',
+                  boxShadow: '0 2px 8px rgba(19, 136, 8, 0.3)',
+                }}
                 onClick={() => {
                   const handle = currentUser?.username ? currentUser.username.replace('@', '') : 'me';
                   onNavigate(`/profile/${handle}`);
@@ -218,11 +261,12 @@ export function TopNavbar({ activeRoute, onNavigate }) {
               <button
                 onClick={() => onNavigate('/login')}
                 style={{
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--eclipse)',
-                  fontSize: '13px', fontWeight: 500,
-                  background: 'none', cursor: 'pointer',
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  border: '1.5px solid #FF9933',
+                  fontSize: '13px', fontWeight: 700,
+                  color: '#FF671F',
+                  background: '#FFFFFF', cursor: 'pointer',
                 }}
               >
                 Login
@@ -234,7 +278,7 @@ export function TopNavbar({ activeRoute, onNavigate }) {
               className="mobile-only"
               onClick={() => setIsMobileDrawerOpen(true)}
               style={{
-                color: 'var(--eclipse)', padding: '6px',
+                color: '#2D1D15', padding: '6px',
                 background: 'none', border: 'none', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
@@ -245,6 +289,7 @@ export function TopNavbar({ activeRoute, onNavigate }) {
             </button>
           </div>
         </div>
+
       </header>
 
       {/* ── Mobile Sidebar Drawer ── */}
@@ -283,7 +328,6 @@ export function TopNavbar({ activeRoute, onNavigate }) {
               {item.label}
             </button>
           ))}
-
 
           {currentUser && (
             <button
