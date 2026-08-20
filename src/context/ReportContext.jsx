@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { apiReportService } from '../services/apiReportService.js';
 import { apiAdminService } from '../services/apiAdminService.js';
+import { apiUserService } from '../services/apiUserService.js';
 import { useAuth } from './AuthContext.jsx';
 import { useToast } from './ToastContext.jsx';
 
@@ -22,6 +23,29 @@ export function ReportProvider({ children }) {
   const { currentUser } = useAuth();
   const { addToast } = useToast();
 
+  // Sync muted users list with backend API on mount / login
+  const refreshMutedUsers = useCallback(async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!currentUser || !token || token.startsWith('mock')) return;
+
+    try {
+      const res = await apiUserService.getMutedUsers();
+      const list = res?.data || res || [];
+      if (Array.isArray(list)) {
+        const formatted = [];
+        list.forEach(u => {
+          const raw = u.replace(/^@/, '');
+          formatted.push(raw, `@${raw}`);
+        });
+        const unique = [...new Set(formatted)];
+        setMutedUsers(unique);
+        try { localStorage.setItem('mka_muted_users', JSON.stringify(unique)); } catch {}
+      }
+    } catch (err) {
+      console.warn('[ReportContext] Backend muted users sync notice:', err?.message || err);
+    }
+  }, [currentUser]);
+
   const refreshReports = useCallback(async () => {
     const token = localStorage.getItem('auth_token');
     if (!currentUser || !token) { setMyReports([]); setAdminQueue([]); return; }
@@ -41,7 +65,8 @@ export function ReportProvider({ children }) {
 
   useEffect(() => {
     refreshReports();
-  }, [refreshReports]);
+    refreshMutedUsers();
+  }, [refreshReports, refreshMutedUsers]);
 
   const submitReport = async (reportData) => {
     if (!currentUser) throw new Error('Must be logged in to report content.');
@@ -65,27 +90,49 @@ export function ReportProvider({ children }) {
 
   const unblockUser = (username) => setBlockedUsers((previous) => previous.filter((item) => item !== username));
 
-  const muteUser = useCallback((username) => {
+  const muteUser = useCallback(async (username) => {
     if (!username) return;
     const cleanHandle = username.startsWith('@') ? username : `@${username}`;
+    const rawClean = username.replace('@', '');
+
     setMutedUsers((prev) => {
-      const rawClean = username.replace('@', '');
       const next = [...new Set([...prev, cleanHandle, username, rawClean])];
       try { localStorage.setItem('mka_muted_users', JSON.stringify(next)); } catch {}
       return next;
     });
-    addToast(`Muted @${username.replace('@', '')}. Their posts are now hidden from your feed.`, 'info');
+
+    addToast(`Muted @${rawClean}. Their posts are now hidden from your feed.`, 'info');
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (token && !token.startsWith('mock')) {
+        await apiUserService.muteUser(rawClean);
+      }
+    } catch (err) {
+      console.warn('[ReportContext] Mute user API warning:', err?.message || err);
+    }
   }, [addToast]);
 
-  const unmuteUser = useCallback((username) => {
+  const unmuteUser = useCallback(async (username) => {
     if (!username) return;
     const rawClean = username.replace('@', '').toLowerCase();
+
     setMutedUsers((prev) => {
       const next = prev.filter((item) => item.toLowerCase().replace('@', '') !== rawClean);
       try { localStorage.setItem('mka_muted_users', JSON.stringify(next)); } catch {}
       return next;
     });
+
     addToast(`Unmuted @${rawClean}. Their posts are visible again.`, 'success');
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (token && !token.startsWith('mock')) {
+        await apiUserService.unmuteUser(rawClean);
+      }
+    } catch (err) {
+      console.warn('[ReportContext] Unmute user API warning:', err?.message || err);
+    }
   }, [addToast]);
 
   const performAdminAction = async (reportId, actionType, actionReason) => {
@@ -108,6 +155,7 @@ export function ReportProvider({ children }) {
       blockedUsers,
       mutedUsers,
       refreshReports,
+      refreshMutedUsers,
       submitReport,
       blockUser,
       unblockUser,
@@ -119,7 +167,6 @@ export function ReportProvider({ children }) {
     </ReportContext.Provider>
   );
 }
-
 
 export function useReports() {
   const context = useContext(ReportContext);

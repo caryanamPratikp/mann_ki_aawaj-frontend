@@ -118,10 +118,10 @@ export function PostProvider({ children }) {
     const typeKey = (reactionType || 'RELATE').toUpperCase();
 
     // 1. Optimistically update TanStack Query cache instantly for immediate UI feedback
-    queryClient.setQueriesData({ queryKey: ['posts'] }, (oldPosts = []) => {
+    queryClient.setQueriesData({ predicate: (query) => query.queryKey[0] === 'posts' }, (oldPosts = []) => {
       if (!Array.isArray(oldPosts)) return oldPosts;
       return oldPosts.map((p) => {
-        if (p.id !== postId) return p;
+        if (String(p.id) !== String(postId)) return p;
 
         const prevReaction = p.userReaction ? p.userReaction.toUpperCase() : null;
         const currentReactions = { ...(p.reactions || {}) };
@@ -160,9 +160,6 @@ export function PostProvider({ children }) {
     } catch (e) {
       console.warn('[PostContext] Reaction API notice:', e);
     }
-
-    // 3. Invalidate query cache to pull final database state
-    await queryClient.invalidateQueries({ queryKey: ['posts'] });
   };
 
   const toggleSavePost = (postId) => {

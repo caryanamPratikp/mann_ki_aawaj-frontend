@@ -77,4 +77,39 @@ export const apiUserService = {
       throw err;
     }
   },
+
+  // POST /api/users/mute/{username}
+  async muteUser(username) {
+    try {
+      const clean = username.replace(/^@/, '');
+      const response = await apiClient.post(`/api/users/mute/${encodeURIComponent(clean)}`);
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      throw err;
+    }
+  },
+
+  // DELETE /api/users/unmute/{username}
+  async unmuteUser(username) {
+    try {
+      const clean = username.replace(/^@/, '');
+      const response = await apiClient.delete(`/api/users/unmute/${encodeURIComponent(clean)}`);
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      throw err;
+    }
+  },
+
+  // GET /api/users/muted
+  async getMutedUsers() {
+    try {
+      const response = await apiClient.get('/api/users/muted');
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      throw err;
+    }
+  },
 };
