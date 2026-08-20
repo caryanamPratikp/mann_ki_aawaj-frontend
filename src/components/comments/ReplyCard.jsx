@@ -276,21 +276,6 @@ export function ReplyCard({ reply, postId, commentId, onNavigate, onReplyTrigger
             Reply
           </button>
 
-          <button
-            type="button"
-            onClick={() => setManualToggle(!manualToggle)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '11px',
-              fontWeight: 600,
-              color: 'var(--deep-plum)',
-              padding: 0,
-            }}
-          >
-            {isTranslated ? t('showOriginal') : t('translate')}
-          </button>
 
           {/* More actions menu link inside action bar */}
           <div style={{ display: 'inline-flex', alignItems: 'center' }}>

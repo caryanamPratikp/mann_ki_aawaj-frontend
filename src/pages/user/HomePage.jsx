@@ -382,19 +382,6 @@ export function HomePage({ onNavigate }) {
                   </option>
                 ))}
               </select>
-
-              <span
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  backgroundColor: '#6F405F',
-                  color: '#FFFFFF',
-                  borderRadius: '10px',
-                  padding: '2px 7px',
-                }}
-              >
-                {filteredPosts.length}
-              </span>
             </div>
           </div>
 

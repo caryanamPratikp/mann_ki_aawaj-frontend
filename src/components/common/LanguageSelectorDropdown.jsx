@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 import { Globe, ChevronDown, Check } from 'lucide-react';
 
-export function LanguageSelectorDropdown({ compact = false }) {
+export function LanguageSelectorDropdown({ compact = false, inline = false }) {
   const { currentLanguage, changeLanguage, supportedLanguages, isTranslating } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -22,16 +22,17 @@ export function LanguageSelectorDropdown({ compact = false }) {
   ) || { code: 'EN', label: 'English', native: 'English' };
 
   return (
-    <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-block' }}>
+    <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-block', width: inline ? '100%' : 'auto' }}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         title="Select Application Language"
         style={{
-          display: 'inline-flex',
+          display: 'flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
           gap: '6px',
-          padding: compact ? '5px 10px' : '7px 14px',
+          padding: compact ? '5px 10px' : '8px 14px',
           borderRadius: '20px',
           background: 'linear-gradient(135deg, #FAF7F5 0%, #F5EFEF 100%)',
           border: '1.5px solid #E2D7D7',
@@ -42,6 +43,7 @@ export function LanguageSelectorDropdown({ compact = false }) {
           boxShadow: '0 2px 8px rgba(45,29,21,0.05)',
           transition: 'all 0.2s ease',
           outline: 'none',
+          width: inline ? '100%' : 'auto',
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.borderColor = '#6F405F';
@@ -52,15 +54,18 @@ export function LanguageSelectorDropdown({ compact = false }) {
           e.currentTarget.style.boxShadow = '0 2px 8px rgba(45,29,21,0.05)';
         }}
       >
-        <Globe size={15} style={{ color: '#6F405F' }} />
-        <span>{currentLangObj.native || currentLangObj.label}</span>
-        <span style={{ fontSize: '11px', color: '#8C8385', fontWeight: 600 }}>({currentLangObj.label})</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Globe size={15} style={{ color: '#6F405F' }} />
+          <span>{currentLangObj.native || currentLangObj.label}</span>
+          <span style={{ fontSize: '11px', color: '#8C8385', fontWeight: 600 }}>({currentLangObj.label})</span>
+        </div>
         <ChevronDown
           size={14}
           style={{
             color: '#6F405F',
             transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
             transition: 'transform 0.2s ease',
+            marginLeft: '4px',
           }}
         />
       </button>
@@ -68,11 +73,11 @@ export function LanguageSelectorDropdown({ compact = false }) {
       {isOpen && (
         <div
           style={{
-            position: 'absolute',
-            top: 'calc(100% + 6px)',
-            right: 0,
-            width: '240px',
-            maxHeight: '320px',
+            position: inline ? 'static' : 'absolute',
+            top: inline ? 'auto' : 'calc(100% + 6px)',
+            right: inline ? 'auto' : 0,
+            width: inline ? '100%' : '240px',
+            maxHeight: '260px',
             overflowY: 'auto',
             background: '#FFFFFF',
             borderRadius: '16px',
@@ -83,9 +88,10 @@ export function LanguageSelectorDropdown({ compact = false }) {
             display: 'flex',
             flexDirection: 'column',
             gap: '2px',
+            marginTop: inline ? '6px' : '0',
           }}
         >
-          <div style={{ padding: '8px 12px 6px', fontSize: '11px', fontWeight: 800, color: '#8C8385', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ padding: '6px 10px 4px', fontSize: '10.5px', fontWeight: 800, color: '#8C8385', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Select Preferred Language
           </div>
 
@@ -107,7 +113,7 @@ export function LanguageSelectorDropdown({ compact = false }) {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   width: '100%',
-                  padding: '9px 12px',
+                  padding: '8px 10px',
                   borderRadius: '10px',
                   border: 'none',
                   background: isSelected ? 'rgba(111,64,95,0.08)' : 'transparent',
@@ -126,8 +132,8 @@ export function LanguageSelectorDropdown({ compact = false }) {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '13.5px', fontWeight: 700 }}>{lang.native}</span>
-                  <span style={{ fontSize: '12px', color: '#8C8385' }}>({lang.label})</span>
+                  <span style={{ fontSize: '13px', fontWeight: 700 }}>{lang.native}</span>
+                  <span style={{ fontSize: '11.5px', color: '#8C8385' }}>({lang.label})</span>
                 </div>
                 {isSelected && <Check size={16} style={{ color: '#6F405F' }} />}
               </button>

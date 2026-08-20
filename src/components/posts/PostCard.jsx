@@ -5,6 +5,8 @@ import { ReactionsBar } from './ReactionsBar.jsx';
 import { PostMenu } from './PostMenu.jsx';
 import { Modal } from '../common/Modal.jsx';
 import { MessageSquare, Bookmark, Globe, Languages, ChevronDown, ChevronUp, Trash2, Loader2 } from 'lucide-react';
+import { CommentComposer } from '../comments/CommentComposer.jsx';
+import { CommentList } from '../comments/CommentList.jsx';
 import { usePosts } from '../../context/PostContext.jsx';
 import { useComments } from '../../context/CommentContext.jsx';
 import { useReports } from '../../context/ReportContext.jsx';
@@ -15,17 +17,17 @@ import { ReportModal } from '../reports/ReportModal.jsx';
 
 export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false }) {
   const { reactToPost, toggleSavePost, savedPostIds, deletePost } = usePosts();
-  const { commentsByPost, fetchComments } = useComments();
+  const { commentsByPost, createComment, fetchComments } = useComments();
   const { currentUser } = useAuth();
   const { blockUser, muteUser } = useReports();
   const { currentLanguage, translateText, translateTextAsync, t } = useLanguage();
-
 
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [manualToggle, setManualToggle] = useState(false);
+  const [showInlineComments, setShowInlineComments] = useState(false);
 
   if (hidden) {
     return (
@@ -241,48 +243,72 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false 
         )}
       </div>
 
-      {/* ── REACTIONS BAR ── */}
-      <ReactionsBar
-        reactions={post.reactions}
-        userReaction={post.userReaction}
-        onReact={(type) => reactToPost(post.id, type)}
-      />
+      {/* ── REACTIONS & COMMENTS BAR ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginTop: '2px' }}>
+        <ReactionsBar
+          reactions={post.reactions}
+          userReaction={post.userReaction}
+          onReact={(type) => reactToPost(post.id, type)}
+        />
 
-      {/* ── 1-2 COMMENT PREVIEWS INSIDE EXPANDED VIEW ── */}
-      {isHoverActive && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowInlineComments(!showInlineComments);
+          }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '5px 12px',
+            borderRadius: '20px',
+            fontSize: '12px',
+            fontWeight: 700,
+            color: showInlineComments ? '#6F405F' : '#524644',
+            backgroundColor: showInlineComments ? 'rgba(111,64,95,0.1)' : '#F6F3F2',
+            border: showInlineComments ? '1.5px solid #6F405F' : '1px solid #E5E0DF',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <MessageSquare size={14} style={{ color: showInlineComments ? '#6F405F' : '#7A6E6B' }} />
+          <span>{t('comments') || 'Comments'}</span>
+          {matchedCommentCount > 0 && (
+            <span style={{ fontSize: '11px', fontWeight: 800, color: '#6F405F', marginLeft: '2px' }}>
+              ({matchedCommentCount})
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* ── EXPANDABLE INLINE COMMENT SECTION (ON EXPLORE, MY POSTS, FEED, PROFILE) ── */}
+      {showInlineComments && (
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: '6px',
-            paddingTop: '8px',
-            borderTop: '1px solid #EDE8E6',
-            marginTop: '2px',
+            gap: '10px',
+            paddingTop: '12px',
+            borderTop: '1.5px solid #EAE4E4',
+            marginTop: '6px',
           }}
+          onClick={(e) => e.stopPropagation()}
         >
-          {postComments.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#8C8385', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                {t('latestComments')} ({postComments.length}):
-              </div>
-              {postComments.slice(0, 2).map((c) => (
-                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px' }}>
-                  <AvatarThumbnail username={c.username} initials={c.avatarInitials} config={c.avatarConfig} size={18} />
-                  <div style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    <span style={{ fontWeight: 700, color: '#6F405F', marginRight: '4px' }}>{c.username}:</span>
-                    <span style={{ color: '#2D1D15' }}>{c.content}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: '#8C8385', marginTop: '2px' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600, color: '#6F405F' }}>
-              <MessageSquare size={12} /> {matchedCommentCount} Comments in discussion
-            </span>
-            <span style={{ fontSize: '10.5px', color: '#A09794' }}>Click to view live discussion</span>
-          </div>
+          <CommentComposer
+            postId={post.id}
+            postAuthorUsername={post.username}
+            onSubmit={async (text) => {
+              await createComment(post.id, text, post.username);
+            }}
+            onNavigate={onNavigate}
+            placeholder="Write a comment..."
+          />
+          <CommentList
+            postId={post.id}
+            postAuthorUsername={post.username}
+            onNavigate={onNavigate}
+          />
         </div>
       )}
 

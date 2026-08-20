@@ -332,20 +332,6 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate })
             Reply
           </button>
 
-          <button
-            onClick={() => setManualToggle(!manualToggle)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 600,
-              color: 'var(--deep-plum)',
-              padding: 0,
-            }}
-          >
-            {isTranslated ? t('showOriginal') : t('translate')}
-          </button>
 
           {/* More options menu link inside action bar */}
           <div style={{ display: 'inline-flex', alignItems: 'center' }}>

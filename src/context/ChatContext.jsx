@@ -176,6 +176,10 @@ export function ChatProvider({ children }) {
       }
     });
 
+    socket.on('connect_error', (err) => {
+      // Graceful fallback when local/remote socket server is offline
+    });
+
     socket.on('receive_message', (msg) => {
       console.log('[Socket] Received message:', msg);
 

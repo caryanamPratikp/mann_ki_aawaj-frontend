@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { UI_DICTIONARY, SUPPORTED_LANGUAGES } from '../utils/translations.js';
-import { apiTranslationService } from '../services/apiTranslationService.js';
+import { apiTranslationService, normalizeLanguageCode } from '../services/apiTranslationService.js';
 import { apiProfileService } from '../services/apiProfileService.js';
 import { apiUserService } from '../services/apiUserService.js';
 
@@ -10,10 +10,23 @@ const LanguageContext = createContext(null);
 // In-flight request deduplication map to prevent API call storms
 const pendingTranslations = new Map();
 
+/**
+ * Returns standard 2-letter uppercase ISO code (e.g. 'EN', 'HI', 'BN')
+ */
+export function getLanguageCode(lang) {
+  if (!lang) return 'EN';
+  const code = normalizeLanguageCode(lang);
+  return code || 'EN';
+}
+
+/**
+ * Returns full display label (e.g. 'English', 'Hindi', 'Bengali')
+ */
 export function normalizeLanguage(lang) {
   if (!lang) return 'English';
+  const code = getLanguageCode(lang);
   const found = SUPPORTED_LANGUAGES.find(
-    (l) => l.code.toLowerCase() === lang.toLowerCase() || l.label.toLowerCase() === lang.toLowerCase()
+    (l) => l.code.toUpperCase() === code.toUpperCase()
   );
   return found ? found.label : lang;
 }
@@ -59,7 +72,8 @@ async function batchTranslateUI(targetLang) {
     const payload = values.join('\n|||MKA_SEP|||\n');
 
     try {
-      const translated = await apiTranslationService.translateText(payload, normTarget, 'EN');
+      const isoCode = getLanguageCode(normTarget);
+      const translated = await apiTranslationService.translateText(payload, isoCode, 'EN');
       if (translated) {
         const parts = translated.split(/\|\|\|MKA_SEP\|\|\|/).map(s => s.trim());
         keys.forEach((key, idx) => {
@@ -110,9 +124,12 @@ export function LanguageProvider({ children }) {
 
   const translateUIForLanguage = useCallback(async (langCode) => {
     const norm = normalizeLanguage(langCode);
-    if (norm === 'English' || langCode === 'EN') return;
+    if (norm === 'English' || langCode === 'EN') {
+      setDynamicUI({});
+      try { localStorage.removeItem('mka_dynamic_ui'); } catch {}
+      return;
+    }
     if (hasHardcodedDict(norm)) return;
-
     if (dynamicUI._lang === norm && Object.keys(dynamicUI).length > 2) return;
 
     try {
@@ -127,7 +144,7 @@ export function LanguageProvider({ children }) {
     }
   }, [hasHardcodedDict, dynamicUI]);
 
-  // Sync language with backend user profile on load & after login
+  // Sync language with backend user profile on load & when logging in as different user
   useEffect(() => {
     const syncProfileLanguage = async () => {
       try {
@@ -136,45 +153,42 @@ export function LanguageProvider({ children }) {
           return;
         }
         const token = localStorage.getItem('auth_token');
-        const localSaved = localStorage.getItem('mka_preferred_language');
 
         if (token && !token.startsWith('mock')) {
-          if (localSaved) {
-            // Local storage has explicit user preference -> keep local and push to backend profile
-            const normalizedLocal = normalizeLanguage(localSaved);
-            setCurrentLanguage(normalizedLocal);
-            await apiUserService.updateLanguage(normalizedLocal).catch(() => {});
-          } else {
-            // No local storage preference (first session) -> pull from backend profile
-            const profileRes = await apiProfileService.getMyProfile();
-            if (profileRes?.data?.preferredLanguage) {
-              const rawLang = profileRes.data.preferredLanguage;
-              const normalized = normalizeLanguage(rawLang);
+          // Fetch logged-in user profile from DB to get their specific preferredLanguage
+          const profileRes = await apiProfileService.getMyProfile().catch(() => null);
+          const rawLang = profileRes?.data?.preferredLanguage || localStorage.getItem('mka_preferred_language');
 
-              setCurrentLanguage(normalized);
-              localStorage.setItem('mka_preferred_language', normalized);
+          if (rawLang) {
+            const normalized = normalizeLanguage(rawLang);
+            const isoCode = getLanguageCode(normalized);
 
-              if (!hasHardcodedDict(normalized) && normalized !== 'English') {
-                batchTranslateUI(normalized).then((translated) => {
-                  translated._lang = normalized;
-                  setDynamicUI(translated);
-                  try {
-                    localStorage.setItem('mka_dynamic_ui', JSON.stringify(translated));
-                  } catch {}
-                });
-              }
+            setCurrentLanguage(normalized);
+            localStorage.setItem('mka_preferred_language', normalized);
 
-              await queryClient.invalidateQueries({
-                predicate: (query) => {
-                  const key = query.queryKey[0];
-                  return ['posts', 'comments', 'notifications', 'profile', 'savedPosts', 'chatMessages', 'myPosts'].includes(key);
-                },
+            // Sync valid ISO code with backend (/api/users/language)
+            await apiUserService.updateLanguage(isoCode).catch(() => {});
+
+            if (!hasHardcodedDict(normalized) && normalized !== 'English') {
+              batchTranslateUI(normalized).then((translated) => {
+                translated._lang = normalized;
+                setDynamicUI(translated);
+                try {
+                  localStorage.setItem('mka_dynamic_ui', JSON.stringify(translated));
+                } catch {}
               });
             }
+
+            await queryClient.invalidateQueries({
+              predicate: (query) => {
+                const key = query.queryKey[0];
+                return ['posts', 'comments', 'notifications', 'profile', 'savedPosts', 'chatMessages', 'myPosts'].includes(key);
+              },
+            });
           }
         }
       } catch (err) {
-        // Silently swallow sync failures
+        // Silently handle sync failure
       } finally {
         setIsResolvingLanguage(false);
       }
@@ -192,6 +206,7 @@ export function LanguageProvider({ children }) {
   const changeLanguage = async (langCode) => {
     if (!langCode) return;
     const normalized = normalizeLanguage(langCode);
+    const isoCode = getLanguageCode(normalized);
 
     setIsTranslating(true);
     setCurrentLanguage(normalized);
@@ -201,7 +216,8 @@ export function LanguageProvider({ children }) {
     try {
       const token = localStorage.getItem('auth_token');
       if (token && !token.startsWith('mock')) {
-        await apiUserService.updateLanguage(normalized);
+        // Send valid 2-letter uppercase ISO code (e.g. 'EN', 'HI') to backend /api/users/language
+        await apiUserService.updateLanguage(isoCode);
       }
     } catch (err) {
       console.warn('[LanguageContext] Preferred language update warning:', err?.message || err);
@@ -218,6 +234,9 @@ export function LanguageProvider({ children }) {
       } catch (err) {
         console.warn('[LanguageContext] Dynamic UI translation warning:', err?.message);
       }
+    } else if (normalized === 'English') {
+      setDynamicUI({});
+      try { localStorage.removeItem('mka_dynamic_ui'); } catch {}
     }
 
     await queryClient.invalidateQueries({
@@ -229,7 +248,7 @@ export function LanguageProvider({ children }) {
 
     setTimeout(() => {
       setIsTranslating(false);
-    }, 800);
+    }, 600);
   };
 
   const t = useCallback((key, defaultText) => {
@@ -248,8 +267,14 @@ export function LanguageProvider({ children }) {
   const translateTextAsync = async (text, targetLang = currentLanguage, sourceLang = null) => {
     if (!text || !text.trim()) return text;
     const normTarget = normalizeLanguage(targetLang);
+    const isoTarget = getLanguageCode(normTarget);
+    const isoSource = sourceLang ? getLanguageCode(sourceLang) : null;
 
-    const cacheKey = `${sourceLang || 'AUTO'}_${normTarget}_${text.trim()}`;
+    if (normTarget === 'English' && (!sourceLang || getLanguageCode(sourceLang) === 'EN')) {
+      return text;
+    }
+
+    const cacheKey = `${isoSource || 'AUTO'}_${isoTarget}_${text.trim()}`;
     if (translationCache[cacheKey]) return translationCache[cacheKey];
 
     if (pendingTranslations.has(cacheKey)) {
@@ -258,7 +283,7 @@ export function LanguageProvider({ children }) {
 
     const promise = (async () => {
       try {
-        const result = await apiTranslationService.translateText(text, normTarget, sourceLang);
+        const result = await apiTranslationService.translateText(text, isoTarget, isoSource);
         const finalVal = result || text;
         setTranslationCache(prev => ({ ...prev, [cacheKey]: finalVal }));
         return finalVal;
@@ -276,8 +301,10 @@ export function LanguageProvider({ children }) {
   const translateText = useCallback((text, targetLang = currentLanguage, sourceLang = null) => {
     if (!text || !text.trim()) return text;
     const normTarget = normalizeLanguage(targetLang);
+    const isoTarget = getLanguageCode(normTarget);
+    const isoSource = sourceLang ? getLanguageCode(sourceLang) : null;
 
-    const cacheKey = `${sourceLang || 'AUTO'}_${normTarget}_${text.trim()}`;
+    const cacheKey = `${isoSource || 'AUTO'}_${isoTarget}_${text.trim()}`;
     if (translationCache[cacheKey]) {
       return translationCache[cacheKey];
     }

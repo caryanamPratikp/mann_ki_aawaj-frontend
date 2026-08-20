@@ -290,7 +290,7 @@ export function TopNavbar({ activeRoute, onNavigate }) {
 
           {/* Language selector in drawer */}
           <div style={{ padding: '8px 16px', borderTop: '1px solid var(--border-light)', marginTop: '4px' }}>
-            <LanguageSelectorDropdown compact={false} />
+            <LanguageSelectorDropdown compact={false} inline={true} />
           </div>
 
           {currentUser && (

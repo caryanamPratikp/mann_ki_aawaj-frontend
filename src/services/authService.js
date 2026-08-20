@@ -206,6 +206,8 @@ export const authService = {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
     localStorage.removeItem('user_profile');
+    localStorage.removeItem('mka_preferred_language');
+    localStorage.removeItem('mka_dynamic_ui');
     mockAuthService.logout();
   },
 };
