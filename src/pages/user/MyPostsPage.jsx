@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { PostCard } from '../../components/posts/PostCard.jsx';
+import { SleekCommentSidePanel } from '../../components/posts/SleekCommentSidePanel.jsx';
 import { usePosts } from '../../context/PostContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { FileText, PlusCircle, Loader2 } from 'lucide-react';
@@ -9,6 +10,7 @@ import { EmptyState } from '../../components/common/EmptyState.jsx';
 export function MyPostsPage({ onNavigate }) {
   const { posts, refreshPosts, loading } = usePosts();
   const { currentUser } = useAuth();
+  const [activeCommentsPost, setActiveCommentsPost] = useState(null);
 
   // Trigger API fetch on mount
   useEffect(() => {
@@ -42,6 +44,14 @@ export function MyPostsPage({ onNavigate }) {
     const postUname = (p.username || '').replace(/^@/, '').toLowerCase();
     return Boolean(cleanActive && postUname && postUname === cleanActive);
   });
+
+  const handleToggleComments = (post) => {
+    if (activeCommentsPost && activeCommentsPost.id === post.id) {
+      setActiveCommentsPost(null);
+    } else {
+      setActiveCommentsPost(post);
+    }
+  };
 
   return (
     <UserLayout activeRoute="/my-posts" onNavigate={onNavigate}>
@@ -86,10 +96,28 @@ export function MyPostsPage({ onNavigate }) {
             onAction={() => onNavigate('/home')}
           />
         ) : (
-          <div className="flex-col gap-md">
-            {myPosts.map((post) => (
-              <PostCard key={post.id} post={{ ...post, isOwnPost: true }} onNavigate={onNavigate} />
-            ))}
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            {/* ── LEFT/MAIN COLUMN: POSTS LIST ── */}
+            <div style={{ flex: 1, minWidth: '320px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {myPosts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  post={{ ...post, isOwnPost: true }}
+                  onNavigate={onNavigate}
+                  onToggleComments={handleToggleComments}
+                  activeCommentsPostId={activeCommentsPost?.id}
+                />
+              ))}
+            </div>
+
+            {/* ── RIGHT COLUMN: SLEEK MINIMALISTIC COMMENTS SIDE PANEL ── */}
+            {activeCommentsPost && (
+              <SleekCommentSidePanel
+                post={activeCommentsPost}
+                onClose={() => setActiveCommentsPost(null)}
+                onNavigate={onNavigate}
+              />
+            )}
           </div>
         )}
       </div>

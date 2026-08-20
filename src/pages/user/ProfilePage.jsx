@@ -13,6 +13,8 @@ import { Edit3, Trash2, Calendar, Globe, Heart, MessageSquare, AlertTriangle, Ch
 import { formatDate } from '../../utils/formatDate.js';
 import { EmptyState } from '../../components/common/EmptyState.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
+import { LanguageSelectorDropdown } from '../../components/common/LanguageSelectorDropdown.jsx';
+import { SleekCommentSidePanel } from '../../components/posts/SleekCommentSidePanel.jsx';
 import { SUPPORTED_LANGUAGES } from '../../utils/translations.js';
 import { editProfileSchema } from '../../utils/validationSchemas.js';
 
@@ -55,6 +57,7 @@ export function ProfilePage({ username, onNavigate }) {
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingProfile, setDeletingProfile] = useState(false);
   const [isChangingLang, setIsChangingLang] = useState(false);
+  const [activeCommentsPost, setActiveCommentsPost] = useState(null);
 
   const targetUsername = username
     ? (username.startsWith('@') ? username.slice(1) : username)
@@ -237,6 +240,7 @@ export function ProfilePage({ username, onNavigate }) {
             {/* Action Buttons */}
             {isSelf ? (
               <div className="flex-row items-center gap-sm profile-actions-row">
+                <LanguageSelectorDropdown compact={false} />
                 <Button variant="outline" size="sm" onClick={() => setIsAvatarModalOpen(true)} icon={Sparkles}>
                   Edit Avatar
                 </Button>
@@ -367,7 +371,30 @@ export function ProfilePage({ username, onNavigate }) {
                 description={`@${targetUsername} has not published any posts yet.`}
               />
             ) : (
-              userPosts.map((post) => <PostCard key={post.id} post={post} onNavigate={onNavigate} />)
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '320px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {userPosts.map((post) => (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      onNavigate={onNavigate}
+                      onToggleComments={(p) => {
+                        if (activeCommentsPost?.id === p.id) setActiveCommentsPost(null);
+                        else setActiveCommentsPost(p);
+                      }}
+                      activeCommentsPostId={activeCommentsPost?.id}
+                    />
+                  ))}
+                </div>
+
+                {activeCommentsPost && (
+                  <SleekCommentSidePanel
+                    post={activeCommentsPost}
+                    onClose={() => setActiveCommentsPost(null)}
+                    onNavigate={onNavigate}
+                  />
+                )}
+              </div>
             )}
           </div>
         )}

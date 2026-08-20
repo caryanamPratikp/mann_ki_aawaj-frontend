@@ -133,7 +133,15 @@ export function NotificationProvider({ children }) {
     await refreshNotifications();
   };
 
-  const deleteNotification = () => {};
+  const deleteNotification = async (id) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    try {
+      await apiNotificationService.deleteNotification(id);
+      addToast('Notification deleted.', 'info');
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 

@@ -104,4 +104,20 @@ export const apiNotificationService = {
       return { success: true, message: 'All notifications marked as read.' };
     }
   },
+
+  // DELETE /api/notifications/{id}
+  async deleteNotification(id) {
+    if (isMockMode()) {
+      mockNotificationService.deleteNotification(id);
+      return { success: true, message: 'Notification deleted.' };
+    }
+
+    try {
+      const response = await apiClient.delete(`/api/notifications/${id}`);
+      return response.data;
+    } catch (err) {
+      mockNotificationService.deleteNotification(id);
+      return { success: true, message: 'Notification deleted.' };
+    }
+  },
 };

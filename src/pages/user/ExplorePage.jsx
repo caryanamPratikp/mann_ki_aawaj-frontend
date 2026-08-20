@@ -10,6 +10,8 @@ import { Compass, Search, TrendingUp, Users, MessageSquare, ArrowRight, ShieldAl
 import { Button } from '../../components/common/Button.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 
+import { SleekCommentSidePanel } from '../../components/posts/SleekCommentSidePanel.jsx';
+
 export function ExplorePage({ onNavigate }) {
   const { posts } = usePosts();
   const { currentUser } = useAuth();
@@ -20,6 +22,7 @@ export function ExplorePage({ onNavigate }) {
   const [activeTab, setActiveTab] = useState('Posts'); // Posts, Members
   const [activeTopic, setActiveTopic] = useState('All');
   const [userBios, setUserBios] = useState({});
+  const [activeCommentsPost, setActiveCommentsPost] = useState(null);
 
   const isUserMuted = Boolean(
     (currentUser?.mutedUntil && new Date(currentUser.mutedUntil) > new Date()) ||
@@ -236,7 +239,30 @@ export function ExplorePage({ onNavigate }) {
                 No matching discussions found. Try clearing your search query or choosing another topic.
               </div>
             ) : (
-              displayPosts.map((post) => <PostCard key={post.id} post={post} onNavigate={onNavigate} />)
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '320px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {displayPosts.map((post) => (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      onNavigate={onNavigate}
+                      onToggleComments={(p) => {
+                        if (activeCommentsPost?.id === p.id) setActiveCommentsPost(null);
+                        else setActiveCommentsPost(p);
+                      }}
+                      activeCommentsPostId={activeCommentsPost?.id}
+                    />
+                  ))}
+                </div>
+
+                {activeCommentsPost && (
+                  <SleekCommentSidePanel
+                    post={activeCommentsPost}
+                    onClose={() => setActiveCommentsPost(null)}
+                    onNavigate={onNavigate}
+                  />
+                )}
+              </div>
             )}
           </div>
         )}

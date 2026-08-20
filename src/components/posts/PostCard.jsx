@@ -15,7 +15,7 @@ import { getMediaUrl } from '../../config/env.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ReportModal } from '../reports/ReportModal.jsx';
 
-export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false }) {
+export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false, onToggleComments, activeCommentsPostId }) {
   const { reactToPost, toggleSavePost, savedPostIds, deletePost } = usePosts();
   const { commentsByPost, createComment, fetchComments } = useComments();
   const { currentUser } = useAuth();
@@ -255,7 +255,11 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false 
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            setShowInlineComments(!showInlineComments);
+            if (onToggleComments) {
+              onToggleComments(post);
+            } else {
+              setShowInlineComments(!showInlineComments);
+            }
           }}
           style={{
             display: 'inline-flex',
@@ -265,25 +269,20 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false 
             borderRadius: '20px',
             fontSize: '12px',
             fontWeight: 700,
-            color: showInlineComments ? '#6F405F' : '#524644',
-            backgroundColor: showInlineComments ? 'rgba(111,64,95,0.1)' : '#F6F3F2',
-            border: showInlineComments ? '1.5px solid #6F405F' : '1px solid #E5E0DF',
+            color: (activeCommentsPostId === post.id || showInlineComments) ? '#6F405F' : '#524644',
+            backgroundColor: (activeCommentsPostId === post.id || showInlineComments) ? 'rgba(111,64,95,0.1)' : '#F6F3F2',
+            border: (activeCommentsPostId === post.id || showInlineComments) ? '1.5px solid #6F405F' : '1px solid #E5E0DF',
             cursor: 'pointer',
             transition: 'all 0.15s ease',
           }}
         >
-          <MessageSquare size={14} style={{ color: showInlineComments ? '#6F405F' : '#7A6E6B' }} />
-          <span>{t('comments') || 'Comments'}</span>
-          {matchedCommentCount > 0 && (
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#6F405F', marginLeft: '2px' }}>
-              ({matchedCommentCount})
-            </span>
-          )}
+          <MessageSquare size={14} style={{ color: (activeCommentsPostId === post.id || showInlineComments) ? '#6F405F' : '#7A6E6B' }} />
+          <span>{t('comments') || 'Comments'} ({matchedCommentCount})</span>
         </button>
       </div>
 
-      {/* ── EXPANDABLE INLINE COMMENT SECTION (ON EXPLORE, MY POSTS, FEED, PROFILE) ── */}
-      {showInlineComments && (
+      {/* ── EXPANDABLE INLINE COMMENT SECTION (FALLBACK WHEN NO SIDE PANEL HANDLER) ── */}
+      {!onToggleComments && showInlineComments && (
         <div
           style={{
             display: 'flex',

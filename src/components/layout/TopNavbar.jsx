@@ -196,10 +196,6 @@ export function TopNavbar({ activeRoute, onNavigate }) {
               )}
             </button>
 
-            {/* Language selector — desktop only */}
-            <div className="desktop-only" style={{ display: 'flex' }}>
-              <LanguageSelectorDropdown compact={true} />
-            </div>
 
             {/* Profile Avatar — ALWAYS VISIBLE */}
             {currentUser ? (
@@ -288,10 +284,6 @@ export function TopNavbar({ activeRoute, onNavigate }) {
             </button>
           ))}
 
-          {/* Language selector in drawer */}
-          <div style={{ padding: '8px 16px', borderTop: '1px solid var(--border-light)', marginTop: '4px' }}>
-            <LanguageSelectorDropdown compact={false} inline={true} />
-          </div>
 
           {currentUser && (
             <button
