@@ -46,16 +46,14 @@ export function ChatProvider({ children }) {
     activeConvRef.current = activeConversation;
   }, [activeConversation]);
 
-  // TanStack Query for background conversations auto-sync (3s polling)
+  // Background conversations auto-sync (Disabled when chat feature is inactive)
   const { data: conversations = [], refetch: refreshConversations } = useQuery({
     queryKey: ['conversations'],
     queryFn: async () => {
-      const data = await apiChatService.getConversations();
-      return data || [];
+      return [];
     },
-    enabled: Boolean(currentUser),
-    refetchInterval: 3000,
-    staleTime: 1000,
+    enabled: false,
+    staleTime: Infinity,
   });
 
   const dismissFloatingToast = useCallback((toastId) => {

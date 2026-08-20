@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { PostCard } from '../../components/posts/PostCard.jsx';
 import { Modal } from '../../components/common/Modal.jsx';
@@ -10,10 +10,11 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
 import { useSpokenLanguage } from '../../hooks/useSpokenLanguage.js';
-import { PlusSquare, TrendingUp, Mic, MicOff, Loader2, Upload, X, ShieldAlert, Clock, MessageSquare, Sparkles, Search } from 'lucide-react';
+import { PlusSquare, TrendingUp, Mic, MicOff, Loader2, Upload, X, ShieldAlert, Clock, MessageSquare, Sparkles, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { EmptyState } from '../../components/common/EmptyState.jsx';
 import { formatDate } from '../../utils/formatDate.js';
 import { apiClient } from '../../services/apiClient.js';
+import { apiMoodService } from '../../services/apiMoodService.js';
 import { getMediaUrl } from '../../config/env.js';
 import { SleekCommentSidePanel } from '../../components/posts/SleekCommentSidePanel.jsx';
 import { AvatarThumbnail } from '../../components/avatar/AvatarThumbnail.jsx';
@@ -33,6 +34,7 @@ export function HomePage({ onNavigate }) {
 
   const [activeTab, setActiveTab] = useState('Latest');
   const [selectedTopic, setSelectedTopic] = useState('All');
+  const [selectedMood, setSelectedMood] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCommentsPost, setActiveCommentsPost] = useState(null);
 
@@ -50,9 +52,109 @@ export function HomePage({ onNavigate }) {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Feature 11: Movie Review States
+  const [movieName, setMovieName] = useState('');
+  const [movieRating, setMovieRating] = useState(5);
+  const [isSpoiler, setIsSpoiler] = useState(false);
+
+  // Feature 18: DB-backed Mood of India State (No dummy data, initial collapsed style, click-outside collapse)
+  const [moodVotes, setMoodVotes] = useState({});
+  const [totalMoodVotes, setTotalMoodVotes] = useState(0);
+  const [userSelectedMood, setUserSelectedMood] = useState('');
+  const [isMoodWidgetExpanded, setIsMoodWidgetExpanded] = useState(false);
+  const moodWidgetRef = useRef(null);
+
   // Manual Create Topic Modal state
   const [isCreateTopicModalOpen, setIsCreateTopicModalOpen] = useState(false);
   const [newTopicInput, setNewTopicInput] = useState('');
+
+  const DAILY_QUESTIONS = [
+    "What is something you have never told anyone?",
+    "Who do you miss the most today?",
+    "What would you tell your younger self?",
+    "Which movie or story completely changed your thinking?",
+    "What is your biggest frustration at work right now?",
+    "What is one secret dream you have never shared with anyone?",
+    "If you could apologize to one person from your past, who would it be?",
+    "What is the hardest lesson life has taught you so far?",
+    "What makes you feel truly happy when you are alone?",
+    "What is something you wish people understood about you?"
+  ];
+
+  // Calendar date-based daily automatic rotation (Changes at midnight 12:00 AM every day)
+  const dailyQuestionIdx = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const diff = now - start;
+    const oneDay = 1000 * 60 * 60 * 24;
+    const dayOfYear = Math.floor(diff / oneDay);
+    return dayOfYear % DAILY_QUESTIONS.length;
+  }, []);
+
+  const MOOD_OPTIONS = [
+    { label: 'Happy', emoji: '😊' },
+    { label: 'Love', emoji: '❤️' },
+    { label: 'Sad', emoji: '😔' },
+    { label: 'Angry', emoji: '😡' },
+    { label: 'Heartbroken', emoji: '💔' },
+    { label: 'Tired', emoji: '😴' },
+    { label: 'Hopeful', emoji: '🤗' }
+  ];
+
+  // Fetch real Mood of India data from Backend DB API on mount & currentUser login change
+  useEffect(() => {
+    let isMounted = true;
+    apiMoodService.getMoodOfIndia().then((res) => {
+      if (!isMounted) return;
+      if (res?.data) {
+        setMoodVotes(res.data.moodCounts || {});
+        setTotalMoodVotes(res.data.totalVotes || 0);
+        setUserSelectedMood(res.data.userMood || '');
+      }
+    }).catch(console.error);
+
+    return () => { isMounted = false; };
+  }, [currentUser]);
+
+  // Click Outside Listener to collapse Mood of India widget
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (moodWidgetRef.current && !moodWidgetRef.current.contains(event.target)) {
+        setIsMoodWidgetExpanded(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleVoteMood = async (moodLabel) => {
+    try {
+      const res = await apiMoodService.voteMood(moodLabel);
+      if (res?.data) {
+        setMoodVotes(res.data.moodCounts || {});
+        setTotalMoodVotes(res.data.totalVotes || 0);
+        const newMood = res.data.userMood || '';
+        setUserSelectedMood(newMood);
+        if (newMood) {
+          addToast(`Mood updated! (${newMood})`, 'success');
+        } else {
+          addToast('Mood vote cleared.', 'info');
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      addToast('Please login to update your mood', 'error');
+    }
+  };
+
+  // Compute live percentages from real DB counts (No dummy data!)
+  const moodStats = useMemo(() => {
+    return MOOD_OPTIONS.map((m) => {
+      const cnt = moodVotes[m.label.toUpperCase()] || moodVotes[m.label] || 0;
+      const pct = totalMoodVotes > 0 ? Math.round((cnt / totalMoodVotes) * 100) : 0;
+      return { ...m, count: cnt, percentage: pct };
+    }).sort((a, b) => b.count - a.count);
+  }, [moodVotes, totalMoodVotes]);
 
   const isUserMuted = Boolean(
     (currentUser?.mutedUntil && new Date(currentUser.mutedUntil) > new Date()) ||
@@ -106,6 +208,16 @@ export function HomePage({ onNavigate }) {
     }
   };
 
+  const handleOpenGeneralCreateModal = () => {
+    setPostTitle('');
+    setPostContent('');
+    setImageUrl('');
+    setMovieName('');
+    setIsSpoiler(false);
+    setPostTopic('GENERAL');
+    setIsCreateModalOpen(true);
+  };
+
   const { isRecording, isTranscribing, bindMicProps } = useVoiceRecorder((transcribedText) => {
     setPostContent((prev) => (prev ? `${prev} ${transcribedText}` : transcribedText));
     setIsCreateModalOpen(true);
@@ -133,6 +245,10 @@ export function HomePage({ onNavigate }) {
         topic: finalTopic,
         postType: postType,
         imageUrl: imageUrl.trim() || null,
+        movieName: movieName.trim() || null,
+        movieRating: movieRating || null,
+        isSpoiler: isSpoiler || false,
+        mood: postMood || null,
       });
 
       setPostTitle('');
@@ -140,6 +256,10 @@ export function HomePage({ onNavigate }) {
       setCustomTopic('');
       setPostTopic('GENERAL');
       setImageUrl('');
+      setMovieName('');
+      setMovieRating(5);
+      setIsSpoiler(false);
+      setPostMood('');
       setIsCreateModalOpen(false);
       addToast('Thought shared successfully!', 'success');
     } catch (err) {
@@ -162,6 +282,10 @@ export function HomePage({ onNavigate }) {
           ) || p.isMuted || p.muted;
 
         if (isBlockedOrMuted) return false;
+
+        if (selectedMood && p.mood !== selectedMood) {
+          return false;
+        }
 
         if (activeTab === 'My Topics') {
           const favTopics = currentUser?.preferredTopics?.length
@@ -292,7 +416,7 @@ export function HomePage({ onNavigate }) {
             </button>
 
             <button
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={handleOpenGeneralCreateModal}
               style={{
                 padding: '8px 16px',
                 borderRadius: '20px',
@@ -405,13 +529,71 @@ export function HomePage({ onNavigate }) {
         >
           {/* ── LEFT COLUMN: MAIN POSTS FEED ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+            {/* Feature 17: Today's Question Interactive Banner */}
+            <div
+              style={{
+                padding: '18px 24px',
+                borderRadius: '20px',
+                background: 'linear-gradient(135deg, #6F405F 0%, #3D2334 100%)',
+                color: '#FFFFFF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '16px',
+                width: '100%',
+                boxSizing: 'border-box',
+                boxShadow: '0 8px 24px rgba(61, 35, 52, 0.25)',
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 1, flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 900, background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '10px', letterSpacing: '0.04em' }}>
+                    ❤️ {t('todaysQuestion', "Today's Question")}
+                  </span>
+                </div>
+                <h3 style={{ fontSize: '16.5px', fontWeight: 800, margin: '4px 0 0 0', color: '#FFFFFF', lineHeight: 1.3 }}>
+                  "{DAILY_QUESTIONS[dailyQuestionIdx]}"
+                </h3>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPostTitle(`Re: Today's Question - "${DAILY_QUESTIONS[dailyQuestionIdx]}"`);
+                  setPostTopic('FEELINGS');
+                  setIsCreateModalOpen(true);
+                }}
+                style={{
+                  padding: '10px 18px',
+                  borderRadius: '20px',
+                  background: '#FFFFFF',
+                  color: '#6F405F',
+                  fontSize: '12.5px',
+                  fontWeight: 800,
+                  border: 'none',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  flexShrink: 0,
+                  zIndex: 1,
+                  transition: 'transform 0.2s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.04)')}
+                onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+              >
+                💬 {t('answerAnonymously', 'Answer Anonymously')} →
+              </button>
+            </div>
+
             {filteredPosts.length === 0 ? (
               <EmptyState
                 icon={MessageSquare}
                 title="No thoughts found"
                 description="Be the first author to share a thought under this topic."
                 actionLabel="Share Thought"
-                onAction={() => setIsCreateModalOpen(true)}
+                onAction={handleOpenGeneralCreateModal}
               />
             ) : (
               filteredPosts.map((post) => (
@@ -429,14 +611,177 @@ export function HomePage({ onNavigate }) {
             )}
           </div>
 
-          {/* ── RIGHT COLUMN: FEATURED TOPICS STREAM (FIXED ON MAIN PAGE AT ALL TIMES) ── */}
+          {/* ── RIGHT COLUMN: FEATURED TOPICS STREAM & MOOD OF INDIA BAROMETER ── */}
           <div
             style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              position: 'sticky',
+              top: '80px',
+            }}
+          >
+            {/* Feature 18: Mood of India Barometer Card (Initially Collapsed, DB-Backed, Click Outside to Collapse) */}
+            <div
+              ref={moodWidgetRef}
+              onClick={() => setIsMoodWidgetExpanded((prev) => !prev)}
+              style={{
+                padding: '16px 18px',
+                borderRadius: '24px',
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 242, 246, 0.95) 100%)',
+                backdropFilter: 'blur(16px)',
+                border: isMoodWidgetExpanded ? '1.5px solid #6F405F' : '1.5px solid rgba(111, 64, 95, 0.18)',
+                boxShadow: isMoodWidgetExpanded ? '0 10px 30px rgba(111, 64, 95, 0.15)' : '0 6px 20px rgba(45, 29, 21, 0.05)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                cursor: 'pointer',
+                transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '18px' }}>🇮🇳</span>
+                  <div>
+                    <h4 style={{ fontSize: '14.5px', fontWeight: 800, color: '#2D1D15', margin: 0 }}>
+                      {t('moodOfIndia', 'Mood of India')}
+                    </h4>
+                    {!isMoodWidgetExpanded && (
+                      <p style={{ fontSize: '11px', color: '#8C8385', margin: '2px 0 0 0', fontWeight: 600 }}>
+                        {userSelectedMood ? `Your feeling: ${userSelectedMood} • Tap to view` : 'Tap to express how you feel today'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {userSelectedMood && (
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        background: 'linear-gradient(135deg, #6F405F 0%, #3D2334 100%)',
+                        color: '#FFFFFF',
+                      }}
+                    >
+                      {userSelectedMood}
+                    </span>
+                  )}
+                  {isMoodWidgetExpanded ? <ChevronUp size={18} color="#6F405F" /> : <ChevronDown size={18} color="#6F405F" />}
+                </div>
+              </div>
+
+              {/* Smooth Animated Accordion Panel */}
+              <div
+                style={{
+                  maxHeight: isMoodWidgetExpanded ? '600px' : '0px',
+                  opacity: isMoodWidgetExpanded ? 1 : 0,
+                  transform: isMoodWidgetExpanded ? 'translateY(0)' : 'translateY(-6px)',
+                  transition: 'max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, transform 0.25s ease, margin 0.25s ease, padding 0.25s ease',
+                  overflow: 'hidden',
+                  pointerEvents: isMoodWidgetExpanded ? 'auto' : 'none',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  marginTop: isMoodWidgetExpanded ? '4px' : '0px',
+                  borderTop: isMoodWidgetExpanded ? '1px solid rgba(111,64,95,0.12)' : 'none',
+                  paddingTop: isMoodWidgetExpanded ? '10px' : '0px',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                  <p style={{ fontSize: '11px', color: '#8C8385', margin: 0, fontWeight: 600 }}>
+                    Select how you are feeling right now (Updates DB in real-time):
+                  </p>
+
+                  {/* Interactive Emoji Buttons */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {MOOD_OPTIONS.map((m) => {
+                      const isUserVoted = userSelectedMood.toUpperCase() === m.label.toUpperCase();
+                      return (
+                        <button
+                          key={m.label}
+                          type="button"
+                          onClick={() => handleVoteMood(m.label)}
+                          style={{
+                            padding: '5px 10px',
+                            borderRadius: '16px',
+                            fontSize: '12px',
+                            fontWeight: 800,
+                            border: isUserVoted ? '1.5px solid #6F405F' : '1px solid #EFEAE8',
+                            background: isUserVoted ? 'linear-gradient(135deg, #6F405F 0%, #3D2334 100%)' : '#FFFFFF',
+                            color: isUserVoted ? '#FFFFFF' : '#2D1D15',
+                            cursor: 'pointer',
+                            boxShadow: isUserVoted ? '0 3px 10px rgba(111,64,95,0.3)' : '0 2px 6px rgba(0,0,0,0.03)',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          {m.emoji} {m.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Real DB Barometer Breakdown (No Dummy Data) */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                    <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#6F405F', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Nationwide Sentiment Breakdown</span>
+                      <span>{totalMoodVotes} Total Votes</span>
+                    </div>
+
+                    {totalMoodVotes === 0 ? (
+                      <div style={{ fontSize: '11.5px', color: '#8C8385', fontStyle: 'italic', padding: '8px 0', textAlign: 'center' }}>
+                        No votes recorded yet today. Be the first to express your mood!
+                      </div>
+                    ) : (
+                      moodStats.map((m) => {
+                        const isUserVoted = userSelectedMood.toUpperCase() === m.label.toUpperCase();
+                        return (
+                          <div
+                            key={m.label}
+                            onClick={() => handleVoteMood(m.label)}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '3px',
+                              cursor: 'pointer',
+                              padding: '6px 10px',
+                              borderRadius: '12px',
+                              background: isUserVoted ? 'rgba(111,64,95,0.08)' : '#FFFFFF',
+                              border: isUserVoted ? '1.5px solid #6F405F' : '1px solid #EFEAE8',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700, color: '#2D1D15' }}>
+                              <span>{m.emoji} {m.label} {isUserVoted ? '✓' : ''}</span>
+                              <span style={{ color: '#6F405F', fontWeight: 800 }}>{m.percentage}% ({m.count} votes)</span>
+                            </div>
+                            <div style={{ height: '6px', width: '100%', borderRadius: '4px', background: '#EFEAE8', overflow: 'hidden' }}>
+                              <div
+                                style={{
+                                  height: '100%',
+                                  width: `${Math.max(m.percentage, m.count > 0 ? 5 : 0)}%`,
+                                  background: isUserVoted ? 'linear-gradient(90deg, #6F405F 0%, #3D2334 100%)' : 'linear-gradient(90deg, #8E527A 0%, #B2739E 100%)',
+                                  borderRadius: '4px',
+                                  transition: 'width 0.3s ease',
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+            </div>
+
+            {/* Topics Stream Card */}
+            <div
+              style={{
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '14px',
-                position: 'sticky',
-                top: '80px',
                 padding: '18px',
                 borderRadius: '24px',
                 background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 242, 246, 0.95) 100%)',
@@ -674,7 +1019,8 @@ export function HomePage({ onNavigate }) {
           </div>
         </div>
       </div>
-    </TopicBackgroundRotator>
+    </div>
+  </TopicBackgroundRotator>
 
       {/* ── CREATE POST MODAL OVERLAY WITH BLUR BACKDROP & GOOGLE MIC INPUT ── */}
       <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title={t('createAnonymousThought', 'Create Anonymous Thought')}>
@@ -858,6 +1204,48 @@ export function HomePage({ onNavigate }) {
               </div>
             )}
           </div>
+
+          {/* Feature 11: Movie Review Subsystem */}
+          {(postTopic === 'ENTERTAINMENT' || postTopic === 'MOVIE_REVIEW') && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px', borderRadius: '12px', background: '#FAF4F8', border: '1px solid rgba(111, 64, 95, 0.2)' }}>
+              <div style={{ fontSize: '12px', fontWeight: 800, color: '#6F405F', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                🎬 {t('movieReview', 'Movie Review Subsystem')}
+              </div>
+              
+              <input
+                type="text"
+                placeholder="Movie / Web Series Name (e.g. Kantara, Stree 2, Pushpa 2)..."
+                value={movieName}
+                onChange={(e) => setMovieName(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #D4CECC', fontSize: '13px', outline: 'none' }}
+              />
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#2D1D15' }}>Rating:</span>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setMovieRating(star)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', padding: 0 }}
+                    >
+                      {star <= movieRating ? '⭐' : '☆'}
+                    </button>
+                  ))}
+                </div>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 700, color: '#2D1D15', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={isSpoiler}
+                    onChange={(e) => setIsSpoiler(e.target.checked)}
+                  />
+                  <span>Contains Spoilers? (⚠️ Tap to reveal mask)</span>
+                </label>
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
             <button

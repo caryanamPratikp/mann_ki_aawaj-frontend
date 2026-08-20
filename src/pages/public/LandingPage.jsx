@@ -497,8 +497,8 @@ export function LandingPage({ onNavigate }) {
                 }}
               >
                 <ShieldCheck strokeWidth={1.8} size={16} color="#F2B08D" />
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#F4EDE8', letterSpacing: '0.02em' }}>
-                  India's Anonymous Discussion Platform
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#F4EDE8', letterSpacing: '0.02em' }}>
+                  मनातलं बोला… ओळख सुरक्षित ठेवा.
                 </span>
               </div>
 

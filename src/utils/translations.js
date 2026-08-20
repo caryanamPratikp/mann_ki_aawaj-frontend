@@ -84,6 +84,15 @@ export const UI_DICTIONARY = {
     latestComments: 'LATEST COMMENTS',
     usernameCooldownNote: 'Note: Anonymous handles can only be changed once every 14 days.',
     usernameCooldownLeft: 'Note: Anonymous handle can only be changed once every 14 days.',
+    slogan: 'मनातलं बोला… ओळख सुरक्षित ठेवा.',
+    todaysQuestion: "Today's Question",
+    answerAnonymously: 'Answer Anonymously',
+    moodOfIndia: 'Mood of India',
+    movieReview: 'Movie Review',
+    movieNameLabel: 'Movie / Show Name',
+    movieRatingLabel: 'Movie Rating (1-5 Stars)',
+    containsSpoilersLabel: 'Contains Spoilers?',
+    spoilerWarningText: '⚠️ SPOILER WARNING — Tap to Reveal Review',
 
     // Help & Support Keys
     helpAndSupportCenter: 'Help & Support Center',

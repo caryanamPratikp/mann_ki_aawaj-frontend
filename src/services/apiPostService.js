@@ -85,6 +85,10 @@ export const apiPostService = {
         topic: toBackendTopic(postData.topic),
         type: toBackendPostType(postData.postType || postData.type, Boolean(postData.imageUrl)),
         imageUrl: postData.imageUrl || null,
+        movieName: postData.movieName || null,
+        movieRating: postData.movieRating || null,
+        isSpoiler: Boolean(postData.isSpoiler),
+        mood: postData.mood || null,
       };
       const response = await apiClient.post('/api/posts', payload);
       return response.data;

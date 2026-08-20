@@ -28,6 +28,7 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
   const [hidden, setHidden] = useState(false);
   const [manualToggle, setManualToggle] = useState(false);
   const [showInlineComments, setShowInlineComments] = useState(false);
+  const [isSpoilerRevealed, setIsSpoilerRevealed] = useState(false);
 
   if (hidden) {
     return (
@@ -191,7 +192,6 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
         {/* ── ACTION BUTTONS: Options Menu ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
           <PostMenu
-
             isSaved={isSaved}
             isOwner={isOwner}
             onDelete={async () => {
@@ -208,39 +208,95 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
               setHidden(true);
             }}
             onBlock={() => blockUser(post.username)}
-
             onReport={() => setReportModalOpen(true)}
           />
         </div>
       </div>
 
-      {/* ── CONTENT SNIPPET / FULL BODY ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        {displayTitle && (
-          <h4 style={{ fontSize: '15.5px', fontWeight: 800, color: '#000000', margin: 0, lineHeight: 1.3 }}>
-            {displayTitle}
-          </h4>
-        )}
-        <p
+      {/* ── MOVIE REVIEW RATING HEADER (If applicable) ── */}
+      {post.movieName && (
+        <div
           style={{
-            fontSize: '14.5px',
-            lineHeight: 1.5,
-            color: '#111111',
-            fontWeight: 500,
-            margin: 0,
-            wordBreak: 'break-word',
+            display: 'flex',
+            alignItems: 'center',
+            justify: 'space-between',
+            padding: '8px 12px',
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, #FAF4F8 0%, #F3E8EF 100%)',
+            border: '1px solid rgba(111, 64, 95, 0.2)',
           }}
         >
-          {displayContent}
-        </p>
-        {post.imageUrl && (
-          <div style={{ marginTop: '8px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #EAE6E5' }}>
-            <img
-              src={getMediaUrl(post.imageUrl)}
-              alt="Post attachment"
-              style={{ width: '100%', maxHeight: '320px', objectFit: 'cover', display: 'block' }}
-            />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '14px' }}>🎬</span>
+            <span style={{ fontSize: '13px', fontWeight: 800, color: '#2D1D15' }}>{post.movieName}</span>
           </div>
+          {post.movieRating && (
+            <div style={{ fontSize: '13px', letterSpacing: '2px' }}>
+              {'⭐'.repeat(post.movieRating)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── CONTENT SNIPPET / SPOILER MASK BODY ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative' }}>
+        {post.isSpoiler && !isSpoilerRevealed ? (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsSpoilerRevealed(true);
+            }}
+            style={{
+              padding: '24px 16px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #2D1D15 0%, #1A0F0C 100%)',
+              color: '#FFFFFF',
+              textAlign: 'center',
+              cursor: 'pointer',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'transform 0.2s ease',
+            }}
+          >
+            <span style={{ fontSize: '13px', fontWeight: 800, color: '#FFD700', letterSpacing: '0.04em' }}>
+              ⚠️ SPOILER WARNING — Tap to Reveal Review
+            </span>
+            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>
+              This review contains plot spoilers for {post.movieName || 'this movie'}
+            </span>
+          </div>
+        ) : (
+          <>
+            {displayTitle && (
+              <h4 style={{ fontSize: '15.5px', fontWeight: 800, color: '#000000', margin: 0, lineHeight: 1.3 }}>
+                {displayTitle}
+              </h4>
+            )}
+            <p
+              style={{
+                fontSize: '14.5px',
+                lineHeight: 1.5,
+                color: '#111111',
+                fontWeight: 500,
+                margin: 0,
+                wordBreak: 'break-word',
+              }}
+            >
+              {displayContent}
+            </p>
+            {post.imageUrl && (
+              <div style={{ marginTop: '8px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #EAE6E5' }}>
+                <img
+                  src={getMediaUrl(post.imageUrl)}
+                  alt="Post attachment"
+                  style={{ width: '100%', maxHeight: '320px', objectFit: 'cover', display: 'block' }}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
 
