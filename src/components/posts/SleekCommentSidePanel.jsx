@@ -1,44 +1,88 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CommentComposer } from '../comments/CommentComposer.jsx';
 import { CommentList } from '../comments/CommentList.jsx';
 import { useComments } from '../../context/CommentContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 import { AvatarThumbnail } from '../avatar/AvatarThumbnail.jsx';
-import { InitialAvatar } from '../profile/InitialAvatar.jsx';
 import { MessageSquare, X } from 'lucide-react';
 
 export function SleekCommentSidePanel({ post, onClose, onNavigate }) {
   const { commentsByPost, createComment } = useComments();
   const { t } = useLanguage();
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   if (!post) return null;
 
   const postComments = commentsByPost[post.id] || [];
   const matchedCommentCount = postComments.length > 0 ? postComments.length : (post.commentCount || 0);
-
   const displayTitle = post.originalTitle || post.title || 'Discussion';
 
-  return (
+  // Desktop side panel content & mobile slide-up sheet
+  const panelContent = (
     <aside
-      className="animate-fade-in"
-      style={{
-        width: '360px',
-        maxWidth: '100%',
-        backgroundColor: '#FFFFFF',
-        borderRadius: '16px',
-        border: '1px solid #EDE8E6',
-        boxShadow: '0 4px 24px rgba(45,29,21,0.08)',
-        padding: '16px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-        position: 'sticky',
-        top: '84px',
-        alignSelf: 'flex-start',
-        maxHeight: 'calc(100vh - 100px)',
-        overflowY: 'auto',
-      }}
+      className="animate-fade-in sleek-comment-panel"
+      style={
+        isMobile
+          ? {
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              width: '100%',
+              maxHeight: '82vh',
+              height: '82vh',
+              backgroundColor: '#FFFFFF',
+              borderTopLeftRadius: '20px',
+              borderTopRightRadius: '20px',
+              boxShadow: '0 -8px 32px rgba(45,29,21,0.25)',
+              padding: '16px 16px 24px 16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              zIndex: 1100,
+              overflowY: 'auto',
+            }
+          : {
+              width: '360px',
+              maxWidth: '100%',
+              backgroundColor: '#FFFFFF',
+              borderRadius: '16px',
+              border: '1px solid #EDE8E6',
+              boxShadow: '0 4px 24px rgba(45,29,21,0.08)',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              position: 'sticky',
+              top: '84px',
+              alignSelf: 'flex-start',
+              maxHeight: 'calc(100vh - 100px)',
+              overflowY: 'auto',
+            }
+      }
     >
+      {/* Mobile Drawer Pull Indicator Handle */}
+      {isMobile && (
+        <div
+          style={{
+            width: '40px',
+            height: '4px',
+            borderRadius: '2px',
+            backgroundColor: '#D4CECC',
+            alignSelf: 'center',
+            marginBottom: '4px',
+          }}
+        />
+      )}
+
       {/* ── HEADER: Title & Close Button ── */}
       <div
         style={{
@@ -60,11 +104,11 @@ export function SleekCommentSidePanel({ post, onClose, onNavigate }) {
           type="button"
           onClick={onClose}
           style={{
-            background: 'none',
+            background: '#F5F2F0',
             border: 'none',
-            color: '#8C8385',
+            color: '#2D1D15',
             cursor: 'pointer',
-            padding: '4px',
+            padding: '6px',
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
@@ -130,4 +174,25 @@ export function SleekCommentSidePanel({ post, onClose, onNavigate }) {
       </div>
     </aside>
   );
+
+  if (isMobile) {
+    return (
+      <>
+        {/* Semi-transparent Backdrop for Mobile Overlay */}
+        <div
+          onClick={onClose}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.45)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 1099,
+          }}
+        />
+        {panelContent}
+      </>
+    );
+  }
+
+  return panelContent;
 }

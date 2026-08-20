@@ -181,4 +181,54 @@ export const apiTranslationService = {
 
     return text;
   },
+
+  async translateBatchText(texts, targetLang) {
+    if (!Array.isArray(texts) || texts.length === 0) return {};
+    const tgtCode = normalizeLanguageCode(targetLang) || 'EN';
+    const resultMap = {};
+    const unCachedTexts = [];
+
+    texts.forEach((txt) => {
+      if (!txt || !txt.trim()) return;
+      const clean = txt.trim();
+      const detectedScriptCode = detectTextLanguage(clean);
+      if (detectedScriptCode === tgtCode) {
+        resultMap[clean] = clean;
+        return;
+      }
+      const cacheKey = `auto_${tgtCode}_${clean}`;
+      if (translationCache.has(cacheKey)) {
+        resultMap[clean] = translationCache.get(cacheKey);
+      } else {
+        unCachedTexts.push(clean);
+      }
+    });
+
+    if (unCachedTexts.length === 0) return resultMap;
+
+    try {
+      const response = await translationClient.post('/api/v1/translation/batch', {
+        texts: unCachedTexts,
+        sourceLanguage: 'auto',
+        targetLanguage: tgtCode,
+      });
+
+      if (response.data && response.data.translations) {
+        Object.entries(response.data.translations).forEach(([orig, trans]) => {
+          const cacheKey = `auto_${tgtCode}_${orig}`;
+          translationCache.set(cacheKey, trans);
+          resultMap[orig] = trans;
+        });
+        return resultMap;
+      }
+    } catch (err) {
+      console.warn('[Translation] Batch backend note:', err?.message || err);
+    }
+
+    // Fallback sequentially if batch endpoint offline
+    for (const txt of unCachedTexts) {
+      resultMap[txt] = await this.translateText(txt, tgtCode);
+    }
+    return resultMap;
+  },
 };

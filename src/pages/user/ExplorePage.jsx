@@ -39,12 +39,13 @@ export function ExplorePage({ onNavigate }) {
   let displayPosts = isUserMuted
     ? []
     : posts.filter((p) => {
-        if (!p || !p.username) return false;
-        const pUnameClean = p.username.toLowerCase().replace('@', '');
+        if (!p) return false;
+        const authorHandle = (p.username || p.authorUsername || p.handle || '').toLowerCase().replace(/^@/, '').trim();
         const isBlockedOrMuted =
-          blockedUsers.some((b) => b.toLowerCase().replace('@', '') === pUnameClean) ||
-          mutedUsers.some((m) => m.toLowerCase().replace('@', '') === pUnameClean) ||
-          p.isMuted || p.muted;
+          Boolean(authorHandle) && (
+            blockedUsers.some((b) => (b || '').toLowerCase().replace(/^@/, '').trim() === authorHandle) ||
+            mutedUsers.some((m) => (m || '').toLowerCase().replace(/^@/, '').trim() === authorHandle)
+          ) || p.isMuted || p.muted;
         return p.status === 'PUBLISHED' && !isBlockedOrMuted;
       });
 

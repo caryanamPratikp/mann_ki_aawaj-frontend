@@ -104,12 +104,10 @@ export function ReportProvider({ children }) {
     addToast(`Muted @${rawClean}. Their posts are now hidden from your feed.`, 'info');
 
     try {
-      const token = localStorage.getItem('auth_token');
-      if (token && !token.startsWith('mock')) {
-        await apiUserService.muteUser(rawClean);
-      }
+      console.log('[ReportContext] Executing Mute User API call for:', rawClean);
+      await apiUserService.muteUser(rawClean);
     } catch (err) {
-      console.warn('[ReportContext] Mute user API warning:', err?.message || err);
+      console.warn('[ReportContext] Mute user API notice:', err?.message || err);
     }
   }, [addToast]);
 
@@ -126,12 +124,10 @@ export function ReportProvider({ children }) {
     addToast(`Unmuted @${rawClean}. Their posts are visible again.`, 'success');
 
     try {
-      const token = localStorage.getItem('auth_token');
-      if (token && !token.startsWith('mock')) {
-        await apiUserService.unmuteUser(rawClean);
-      }
+      console.log('[ReportContext] Executing Unmute User API call for:', rawClean);
+      await apiUserService.unmuteUser(rawClean);
     } catch (err) {
-      console.warn('[ReportContext] Unmute user API warning:', err?.message || err);
+      console.warn('[ReportContext] Unmute user API notice:', err?.message || err);
     }
   }, [addToast]);
 

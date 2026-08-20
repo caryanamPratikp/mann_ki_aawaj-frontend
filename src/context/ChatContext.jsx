@@ -150,7 +150,7 @@ export function ChatProvider({ children }) {
     if (!currentUser || isMockMode() || window.location.pathname.startsWith('/admin')) return;
 
     const socket = io(SOCKET_URL, {
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: 10,
@@ -241,7 +241,10 @@ export function ChatProvider({ children }) {
     return () => {
       clearInterval(heartbeatInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      socket.disconnect();
+      if (socket) {
+        socket.off();
+        socket.disconnect();
+      }
       socketRef.current = null;
     };
   }, [currentUser, queryClient, notifyNewMessage]);
@@ -273,10 +276,16 @@ export function ChatProvider({ children }) {
   }, [refreshConversations, addToast, queryClient]);
 
   const selectConversation = useCallback(async (convId) => {
+    if (!convId) {
+      setActiveConversation(null);
+      return;
+    }
     const conv = conversations.find(c => String(c.id) === String(convId));
     if (conv) {
       setActiveConversation(conv);
       queryClient.invalidateQueries({ queryKey: ['messages', convId] });
+    } else {
+      setActiveConversation(null);
     }
   }, [conversations, queryClient]);
 

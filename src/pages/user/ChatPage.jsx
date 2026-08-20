@@ -17,6 +17,15 @@ export function ChatPage({ targetUsername, onNavigate }) {
     }
   }, [targetUsername, openChatWithUser]);
 
+  // Lock outer window scrolling on ChatPage so outer layout stays 100% static and only inner chat messages scroll
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow || '';
+    };
+  }, []);
+
   return (
     <UserLayout activeRoute="/chat" onNavigate={onNavigate} wide={true}>
       <div
@@ -26,7 +35,8 @@ export function ChatPage({ targetUsername, onNavigate }) {
           gridTemplateColumns: 'minmax(260px, 320px) 1fr',
           gap: '16px',
           alignItems: 'stretch',
-          height: 'calc(100vh - 116px)',
+          height: 'calc(100vh - 105px)',
+          maxHeight: 'calc(100vh - 105px)',
           overflow: 'hidden',
         }}
       >
@@ -50,7 +60,7 @@ export function ChatPage({ targetUsername, onNavigate }) {
           />
         </div>
 
-        <div className={`chat-window-wrapper ${!activeConversation ? 'hide-on-mobile' : ''}`} style={{ height: '100%', minWidth: 0 }}>
+        <div className={`chat-window-wrapper ${!activeConversation ? 'hide-on-mobile' : ''}`} style={{ height: '100%', minWidth: 0, overflow: 'hidden' }}>
           <ChatWindow
             conversation={activeConversation}
             messages={activeMessages}

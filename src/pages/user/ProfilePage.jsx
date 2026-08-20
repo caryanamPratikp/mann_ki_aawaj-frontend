@@ -528,31 +528,6 @@ export function ProfilePage({ username, onNavigate }) {
             {editErrors.bio && <span style={{ fontSize: '12px', color: 'var(--error)' }}>{editErrors.bio}</span>}
           </div>
 
-          {/* Preferred Language */}
-          <div className="flex-col gap-xs">
-            <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--eclipse)' }}>
-              Preferred Language
-            </label>
-            <select
-              value={SUPPORTED_LANGUAGES.find(l => l.label.toLowerCase() === (editPreferredLanguage || '').toLowerCase() || l.code.toLowerCase() === (editPreferredLanguage || '').toLowerCase())?.code || 'EN'}
-              onChange={(e) => setEditPreferredLanguage(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-light)',
-                fontSize: '14px',
-                background: 'var(--pure-white)',
-                cursor: 'pointer',
-              }}
-            >
-              {SUPPORTED_LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.native} ({lang.label || lang.code})
-                </option>
-              ))}
-            </select>
-          </div>
 
           {/* Modal Actions */}
           <div className="flex-row justify-end gap-sm" style={{ marginTop: '10px' }}>

@@ -134,12 +134,14 @@ export function NotificationProvider({ children }) {
   };
 
   const deleteNotification = async (id) => {
+    // 1. Immediately remove notification from local UI state for instant response
     setNotifications((prev) => prev.filter((n) => n.id !== id));
+    
+    // 2. Call backend API to delete from DB
     try {
       await apiNotificationService.deleteNotification(id);
-      addToast('Notification deleted.', 'info');
     } catch (e) {
-      console.error(e);
+      console.warn('Notice deleting notification from backend:', e);
     }
   };
 
