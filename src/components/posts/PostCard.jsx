@@ -112,9 +112,12 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
     ? (post.originalTitle || post.title)
     : (dynamicTitleTranslation || post.translatedTitle || post.title || post.originalTitle);
 
-  const displayContent = manualToggle
-    ? (post.originalContent || post.content)
-    : (dynamicContentTranslation || post.translatedContent || post.content || post.originalContent);
+  const rawDisplayContent = manualToggle
+    ? (post.originalContent || post.content || '')
+    : (dynamicContentTranslation || post.translatedContent || post.content || post.originalContent || '');
+
+  const displayContent = rawDisplayContent.replace(/^#[\w\u0900-\u097F]+(?:\s+|$)/i, '').trim() || rawDisplayContent;
+
 
   const postComments = commentsByPost[post.id] || [];
   const matchedCommentCount = postComments.length > 0 ? postComments.length : (post.commentCount || 0);

@@ -9,7 +9,9 @@ import { PostCard } from '../../components/posts/PostCard.jsx';
 import { Button } from '../../components/common/Button.jsx';
 import { Modal } from '../../components/common/Modal.jsx';
 import { useReports } from '../../context/ReportContext.jsx';
-import { Edit3, Trash2, Calendar, Globe, Heart, AlertTriangle, Check, Sparkles, Volume2, VolumeX, ShieldOff, Clock, Flame, MessageSquare, RefreshCw, Info, Mic, MicOff, Loader2, Upload, X } from 'lucide-react';
+import { Edit3, Trash2, Calendar, Globe, Heart, AlertTriangle, Check, Sparkles, Volume2, VolumeX, ShieldOff, Clock, Flame, MessageSquare, RefreshCw, Info, Mic, MicOff, Loader2, Upload, X, ArrowLeft, Image as ImageIcon } from 'lucide-react';
+import { apiClient } from '../../services/apiClient.js';
+
 import { formatDate } from '../../utils/formatDate.js';
 import { generateUsernameSuggestions } from '../../utils/generateUsername.js';
 import { validateUsernameString, getSuggestedNumberVariants } from '../../utils/usernameValidation.js';
@@ -302,10 +304,45 @@ export function ProfilePage({ username, onNavigate }) {
   return (
     <UserLayout activeRoute={`/profile/${targetUsername}`} onNavigate={onNavigate} wide={true}>
       <TopicBackgroundRotator topicName={targetUsername || 'GENERAL'}>
-        <div className="flex-col gap-md" style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
+        <div className="flex-col gap-md" style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+
+          {/* ── BACK TO HOME NAVIGATION BUTTON ── */}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => onNavigate && onNavigate('/home')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 18px',
+                borderRadius: '20px',
+                background: 'rgba(255, 255, 255, 0.95)',
+                color: '#6F405F',
+                border: '1.5px solid rgba(111, 64, 95, 0.25)',
+                fontSize: '13px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(45,29,21,0.08)',
+                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateX(-3px)';
+                e.currentTarget.style.background = '#FFFFFF';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateX(0)';
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)';
+              }}
+            >
+              <ArrowLeft size={16} color="#6F405F" />
+              <span>{t('backToHome', '← Back to Home')}</span>
+            </button>
+          </div>
 
           {/* ── 1. TOPIC OR USER PROFILE DETAIL BANNER ── */}
           <div
+
             style={{
               padding: '24px 20px',
               backgroundColor: '#3D2B24',
@@ -784,7 +821,103 @@ export function ProfilePage({ username, onNavigate }) {
             </button>
           </div>
 
+          {/* ── IMAGE ATTACHMENT INPUT FIELD ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#4A3E3D', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <ImageIcon size={15} color="var(--deep-plum)" />
+              <span>{t('attachImageLabel', 'Attach Image (URL or File)')}</span>
+            </label>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="text"
+                placeholder={t('imageUrlPlaceholder', 'Paste image URL (e.g. https://...)...')}
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: '9px 12px',
+                  borderRadius: '10px',
+                  border: '1px solid #D4CECC',
+                  fontSize: '13px',
+                  outline: 'none',
+                }}
+              />
+              <label
+                style={{
+                  padding: '9px 14px',
+                  borderRadius: '10px',
+                  background: 'rgba(111,64,95,0.12)',
+                  color: 'var(--deep-plum)',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  whiteSpace: 'nowrap',
+                  border: '1px solid rgba(111,64,95,0.2)',
+                }}
+              >
+                <Upload size={14} />
+                <span>{t('uploadImage', 'Upload Image')}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const formData = new FormData();
+                      formData.append('file', file);
+                      const res = await apiClient.post('/api/upload/image', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' },
+                      });
+                      if (res.data?.success && res.data?.data?.imageUrl) {
+                        setImageUrl(res.data.data.imageUrl);
+                        addToast('Image uploaded successfully!', 'success');
+                      }
+                    } catch (err) {
+                      addToast('Failed to upload image.', 'error');
+                    }
+                  }}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            </div>
+
+            {imageUrl && (
+              <div style={{ position: 'relative', marginTop: '6px', width: 'fit-content' }}>
+                <img src={imageUrl} alt="Uploaded Preview" style={{ height: '70px', borderRadius: '8px', border: '1px solid #D4CECC', objectFit: 'cover' }} />
+                <button
+                  type="button"
+                  onClick={() => setImageUrl('')}
+                  style={{
+                    position: 'absolute',
+                    top: '-6px',
+                    right: '-6px',
+                    background: '#FF4D4F',
+                    color: '#FFF',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '20px',
+                    height: '20px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+          </div>
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(false)}

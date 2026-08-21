@@ -24,6 +24,9 @@ const CATEGORY_ICONS = {
   UserCheck: UserCheck,
 };
 
+const topicTranslationCache = new Map();
+
+
 function TranslatedTopicText({ text, fallbackKey }) {
   const { t, currentLanguage, translateTextAsync } = useLanguage();
   const [translated, setTranslated] = useState(text);
@@ -46,18 +49,29 @@ function TranslatedTopicText({ text, fallbackKey }) {
       return;
     }
 
+    const cacheKey = `${currentLanguage}_${rawStr}`;
+    if (topicTranslationCache.has(cacheKey)) {
+      if (isMounted) setTranslated(topicTranslationCache.get(cacheKey));
+      return;
+    }
+
     if (translateTextAsync) {
       translateTextAsync(rawStr, currentLanguage)
         .then((res) => {
-          if (isMounted && res) setTranslated(res);
+          if (res) {
+            topicTranslationCache.set(cacheKey, res);
+            if (isMounted) setTranslated(res);
+          }
         })
         .catch(() => {
+          topicTranslationCache.set(cacheKey, rawStr);
           if (isMounted) setTranslated(rawStr);
         });
     }
 
     return () => { isMounted = false; };
   }, [text, fallbackKey, currentLanguage, t, translateTextAsync]);
+
 
   return <>{translated || text}</>;
 }
