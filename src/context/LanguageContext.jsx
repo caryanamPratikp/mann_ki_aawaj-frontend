@@ -196,6 +196,20 @@ export function LanguageProvider({ children }) {
     syncProfileLanguage();
   }, [queryClient, hasHardcodedDict]);
 
+  // Listen for login / account language change events
+  useEffect(() => {
+    const handleCustomLangChange = (e) => {
+      if (e.detail) {
+        const norm = normalizeLanguage(e.detail);
+        setCurrentLanguage(norm);
+        localStorage.setItem('mka_preferred_language', norm);
+        queryClient.invalidateQueries({ queryKey: ['posts'] });
+      }
+    };
+    window.addEventListener('mka_language_changed', handleCustomLangChange);
+    return () => window.removeEventListener('mka_language_changed', handleCustomLangChange);
+  }, [queryClient]);
+
   useEffect(() => {
     const norm = normalizeLanguage(currentLanguage);
     if (norm && norm !== 'English') {

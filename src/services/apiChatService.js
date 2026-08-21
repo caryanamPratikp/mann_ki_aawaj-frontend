@@ -30,50 +30,12 @@ const getCurrentUserFromAuth = () => {
 };
 
 export const apiChatService = {
-  // GET /api/chat/rooms (get user rooms)
+  // GET /api/chat/rooms (Disabled - chats inactive)
   async getConversations() {
-    const currentUser = getCurrentUserFromAuth();
-    if (isMockMode()) {
-      return mockChatService.getUserConversations(currentUser?.username);
-    }
-    try {
-      const response = await apiClient.get('/api/chat/rooms');
-      const apiRooms = response.data?.data || response.data || [];
-      const normalizedApi = Array.isArray(apiRooms) ? apiRooms : [];
-
-      return normalizedApi.map(apiRoom => {
-        const p1 = apiRoom.participant1Username ? (apiRoom.participant1Username.startsWith('@') ? apiRoom.participant1Username : `@${apiRoom.participant1Username}`) : '';
-        const p2 = apiRoom.participant2Username ? (apiRoom.participant2Username.startsWith('@') ? apiRoom.participant2Username : `@${apiRoom.participant2Username}`) : '';
-        
-        const requestSender = apiRoom.requestSenderId === apiRoom.participant1Id
-          ? apiRoom.participant1Username
-          : (apiRoom.requestSenderId === apiRoom.participant2Id ? apiRoom.participant2Username : null);
-
-        const unreadCount = apiRoom.unreadCount || (apiRoom.hasUnread ? 1 : 0);
-        return {
-          id: apiRoom.id,
-          participants: [p1, p2],
-          otherParticipantUsername: apiRoom.otherParticipantUsername ? (apiRoom.otherParticipantUsername.startsWith('@') ? apiRoom.otherParticipantUsername : `@${apiRoom.otherParticipantUsername}`) : '',
-          otherParticipantAvatar: apiRoom.otherParticipantAvatar,
-          otherParticipantId: apiRoom.otherParticipantId,
-          lastMessage: apiRoom.lastMessage?.content || 'Chat room active',
-          lastMessageObj: apiRoom.lastMessage,
-          lastMessageTime: apiRoom.lastMessage?.createdAt || apiRoom.updatedAt || apiRoom.createdAt,
-          hasUnread: Boolean(apiRoom.hasUnread || unreadCount > 0),
-          unreadCount: unreadCount,
-          updatedAt: apiRoom.updatedAt || new Date().toISOString(),
-          requestStatus: apiRoom.requestStatus || 'ACCEPTED',
-          requestSenderId: apiRoom.requestSenderId,
-          requestSender: requestSender,
-        };
-      });
-    } catch (err) {
-      console.error('[ChatService] Failed to fetch rooms:', err);
-      return [];
-    }
+    return [];
   },
 
-  // GET /api/chat/messages/{roomId} (get room message history)
+  // GET /api/chat/rooms/:roomId/messages
   async getMessages(roomId) {
     if (!roomId || String(roomId).startsWith('conv_') || isMockMode()) {
       return mockChatService.getMessagesByConversationId(roomId);

@@ -77,14 +77,21 @@ export function AuthProvider({ children }) {
         return { ...result, user: adminUser };
       }
 
-      // Try fetching database profile for regular users to resolve handle
+      // Try fetching database profile for regular users to resolve handle & language preference
       let dbHandle = null;
       try {
         const profileRes = await apiProfileService.getMyProfile();
-        if (profileRes && profileRes.data?.username) {
-          dbHandle = profileRes.data.username.startsWith('@')
-            ? profileRes.data.username
-            : `@${profileRes.data.username}`;
+        if (profileRes && profileRes.data) {
+          if (profileRes.data.username) {
+            dbHandle = profileRes.data.username.startsWith('@')
+              ? profileRes.data.username
+              : `@${profileRes.data.username}`;
+          }
+          const savedLang = profileRes.data.preferredLanguage || user.preferredLanguage || user.language;
+          if (savedLang) {
+            localStorage.setItem('mka_preferred_language', savedLang);
+            window.dispatchEvent(new CustomEvent('mka_language_changed', { detail: savedLang }));
+          }
         }
       } catch (e) {}
 

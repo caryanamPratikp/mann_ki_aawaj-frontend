@@ -25,34 +25,22 @@ export function PostProvider({ children }) {
     refetch: refreshPosts,
   } = useQuery({
     queryKey: ['posts', normLang],
-    queryFn: async ({ queryKey }) => {
-      const response = await apiPostService.getPosts();
-      const rawContent = response.data?.content || response.content || response.data || [];
-      if (Array.isArray(rawContent)) {
-        const fetchedPosts = rawContent.map(mapPost);
-
-        const cachedPosts = queryClient.getQueryData(queryKey) || [];
-
-        if (fetchedPosts.length === 0 && cachedPosts.length > 0) {
-          return cachedPosts;
+    queryFn: async () => {
+      try {
+        const response = await apiPostService.getPosts();
+        const rawContent = response.data?.content || response.content || response.data || [];
+        if (Array.isArray(rawContent)) {
+          return rawContent.map(mapPost);
         }
-
-        if (cachedPosts.length > 0) {
-          const fetchedIds = new Set(fetchedPosts.map((p) => p.id));
-          const oldUnique = cachedPosts.filter((p) => !fetchedIds.has(p.id));
-          return [...fetchedPosts, ...oldUnique];
-        }
-
-        return fetchedPosts;
+        return [];
+      } catch (err) {
+        console.error('Error fetching posts:', err);
+        return [];
       }
-      throw new Error('Failed to parse posts response');
     },
     placeholderData: keepPreviousData,
-    staleTime: 8000,
+    staleTime: 5000,
     refetchInterval: 8000,
-    gcTime: 1000 * 60 * 30,
-    retry: 3,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 3000),
   });
 
   const createPost = async (postData) => {

@@ -191,20 +191,40 @@ export function ProfilePage({ username, onNavigate }) {
       return;
     }
 
+    const cleanNewUsername = editUsername.trim().replace(/^@/, '');
+    const cleanOldUsername = currentUser?.username ? currentUser.username.replace(/^@/, '') : '';
+
+    // Enforce 14-Day Username Change Timer Constraint
+    if (cleanNewUsername.toLowerCase() !== cleanOldUsername.toLowerCase()) {
+      if (daysLeftForChange > 0) {
+        const errMsg = `Username can only be changed once every 14 days. Please wait ${daysLeftForChange} day(s).`;
+        setEditErrors({ username: errMsg });
+        addToast(errMsg, 'error');
+        return;
+      }
+    }
+
     setEditErrors({});
     setSavingEdit(true);
 
     try {
       const updatedUser = await updateProfile({
-        username: editUsername.trim(),
+        username: cleanNewUsername,
         bio: editBio.trim(),
         avatar: editAvatar,
         avatarConfig: editAvatarConfig,
       });
 
+      if (cleanNewUsername.toLowerCase() !== cleanOldUsername.toLowerCase()) {
+        const userId = currentUser?.id || currentUser?.userId || 'me';
+        localStorage.setItem(`last_username_change_${userId}`, new Date().toISOString());
+      }
+
+      const formattedHandle = `@${updatedUser.username ? updatedUser.username.replace(/^@/, '') : cleanNewUsername}`;
+
       setProfileData((prev) => ({
         ...prev,
-        username: `@${updatedUser.username}`,
+        username: formattedHandle,
         bio: updatedUser.bio,
         avatar: updatedUser.avatar,
         avatarConfig: updatedUser.avatarConfig,
@@ -212,8 +232,14 @@ export function ProfilePage({ username, onNavigate }) {
 
       setIsEditModalOpen(false);
       addToast('Profile details updated successfully.', 'success');
+
+      // Update UI immediately & navigate to new profile route without manual page refresh
+      if (cleanNewUsername.toLowerCase() !== cleanOldUsername.toLowerCase() && onNavigate) {
+        onNavigate(`/profile/${cleanNewUsername}`);
+      }
     } catch (err) {
       console.error(err);
+      addToast(err?.message || 'Failed to update profile.', 'error');
     } finally {
       setSavingEdit(false);
     }

@@ -19,7 +19,7 @@ export const MOOD_CATEGORIES = [
   { id: 'Focus', label: 'Chai & Lo-Fi Study 🧘', emoji: '🧘', color: 'linear-gradient(135deg, #614385 0%, #516395 100%)' },
 ];
 
-// High Quality Real Music Audio Streams (Pixabay Audio CDN - Guaranteed CORS & Direct Audio Playback)
+// High Quality Real Music Audio Streams (Direct Production CORS Permitted MP3 Streams)
 export const REGIONAL_PLAYLISTS = {
   HI: {
     Romantic: [
@@ -30,7 +30,7 @@ export const REGIONAL_PLAYLISTS = {
         language: 'Hindi',
         mood: 'Romantic',
         coverUrl: 'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=400&q=80',
-        audioUrl: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=sweet-love-10903.mp3',
+        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
       },
       {
         id: 'hi_r2',
@@ -39,7 +39,7 @@ export const REGIONAL_PLAYLISTS = {
         language: 'Hindi',
         mood: 'Romantic',
         coverUrl: 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=400&q=80',
-        audioUrl: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=romantic-guitars-8854.mp3',
+        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
       },
     ],
     Calm: [
@@ -50,7 +50,7 @@ export const REGIONAL_PLAYLISTS = {
         language: 'Hindi',
         mood: 'Calm',
         coverUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&q=80',
-        audioUrl: 'https://cdn.pixabay.com/download/audio/2022/05/16/audio_c2306f9d27.mp3?filename=meditation-flute-111874.mp3',
+        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
       },
       {
         id: 'hi_cl2',
@@ -59,7 +59,7 @@ export const REGIONAL_PLAYLISTS = {
         language: 'Hindi',
         mood: 'Calm',
         coverUrl: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=400&q=80',
-        audioUrl: 'https://cdn.pixabay.com/download/audio/2022/02/10/audio_51f67f2e1a.mp3?filename=relaxing-sitar-9543.mp3',
+        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
       },
     ],
     Energetic: [
@@ -70,7 +70,7 @@ export const REGIONAL_PLAYLISTS = {
         language: 'Hindi',
         mood: 'Energetic',
         coverUrl: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=400&q=80',
-        audioUrl: 'https://cdn.pixabay.com/download/audio/2022/03/10/audio_c8c3a3ef8b.mp3?filename=energetic-hip-hop-10243.mp3',
+        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3',
       },
     ],
     Confused: [
@@ -81,7 +81,7 @@ export const REGIONAL_PLAYLISTS = {
         language: 'Hindi',
         mood: 'Confused',
         coverUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=80',
-        audioUrl: 'https://cdn.pixabay.com/download/audio/2022/02/10/audio_51f67f2e1a.mp3?filename=relaxing-sitar-9543.mp3',
+        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3',
       },
     ],
     Melancholy: [
@@ -92,7 +92,7 @@ export const REGIONAL_PLAYLISTS = {
         language: 'Hindi',
         mood: 'Melancholy',
         coverUrl: 'https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?w=400&q=80',
-        audioUrl: 'https://cdn.pixabay.com/download/audio/2022/08/02/audio_884fa925c4.mp3?filename=sad-piano-lofi-117284.mp3',
+        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3',
       },
     ],
     Focus: [
@@ -103,7 +103,7 @@ export const REGIONAL_PLAYLISTS = {
         language: 'Hindi',
         mood: 'Focus',
         coverUrl: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8?w=400&q=80',
-        audioUrl: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3',
+        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3',
       },
     ],
   },
@@ -116,7 +116,7 @@ export const REGIONAL_PLAYLISTS = {
         language: 'Punjabi',
         mood: 'Romantic',
         coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&q=80',
-        audioUrl: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=sweet-love-10903.mp3',
+        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
       },
     ],
   },
@@ -129,7 +129,7 @@ export const REGIONAL_PLAYLISTS = {
         language: 'Marathi',
         mood: 'Romantic',
         coverUrl: 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=400&q=80',
-        audioUrl: 'https://cdn.pixabay.com/download/audio/2022/05/16/audio_c2306f9d27.mp3?filename=meditation-flute-111874.mp3',
+        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
       },
     ],
   },
@@ -174,12 +174,24 @@ export function MoodMusicProvider({ children }) {
       nextTrack();
     };
 
+    const handleError = (e) => {
+      console.warn('Audio playback stream error, playing fallback stream...', e);
+      if (audio.src !== 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3') {
+        audio.src = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+        audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+      } else {
+        setIsPlaying(false);
+      }
+    };
+
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
       audio.pause();
     };
   }, []);
