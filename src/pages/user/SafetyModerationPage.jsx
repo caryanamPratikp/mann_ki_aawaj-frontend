@@ -4,9 +4,11 @@ import { Button } from '../../components/common/Button.jsx';
 import { Checkbox } from '../../components/common/Checkbox.jsx';
 import { ArrowLeft, Save, ShieldCheck, AlertTriangle, Filter, Plus, X, Flag } from 'lucide-react';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 
 export function SafetyModerationPage({ onNavigate }) {
   const { addToast } = useToast();
+  const { t } = useLanguage();
 
   const [strictFiltering, setStrictFiltering] = useState(true);
   const [blockToxicity, setBlockToxicity] = useState(true);
@@ -37,7 +39,7 @@ export function SafetyModerationPage({ onNavigate }) {
 
   const handleSaveSafety = (e) => {
     e.preventDefault();
-    addToast('Safety & moderation preferences saved.', 'success');
+    addToast(t('safetySavedSuccess', 'Safety & moderation preferences saved.'), 'success');
   };
 
   return (
@@ -45,9 +47,9 @@ export function SafetyModerationPage({ onNavigate }) {
       <div className="flex-col gap-md">
         <div className="flex-row items-center gap-sm">
           <Button variant="secondary" size="sm" onClick={() => onNavigate('/settings')} icon={ArrowLeft}>
-            Back
+            {t('back', 'Back')}
           </Button>
-          <h1 className="page-heading">Safety & Moderation</h1>
+          <h1 className="page-heading">{t('safetyAndModeration', 'Safety & Moderation')}</h1>
         </div>
 
         <div className="mka-card flex-col gap-md">
@@ -68,15 +70,15 @@ export function SafetyModerationPage({ onNavigate }) {
               <ShieldCheck size={24} color="#2E7D32" />
               <div>
                 <div style={{ fontSize: '14px', fontWeight: 700, color: '#1B5E20' }}>
-                  Account Standing: Good & Compliant
+                  {t('accountStandingGood', 'Account Standing: Good & Compliant')}
                 </div>
                 <div style={{ fontSize: '12px', color: '#388E3C' }}>
-                  0 Community Warnings • 0 Content Violations • Full Platform Privileges
+                  {t('accountStandingNote', '0 Community Warnings • 0 Content Violations • Full Platform Privileges')}
                 </div>
               </div>
             </div>
             <Button variant="secondary" size="sm" icon={Flag} onClick={() => onNavigate('/my-reports')}>
-              My Reports History
+              {t('myReportsHistory', 'My Reports History')}
             </Button>
           </div>
 
@@ -85,30 +87,32 @@ export function SafetyModerationPage({ onNavigate }) {
             <div className="flex-col gap-sm">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Filter size={18} color="var(--deep-plum)" />
-                <h3 className="card-heading" style={{ fontSize: '17px', margin: 0 }}>Automated Content Filters</h3>
+                <h3 className="card-heading" style={{ fontSize: '17px', margin: 0 }}>
+                  {t('automatedContentFilters', 'Automated Content Filters')}
+                </h3>
               </div>
 
               <Checkbox
                 id="strictFilteringCheck"
-                label="Strict AI moderation: Auto-hide controversial or disputed thoughts"
+                label={t('strictAiModeration', 'Strict AI moderation: Auto-hide controversial or disputed thoughts')}
                 checked={strictFiltering}
                 onChange={(e) => setStrictFiltering(e.target.checked)}
               />
               <Checkbox
                 id="blockToxicityCheck"
-                label="Filter abusive comments or toxic language from discussion threads"
+                label={t('filterAbusiveComments', 'Filter abusive comments or toxic language from discussion threads')}
                 checked={blockToxicity}
                 onChange={(e) => setBlockToxicity(e.target.checked)}
               />
               <Checkbox
                 id="profanityFilterCheck"
-                label="Mask offensive profanity words in feed titles (e.g. f***)"
+                label={t('maskOffensiveProfanity', 'Mask offensive profanity words in feed titles (e.g. f***)')}
                 checked={profanityFilter}
                 onChange={(e) => setProfanityFilter(e.target.checked)}
               />
               <Checkbox
                 id="crisisSupportCheck"
-                label="Display supportive helpline resources on distress-related posts"
+                label={t('displayCrisisSupport', 'Display supportive helpline resources on distress-related posts')}
                 checked={showCrisisSupport}
                 onChange={(e) => setShowCrisisSupport(e.target.checked)}
               />
@@ -118,10 +122,12 @@ export function SafetyModerationPage({ onNavigate }) {
             <div className="flex-col gap-sm" style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <AlertTriangle size={18} color="var(--deep-plum)" />
-                <h3 className="card-heading" style={{ fontSize: '17px', margin: 0 }}>Muted Keywords & Phrases</h3>
+                <h3 className="card-heading" style={{ fontSize: '17px', margin: 0 }}>
+                  {t('mutedKeywordsPhrases', 'Muted Keywords & Phrases')}
+                </h3>
               </div>
               <p className="secondary-text" style={{ fontSize: '13px', margin: 0 }}>
-                Posts containing any of these keywords will be hidden from your feeds automatically.
+                {t('mutedKeywordsDesc', 'Posts containing any of these keywords will be hidden from your feeds automatically.')}
               </p>
 
               <div style={{ display: 'flex', gap: '8px', maxWidth: '420px', marginTop: '4px' }}>
@@ -129,7 +135,7 @@ export function SafetyModerationPage({ onNavigate }) {
                   type="text"
                   value={newWordInput}
                   onChange={(e) => setNewWordInput(e.target.value)}
-                  placeholder="Enter keyword to mute..."
+                  placeholder={t('enterKeywordPlaceholder', 'Enter keyword to mute...')}
                   style={{
                     flex: 1,
                     padding: '8px 12px',
@@ -140,7 +146,7 @@ export function SafetyModerationPage({ onNavigate }) {
                   }}
                 />
                 <Button type="button" variant="secondary" size="sm" icon={Plus} onClick={handleAddMutedWord}>
-                  Add
+                  {t('add', 'Add')}
                 </Button>
               </div>
 
@@ -161,11 +167,20 @@ export function SafetyModerationPage({ onNavigate }) {
                       fontWeight: 600,
                     }}
                   >
-                    #{word}
+                    {word}
                     <button
                       type="button"
                       onClick={() => handleRemoveMutedWord(word)}
-                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: 'var(--deep-plum)' }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--deep-plum)',
+                        padding: 0,
+                      }}
                     >
                       <X size={12} />
                     </button>
@@ -174,10 +189,10 @@ export function SafetyModerationPage({ onNavigate }) {
               </div>
             </div>
 
-            {/* Save Button */}
+            {/* Submit */}
             <div className="flex-row justify-end" style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
               <Button type="submit" variant="primary" icon={Save}>
-                Save Safety Settings
+                {t('saveSafetyPreferences', 'Save Safety & Moderation Preferences')}
               </Button>
             </div>
           </form>

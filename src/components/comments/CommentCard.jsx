@@ -132,6 +132,7 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate })
     ? (comment.originalContent || comment.content)
     : (dynamicCommentTranslation || comment.translatedContent || comment.content || comment.originalContent);
 
+
   const isTranslated = !manualToggle && Boolean(
     (dynamicCommentTranslation && dynamicCommentTranslation !== (comment.originalContent || comment.content)) ||
     (comment.originalLanguage && comment.displayLanguage && comment.originalLanguage.toLowerCase() !== comment.displayLanguage.toLowerCase()) ||

@@ -81,14 +81,39 @@ export function mapPost(post) {
     reactionsMap = { RELATE: post.likeCount || 0 };
   }
 
+  const postId = post.id || post.postId;
+  let detectedSubtopic = post.subtopic || post.topic || post.category;
+
+  if (postId) {
+    try {
+      const map = JSON.parse(localStorage.getItem('mka_subtopic_map') || '{}');
+      if (map[String(postId)]) {
+        detectedSubtopic = map[String(postId)];
+      }
+    } catch (e) {}
+  }
+
+  const rawContent = post.content || post.originalContent || '';
+  const hashtagMatch = rawContent.match(/#([A-Z0-9_]+)/i);
+  if (hashtagMatch && hashtagMatch[1]) {
+    const matchStr = hashtagMatch[1].toUpperCase();
+    if (matchStr !== 'GENERAL' && matchStr !== 'TEXT' && matchStr !== 'IMAGE') {
+      detectedSubtopic = matchStr;
+    }
+  }
+
+  const finalTopic = (detectedSubtopic || post.topic || 'GENERAL').toUpperCase();
+
   return {
     ...post,
-    id: post.id || post.postId || `post_${Date.now()}`,
+    id: postId || `post_${Date.now()}`,
     userId: post.userId || post.authorId || post.user?.id || null,
     title: post.translatedTitle || post.title || '',
     originalTitle: post.title || '',
-    topic: post.topic || post.category || 'General',
+    topic: finalTopic,
+    subtopic: finalTopic,
     postType: post.postType || 'Thought',
+
     originalContent: post.originalContent || post.content || '',
     translatedContent: post.translatedContent || null,
     content: post.content || post.originalContent || '',
@@ -100,6 +125,7 @@ export function mapPost(post) {
     status: post.status || 'PUBLISHED',
     createdAt: post.createdAt || new Date().toISOString(),
   };
+
 }
 
 export function mapComment(comment) {

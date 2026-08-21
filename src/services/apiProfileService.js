@@ -1,5 +1,6 @@
 import { apiClient } from './apiClient.js';
 import { mockAuthService } from './mockAuthService.js';
+import { isTopicName } from '../utils/topicUtils.js';
 
 export const apiProfileService = {
   // GET /api/profile/me
@@ -18,23 +19,20 @@ export const apiProfileService = {
       if (stored) {
         try { return { success: true, data: JSON.parse(stored) }; } catch (e) {}
       }
-      return { success: true, data: null };
+      return { success: true, data: u };
     }
 
     try {
       const response = await apiClient.get('/api/profile/me');
       return response.data;
     } catch (err) {
-      const uStr = localStorage.getItem('auth_user');
-      if (uStr) {
-        try {
-          const u = JSON.parse(uStr);
-          const stored = u?.id ? (localStorage.getItem(`user_profile_${u.id}`) || localStorage.getItem('user_profile')) : localStorage.getItem('user_profile');
-          if (stored) return { success: true, data: JSON.parse(stored) };
-        } catch (e) {}
+      if (err.response?.status === 401) throw err;
+      const u = mockAuthService.getCurrentUser();
+      const stored = u?.id ? (localStorage.getItem(`user_profile_${u.id}`) || localStorage.getItem('user_profile')) : localStorage.getItem('user_profile');
+      if (stored) {
+        try { return { success: true, data: JSON.parse(stored) }; } catch (e) {}
       }
-      if (err.response?.data) throw err.response.data;
-      throw err;
+      return { success: true, data: u };
     }
   },
 

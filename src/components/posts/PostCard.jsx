@@ -19,7 +19,7 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
   const { reactToPost, toggleSavePost, savedPostIds, deletePost } = usePosts();
   const { commentsByPost, createComment, fetchComments } = useComments();
   const { currentUser } = useAuth();
-  const { blockUser, muteUser } = useReports();
+  const { blockUser, muteUser, hidePost, hiddenPosts = [] } = useReports();
   const { currentLanguage, translateText, translateTextAsync, t } = useLanguage();
 
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -27,19 +27,48 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
   const [deleting, setDeleting] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [manualToggle, setManualToggle] = useState(false);
-  const [showInlineComments, setShowInlineComments] = useState(false);
+  const [showInlineComments, setShowInlineComments] = useState(true);
   const [isSpoilerRevealed, setIsSpoilerRevealed] = useState(false);
 
-  if (hidden) {
-    return (
-      <div className="mka-card" style={{ padding: '10px 14px', background: '#F5F2F1', textAlign: 'center', borderRadius: '12px' }}>
-        <span style={{ fontSize: '12px', color: '#8C8385' }}>Thought hidden.</span>
-      </div>
-    );
+  useEffect(() => {
+    if (post?.id && fetchComments) {
+      fetchComments(post.id);
+    }
+  }, [post?.id, fetchComments]);
+
+  const isPostHiddenInContext = Boolean(
+    hiddenPosts && (hiddenPosts.includes(String(post?.id)) || hiddenPosts.includes(Number(post?.id)))
+  );
+
+  if (hidden || isPostHiddenInContext) {
+    return null;
   }
+
 
   const [dynamicTitleTranslation, setDynamicTitleTranslation] = useState(null);
   const [dynamicContentTranslation, setDynamicContentTranslation] = useState(null);
+  const [dynamicTopicTranslation, setDynamicTopicTranslation] = useState(null);
+
+  const rawTopic = post.subtopic || post.topicName || post.topic;
+
+  useEffect(() => {
+    let isMounted = true;
+    if (rawTopic && currentLanguage && translateTextAsync) {
+      const topicStr = String(rawTopic).replace(/^#/, '');
+      const dictMatch = t(topicStr) || t(topicStr.toUpperCase());
+      if (dictMatch && dictMatch !== topicStr && dictMatch !== topicStr.toUpperCase()) {
+        if (isMounted) setDynamicTopicTranslation(dictMatch);
+      } else {
+        translateTextAsync(topicStr, currentLanguage)
+          .then((res) => { if (isMounted && res) setDynamicTopicTranslation(res); })
+          .catch(() => { if (isMounted) setDynamicTopicTranslation(null); });
+      }
+    } else {
+      setDynamicTopicTranslation(null);
+    }
+    return () => { isMounted = false; };
+  }, [rawTopic, currentLanguage, t, translateTextAsync]);
+
 
   useEffect(() => {
     let isMounted = true;
@@ -63,7 +92,7 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
     }
 
     return () => { isMounted = false; };
-  }, [currentLanguage, post.title, post.originalTitle, post.originalContent, post.content, post.description]);
+  }, [currentLanguage, post.title, post.originalTitle, post.originalContent, post.content, post.description, translateTextAsync]);
 
   const isSaved = savedPostIds.includes(post.id);
   const isOwner = Boolean(
@@ -171,7 +200,8 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
                   letterSpacing: '0.02em',
                 }}
               >
-                🏷️ {post.topic || post.postType}
+                🏷️ {dynamicTopicTranslation || post.subtopic || post.topicName || post.topic || post.postType}
+
               </span>
             </div>
 
@@ -202,7 +232,13 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
               }
             }}
             onSave={() => toggleSavePost(post.id)}
-            onHide={() => setHidden(true)}
+            onHide={() => {
+              setHidden(true);
+              if (hidePost) {
+                hidePost(post.id);
+              }
+            }}
+
             onMute={() => {
               muteUser(post.username);
               setHidden(true);
@@ -351,6 +387,14 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
           }}
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Chat-style Comments Stream (Oldest at top, Newest at bottom) */}
+          <CommentList
+            postId={post.id}
+            postAuthorUsername={post.username}
+            onNavigate={onNavigate}
+          />
+
+          {/* Comment Composer Input Box AT THE VERY BOTTOM */}
           <CommentComposer
             postId={post.id}
             postAuthorUsername={post.username}
@@ -360,11 +404,7 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
             onNavigate={onNavigate}
             placeholder="Write a comment..."
           />
-          <CommentList
-            postId={post.id}
-            postAuthorUsername={post.username}
-            onNavigate={onNavigate}
-          />
+
         </div>
       )}
 

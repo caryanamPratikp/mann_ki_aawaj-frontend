@@ -129,6 +129,51 @@ export const apiTranslationService = {
       return text;
     }
 
+    // 1. Separate leading @username handles from main text body
+    let remainingText = text.trim();
+    const leadingHandles = [];
+    while (true) {
+      const match = remainingText.match(/^(@[a-zA-Z0-9_-]+)\s*/);
+      if (match) {
+        const handle = match[1];
+        if (!leadingHandles.includes(handle)) {
+          leadingHandles.push(handle);
+        }
+        remainingText = remainingText.substring(match[0].length);
+      } else {
+        break;
+      }
+    }
+
+    // If text consists ONLY of @username handles, return handles directly
+    if (!remainingText.trim()) {
+      return text;
+    }
+
+    const bodyToTranslate = remainingText.trim();
+
+    // 2. Mask any inline handles (@username) using safe handle tokens like @MKAHDL0
+    const inlineHandles = [];
+    const maskedBody = bodyToTranslate.replace(/@([a-zA-Z0-9_-]+)/g, (match) => {
+      const token = `@MKAHDL${inlineHandles.length}`;
+      inlineHandles.push({ token, original: match });
+      return token;
+    });
+
+    const reattachHandles = (translatedBody) => {
+      if (!translatedBody) return text;
+      let clean = translatedBody.trim();
+      for (const h of inlineHandles) {
+        const regex = new RegExp(h.token.replace('@', '@\\s*'), 'gi');
+        clean = clean.replace(regex, h.original);
+      }
+      if (leadingHandles.length > 0) {
+        return `${leadingHandles.join(' ')} ${clean}`;
+      }
+      return clean;
+    };
+
+
     const cacheKey = `${srcCode || 'auto'}_${tgtCode}_${text.trim()}`;
     if (translationCache.has(cacheKey)) {
       return translationCache.get(cacheKey);
@@ -137,7 +182,7 @@ export const apiTranslationService = {
     // 1. Attempt primary backend translation endpoint (OpenAI / Spring Boot service) with silent error handling
     try {
       const response = await translationClient.post('/api/v1/translation/translate', {
-        text: text.trim(),
+        text: maskedBody,
         sourceLanguage: 'auto',
         targetLanguage: tgtCode,
       }).catch(() => null);
@@ -145,10 +190,10 @@ export const apiTranslationService = {
       if (
         response?.data &&
         response.data.translatedText &&
-        response.data.translatedText !== text.trim() &&
+        response.data.translatedText !== maskedBody &&
         response.data.engine !== 'fallback'
       ) {
-        const result = response.data.translatedText;
+        const result = reattachHandles(response.data.translatedText);
         translationCache.set(cacheKey, result);
         return result;
       }
@@ -158,7 +203,7 @@ export const apiTranslationService = {
 
     // 2. Secondary Fallback: Free Google Translate GTX service
     try {
-      const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${tgtCode.toLowerCase()}&dt=t&q=${encodeURIComponent(text.trim())}`;
+      const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${tgtCode.toLowerCase()}&dt=t&q=${encodeURIComponent(maskedBody)}`;
       const gtxResponse = await fetch(gtxUrl).catch(() => null);
       if (gtxResponse && gtxResponse.ok) {
         const gtxData = await gtxResponse.json().catch(() => null);
@@ -169,7 +214,7 @@ export const apiTranslationService = {
             .join('');
 
           if (translatedParts && translatedParts.trim()) {
-            const finalResult = translatedParts.trim();
+            const finalResult = reattachHandles(translatedParts.trim());
             translationCache.set(cacheKey, finalResult);
             return finalResult;
           }
@@ -178,6 +223,7 @@ export const apiTranslationService = {
     } catch (fallbackErr) {
       // Handle fallback error silently
     }
+
 
     return text;
   },

@@ -26,6 +26,9 @@ export function NotificationProvider({ children }) {
     return { chatMessages: true, postLikes: true, comments: true, systemAlerts: true, soundAlerts: true };
   }, [currentUser]);
 
+  const seenNotifIdsRef = React.useRef(new Set());
+  const isInitialLoadRef = React.useRef(true);
+
   const refreshNotifications = useCallback(async () => {
     if (!currentUser) { setNotifications([]); return; }
     try {
@@ -39,18 +42,53 @@ export function NotificationProvider({ children }) {
         return !type.includes('CHAT') && !type.includes('MESSAGE');
       });
 
+      if (isInitialLoadRef.current) {
+        // On initial page load/refresh, seed all notification IDs into seen set WITHOUT popping toasts!
+        postAndSystemNotifs.forEach((n) => seenNotifIdsRef.current.add(String(n.id)));
+        isInitialLoadRef.current = false;
+      } else {
+        // Subsequent polling: trigger toast ONLY once for new unread notifications that arrive after page load
+        postAndSystemNotifs.forEach((n) => {
+          const nId = String(n.id);
+          if (!seenNotifIdsRef.current.has(nId) && !n.isRead) {
+            seenNotifIdsRef.current.add(nId);
+
+            const type = (n.type || '').toUpperCase();
+            const sender = n.actorUsername || n.senderUsername || 'Someone';
+            const cleanSender = sender.startsWith('@') ? sender : `@${sender}`;
+
+            let toastMsg = '';
+            if (type.includes('REPLY')) {
+              toastMsg = `Your comment got a reply from ${cleanSender}`;
+            } else if (type.includes('COMMENT')) {
+              toastMsg = `Your post got a comment from ${cleanSender}`;
+            } else if (type.includes('LIKE') || type.includes('RELATE') || type.includes('REACTION')) {
+              toastMsg = `Your post got a reaction from ${cleanSender}`;
+            } else {
+              toastMsg = n.message || n.title || 'You have a new notification';
+            }
+
+            // Trigger UI Toast notification WITHOUT sound (silent)
+            addToast(toastMsg, 'info', 4000);
+          } else {
+            seenNotifIdsRef.current.add(nId);
+          }
+        });
+      }
+
       setNotifications(postAndSystemNotifs);
     } catch (err) {
       setNotifications([]);
     }
-  }, [currentUser]);
+  }, [currentUser, addToast]);
 
-  // 10-Second Auto-Refresh Timer
+
+  // 4-Second Auto-Refresh Timer
   useEffect(() => {
     refreshNotifications();
     const timer = setInterval(() => {
       refreshNotifications();
-    }, 10000);
+    }, 4000);
     return () => clearInterval(timer);
   }, [refreshNotifications]);
 

@@ -27,34 +27,50 @@ export function HelpSupportPage({ onNavigate }) {
     { titleKey: 'directMessaging', defaultTitle: 'Direct Messaging', icon: MessageSquare, descKey: 'directMessagingDesc', defaultDesc: 'Message requests, blocking, safety controls.' },
   ];
 
-  const faqs = [
+  const rawFaqs = [
     {
-      q: 'How does anonymity work on Man Ki Aavaj?',
-      a: 'Your real full name, phone number, and email address are strictly private and never displayed publicly. Only your selected anonymous handle (e.g. @quietparagraph) is visible to other platform members.',
+      qKey: 'faqQ1',
+      defaultQ: 'How does anonymity work on Man Ki Aavaj?',
+      aKey: 'faqA1',
+      defaultA: 'Your real full name, phone number, and email address are strictly private and never displayed publicly. Only your selected anonymous handle is visible to other platform members.',
     },
     {
-      q: 'Can anyone see my real email or phone number?',
-      a: 'No. Your contact details are shielded behind secure end-to-end user storage. Other users cannot see your identity, email, or mobile number under any circumstances.',
+      qKey: 'faqQ2',
+      defaultQ: 'Can anyone see my real email or phone number?',
+      aKey: 'faqA2',
+      defaultA: 'No. Your contact details are shielded behind secure storage. Other users cannot see your identity, email, or mobile number under any circumstances.',
     },
     {
-      q: 'How do I delete my published thoughts or posts?',
-      a: 'Go to your "My Posts" section from the left sidebar or click the three dots (...) menu on your post card, then click "Delete Post". The post is permanently hard-deleted instantly from the feed and database.',
+      qKey: 'faqQ3',
+      defaultQ: 'How do I delete my published thoughts or posts?',
+      aKey: 'faqA3',
+      defaultA: 'Go to your "My Thoughts" section from the left sidebar or click the menu on your post card, then click "Delete Post". The post is permanently deleted.',
     },
     {
-      q: 'How does the voice-to-text feature work when creating posts or comments?',
-      a: 'Click the microphone icon on any post composer or comment bar. Speak clearly, and our speech recognition API will automatically transcribe your spoken voice into text in real time.',
+      qKey: 'faqQ4',
+      defaultQ: 'How does the voice-to-text feature work when creating posts or comments?',
+      aKey: 'faqA4',
+      defaultA: 'Click the microphone icon on any post composer or comment bar. Speak clearly, and our speech recognition API will automatically transcribe your spoken voice into text in real time.',
     },
     {
-      q: 'What happens if someone sends unwanted direct message requests?',
-      a: 'You can decline any incoming message request with one click, block the sender, or adjust who can send you requests under Settings > Privacy Preferences.',
+      qKey: 'faqQ5',
+      defaultQ: 'What happens if someone sends unwanted direct message requests?',
+      aKey: 'faqA5',
+      defaultA: 'You can decline any incoming message request with one click, block the sender, or adjust who can send you requests under Settings > Privacy Preferences.',
     },
   ];
+
+  const faqs = rawFaqs.map((item) => ({
+    q: t(item.qKey, item.defaultQ),
+    a: t(item.aKey, item.defaultA),
+  }));
 
   const filteredFaqs = faqs.filter(
     (f) =>
       f.q.toLowerCase().includes(searchQuery.toLowerCase()) ||
       f.a.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
 
   const handleTicketSubmit = (e) => {
     e.preventDefault();

@@ -62,34 +62,25 @@ async function batchTranslateUI(targetLang) {
   if (normTarget === 'English') return {};
 
   const entries = Object.entries(englishDict);
-  const CHUNK_SIZE = 15;
+  const CHUNK_SIZE = 10;
   const result = {};
+  const isoCode = getLanguageCode(normTarget);
 
   for (let i = 0; i < entries.length; i += CHUNK_SIZE) {
     const chunk = entries.slice(i, i + CHUNK_SIZE);
-    const keys = chunk.map(([k]) => k);
-    const values = chunk.map(([, v]) => v);
-    const payload = values.join('\n|||MKA_SEP|||\n');
-
-    try {
-      const isoCode = getLanguageCode(normTarget);
-      const translated = await apiTranslationService.translateText(payload, isoCode, 'EN');
-      if (translated) {
-        const parts = translated.split(/\|\|\|MKA_SEP\|\|\|/).map(s => s.trim());
-        keys.forEach((key, idx) => {
-          result[key] = parts[idx] || englishDict[key];
-        });
-      } else {
-        keys.forEach((key) => {
-          result[key] = englishDict[key];
-        });
+    const chunkPromises = chunk.map(async ([key, englishVal]) => {
+      try {
+        const trans = await apiTranslationService.translateText(englishVal, isoCode, 'EN');
+        return [key, trans || englishVal];
+      } catch {
+        return [key, englishVal];
       }
-    } catch (err) {
-      console.warn('[LanguageContext] Chunk UI translation warning:', err?.message);
-      keys.forEach((key) => {
-        result[key] = englishDict[key];
-      });
-    }
+    });
+
+    const resolved = await Promise.all(chunkPromises);
+    resolved.forEach(([k, v]) => {
+      result[k] = v;
+    });
   }
 
   return result;
@@ -108,11 +99,16 @@ export function LanguageProvider({ children }) {
   const [dynamicUI, setDynamicUI] = useState(() => {
     try {
       const cached = localStorage.getItem('mka_dynamic_ui');
+      if (cached && cached.includes('MKA_SEP')) {
+        localStorage.removeItem('mka_dynamic_ui');
+        return {};
+      }
       return cached ? JSON.parse(cached) : {};
     } catch {
       return {};
     }
   });
+
 
   const hasHardcodedDict = useCallback((langCode) => {
     const norm = normalizeLanguage(langCode);
@@ -285,7 +281,10 @@ export function LanguageProvider({ children }) {
     const isoSource = sourceLang ? getLanguageCode(sourceLang) : null;
 
     if (normTarget === 'English' && (!sourceLang || getLanguageCode(sourceLang) === 'EN')) {
-      return text;
+      const hasNonEnglishScript = /[\u0900-\u0D7F\u0600-\u06FF]/.test(text);
+      if (!hasNonEnglishScript) {
+        return text;
+      }
     }
 
     const cacheKey = `${isoSource || 'AUTO'}_${isoTarget}_${text.trim()}`;

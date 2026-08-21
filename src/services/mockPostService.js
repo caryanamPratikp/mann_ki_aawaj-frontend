@@ -65,7 +65,9 @@ export const mockPostService = {
       avatarInitials: userToUse.avatarInitials || formattedUsername.replace('@', '').slice(0, 2).toUpperCase(),
       postType: postData.postType || 'Thought',
       topic: postData.topic || 'General',
+      subtopic: postData.subtopic || postData.topic || 'General',
       language: postData.language || 'English',
+
       title: postData.title || '',
       content: postData.content,
       imageUrl: postData.imageUrl || null,

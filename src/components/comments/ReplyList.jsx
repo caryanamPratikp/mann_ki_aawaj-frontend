@@ -13,8 +13,8 @@ export function ReplyList({
   targetUsername,
   onReplyTrigger
 }) {
-  const [showReplies, setShowReplies] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(3);
+  const [showReplies, setShowReplies] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(10);
 
   // If no replies and no composer, show nothing
   if ((!replies || replies.length === 0) && !showReplyComposer) return null;

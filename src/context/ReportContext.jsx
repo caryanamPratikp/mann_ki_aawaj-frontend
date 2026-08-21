@@ -144,12 +144,53 @@ export function ReportProvider({ children }) {
     }
   };
 
+  const [hiddenPosts, setHiddenPosts] = useState(() => {
+    try {
+      const userKey = currentUser?.id || currentUser?.username || 'guest';
+      const saved = localStorage.getItem(`mka_hidden_posts_${userKey}`);
+      const globalSaved = localStorage.getItem('mka_hidden_posts_global');
+      const parsed1 = saved ? JSON.parse(saved) : [];
+      const parsed2 = globalSaved ? JSON.parse(globalSaved) : [];
+      return [...new Set([...parsed1, ...parsed2])];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      const userKey = currentUser?.id || currentUser?.username || 'guest';
+      const saved = localStorage.getItem(`mka_hidden_posts_${userKey}`);
+      const globalSaved = localStorage.getItem('mka_hidden_posts_global');
+      const parsed1 = saved ? JSON.parse(saved) : [];
+      const parsed2 = globalSaved ? JSON.parse(globalSaved) : [];
+      setHiddenPosts([...new Set([...parsed1, ...parsed2])]);
+    } catch (e) {}
+  }, [currentUser]);
+
+  const hidePost = useCallback((postId) => {
+    if (!postId) return;
+    const strId = String(postId);
+    const numId = Number(postId);
+    setHiddenPosts((prev) => {
+      const next = [...new Set([...prev, strId, numId])];
+      try {
+        const userKey = currentUser?.id || currentUser?.username || 'guest';
+        localStorage.setItem(`mka_hidden_posts_${userKey}`, JSON.stringify(next));
+        localStorage.setItem('mka_hidden_posts_global', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+    addToast('Thought hidden. It will not be shown to you again.', 'info');
+  }, [currentUser, addToast]);
+
   return (
     <ReportContext.Provider value={{
       myReports,
       adminQueue,
       blockedUsers,
       mutedUsers,
+      hiddenPosts,
       refreshReports,
       refreshMutedUsers,
       submitReport,
@@ -157,12 +198,14 @@ export function ReportProvider({ children }) {
       unblockUser,
       muteUser,
       unmuteUser,
+      hidePost,
       performAdminAction
     }}>
       {children}
     </ReportContext.Provider>
   );
 }
+
 
 export function useReports() {
   const context = useContext(ReportContext);

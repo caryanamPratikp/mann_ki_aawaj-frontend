@@ -36,7 +36,7 @@ export const apiPostService = {
         queryParams.topic = params.topic;
       }
 
-      const response = await apiClient.get('/api/posts', { params: queryParams });
+      const response = await apiClient.get('/api/posts', { params: queryParams, timeout: 30000 });
 
       if (response.data && (response.data.data || response.data.content || Array.isArray(response.data))) {
         return response.data;
@@ -87,10 +87,17 @@ export const apiPostService = {
     }
 
     try {
+      const subtopicTag = (postData.topic || postData.subtopic || 'GENERAL').toUpperCase().replace(/[^A-Z0-9_]/g, '');
+      let contentToSubmit = postData.content || '';
+
+      if (subtopicTag !== 'GENERAL' && !contentToSubmit.toUpperCase().includes(`#${subtopicTag}`)) {
+        contentToSubmit = `#${subtopicTag}\n${contentToSubmit}`;
+      }
+
       const payload = {
-        content: postData.content,
+        content: contentToSubmit,
         title: postData.title || '',
-        topic: toBackendTopic(postData.topic),
+        topic: toBackendTopic(subtopicTag),
         type: toBackendPostType(postData.postType || postData.type, Boolean(postData.imageUrl)),
         imageUrl: postData.imageUrl || null,
         movieName: postData.movieName || null,
@@ -98,9 +105,21 @@ export const apiPostService = {
         isSpoiler: Boolean(postData.isSpoiler),
         mood: postData.mood || null,
       };
+
       const response = await apiClient.post('/api/posts', payload);
+      const resData = response.data?.data || response.data || {};
+
+      if (resData.id) {
+        try {
+          const map = JSON.parse(localStorage.getItem('mka_subtopic_map') || '{}');
+          map[String(resData.id)] = subtopicTag;
+          localStorage.setItem('mka_subtopic_map', JSON.stringify(map));
+        } catch (e) {}
+      }
+
       return response.data;
     } catch (err) {
+
       if (err.response?.data) throw err.response.data;
       if (isMockMode()) {
         const currentUser = mockAuthService.getCurrentUser() || JSON.parse(localStorage.getItem('auth_user') || '{}');

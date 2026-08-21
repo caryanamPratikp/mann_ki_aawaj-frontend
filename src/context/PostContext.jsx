@@ -17,7 +17,7 @@ export function PostProvider({ children }) {
 
   const normLang = normalizeLanguage(currentLanguage);
 
-  // TanStack Query: Realtime Posts Feed with 8-second timing & preserved data state
+  // TanStack Query: Realtime Posts Feed with preserved data state & seamless background merge
   const {
     data: posts = [],
     isLoading: loading,
@@ -25,22 +25,48 @@ export function PostProvider({ children }) {
     refetch: refreshPosts,
   } = useQuery({
     queryKey: ['posts', normLang],
-    queryFn: async () => {
+    queryFn: async ({ queryKey }) => {
+      const previousCachedPosts = queryClient.getQueryData(queryKey) || [];
+
       try {
         const response = await apiPostService.getPosts();
-        const rawContent = response.data?.content || response.content || response.data || [];
-        if (Array.isArray(rawContent)) {
-          return rawContent.map(mapPost);
+        const rawContent = response.data?.content || response.content || response.data;
+        
+        if (Array.isArray(rawContent) && rawContent.length > 0) {
+          const freshPosts = rawContent.map(mapPost);
+
+          // Seamless merge: keep existing feed on screen, update modified items & prepend new ones
+          if (Array.isArray(previousCachedPosts) && previousCachedPosts.length > 0) {
+            const freshMap = new Map(freshPosts.map((p) => [String(p.id), p]));
+            const merged = [...freshPosts];
+            for (const oldP of previousCachedPosts) {
+              if (!freshMap.has(String(oldP.id))) {
+                merged.push(oldP);
+              }
+            }
+            return merged;
+          }
+          return freshPosts;
         }
-        return [];
+
+        // If response is empty, preserve previous cached posts so screen never clears!
+        if (Array.isArray(previousCachedPosts) && previousCachedPosts.length > 0) {
+          return previousCachedPosts;
+        }
+
+        return Array.isArray(rawContent) ? rawContent.map(mapPost) : [];
       } catch (err) {
-        console.error('Error fetching posts:', err);
+        console.error('[PostContext] Feed query error, preserving previous feed:', err);
+        if (Array.isArray(previousCachedPosts) && previousCachedPosts.length > 0) {
+          return previousCachedPosts;
+        }
         return [];
       }
     },
     placeholderData: keepPreviousData,
-    staleTime: 5000,
-    refetchInterval: 8000,
+    staleTime: 10000,
+    refetchInterval: 15000,
+    retry: 2,
   });
 
   const createPost = async (postData) => {
@@ -49,6 +75,29 @@ export function PostProvider({ children }) {
       throw new Error(`Posting restricted: ${currentUser.restrictionReason || 'Account restricted.'}`);
     }
 
+    // 0ms Instant Optimistic UI Post Creation
+    const tempId = `temp_post_${Date.now()}`;
+    const optimisticPost = mapPost({
+      id: tempId,
+      title: postData.title || '',
+      originalContent: postData.content,
+      content: postData.content,
+      topic: postData.topic || 'GENERAL',
+      type: postData.postType || 'TEXT',
+      imageUrl: postData.imageUrl || null,
+      username: currentUser?.username || '@me',
+      authorAvatar: currentUser?.avatarInitials || 'AN',
+      status: 'ACTIVE',
+      likeCount: 0,
+      commentCount: 0,
+      createdAt: new Date().toISOString(),
+    });
+
+    queryClient.setQueriesData({ queryKey: ['posts'] }, (old = []) => {
+      if (!Array.isArray(old)) return [optimisticPost];
+      return [optimisticPost, ...old];
+    });
+
     try {
       const response = await apiPostService.createPost(postData);
       const rawPostData = response.data || response;
@@ -56,13 +105,17 @@ export function PostProvider({ children }) {
 
       queryClient.setQueriesData({ queryKey: ['posts'] }, (old = []) => {
         if (!Array.isArray(old)) return [newPost];
-        return [newPost, ...old.filter((p) => p.id !== newPost.id)];
+        return [newPost, ...old.filter((p) => p.id !== tempId && p.id !== newPost.id)];
       });
 
-      await queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
       addToast('Thought published successfully!', 'success');
       return newPost;
     } catch (err) {
+      queryClient.setQueriesData({ queryKey: ['posts'] }, (old = []) => {
+        if (!Array.isArray(old)) return [];
+        return old.filter((p) => p.id !== tempId);
+      });
       const errorMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to publish post to database';
       addToast(errorMsg, 'error');
       throw err;

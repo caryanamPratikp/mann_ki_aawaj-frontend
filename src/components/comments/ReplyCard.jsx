@@ -61,9 +61,26 @@ export function ReplyCard({ reply, postId, commentId, onNavigate, onReplyTrigger
     return () => { isMounted = false; };
   }, [reply, currentLanguage, translateTextAsync]);
 
-  const displayContent = manualToggle
+  const isOwner = Boolean(
+    currentUser && (
+      (currentUser.id && reply.userId && String(currentUser.id) === String(reply.userId)) ||
+      (currentUser.username && reply.username && currentUser.username.toLowerCase() === reply.username.toLowerCase())
+    )
+  );
+
+  let rawDisplay = manualToggle
     ? (reply?.originalContent || reply?.content)
-    : (dynamicReplyTranslation || reply?.translatedContent || reply?.content);
+    : (dynamicReplyTranslation || reply?.translatedContent || reply?.content || reply?.originalContent);
+
+  // Strip duplicate author username if rawDisplay prepended author's own handle
+  const cleanAuthorHandle = reply?.username ? (reply.username.startsWith('@') ? reply.username : `@${reply.username}`) : '';
+  if (cleanAuthorHandle && rawDisplay) {
+    const regex = new RegExp(`^${cleanAuthorHandle.replace('@', '@\\s*')}\\s*`, 'i');
+    rawDisplay = rawDisplay.replace(regex, '');
+  }
+  const displayContent = rawDisplay;
+
+
 
   const isTranslated = !manualToggle && Boolean(
     dynamicReplyTranslation ||
@@ -86,8 +103,6 @@ export function ReplyCard({ reply, postId, commentId, onNavigate, onReplyTrigger
     }
     return list;
   });
-
-  const isOwner = currentUser?.username === reply.username;
 
   const handleUpdate = (e) => {
     e.preventDefault();

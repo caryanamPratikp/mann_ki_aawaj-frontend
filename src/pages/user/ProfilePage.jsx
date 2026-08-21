@@ -9,7 +9,7 @@ import { PostCard } from '../../components/posts/PostCard.jsx';
 import { Button } from '../../components/common/Button.jsx';
 import { Modal } from '../../components/common/Modal.jsx';
 import { useReports } from '../../context/ReportContext.jsx';
-import { Edit3, Trash2, Calendar, Globe, Heart, AlertTriangle, Check, Sparkles, Volume2, VolumeX, ShieldOff, Clock, Flame, MessageSquare, RefreshCw, Info } from 'lucide-react';
+import { Edit3, Trash2, Calendar, Globe, Heart, AlertTriangle, Check, Sparkles, Volume2, VolumeX, ShieldOff, Clock, Flame, MessageSquare, RefreshCw, Info, Mic, MicOff, Loader2, Upload, X } from 'lucide-react';
 import { formatDate } from '../../utils/formatDate.js';
 import { generateUsernameSuggestions } from '../../utils/generateUsername.js';
 import { validateUsernameString, getSuggestedNumberVariants } from '../../utils/usernameValidation.js';
@@ -21,7 +21,12 @@ import { editProfileSchema } from '../../utils/validationSchemas.js';
 import { TopicBackgroundRotator } from '../../components/topics/TopicBackgroundRotator.jsx';
 import { AnimatedTopicActivityPanel } from '../../components/topics/AnimatedTopicActivityPanel.jsx';
 import { AvatarStudioModal } from '../../components/avatar/AvatarStudioModal.jsx';
-import { SYSTEM_TOPICS } from '../../utils/topicUtils.js';
+import { AvatarThumbnail } from '../../components/avatar/AvatarThumbnail.jsx';
+import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
+import { useSpokenLanguage } from '../../hooks/useSpokenLanguage.js';
+import { SYSTEM_TOPICS, isTopicName } from '../../utils/topicUtils.js';
+
+
 
 const AVATAR_COLORS = [
   { id: 'plum', hex: '#6F405F', name: 'Deep Plum' },
@@ -34,14 +39,27 @@ const AVATAR_COLORS = [
 
 export function ProfilePage({ username, onNavigate }) {
   const { currentUser, updateProfile, deleteAccount, logout } = useAuth();
-  const { posts } = usePosts();
+  const { posts, createPost } = usePosts();
   const { addToast } = useToast();
   const { mutedUsers = [], unmuteUser } = useReports();
   const { t } = useLanguage();
+  const [spokenLanguage] = useSpokenLanguage();
 
   const [activeTab, setActiveTab] = useState('Posts');
   const [profileData, setProfileData] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+
+  // Topic Create Post Modal State
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [postTitle, setPostTitle] = useState('');
+  const [postContent, setPostContent] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [submittingPost, setSubmittingPost] = useState(false);
+
+  const { isRecording, isTranscribing, bindMicProps } = useVoiceRecorder((transcribedText) => {
+    setPostContent((prev) => (prev ? `${prev} ${transcribedText}` : transcribedText));
+  }, spokenLanguage);
+
 
   // Edit Profile Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -64,8 +82,15 @@ export function ProfilePage({ username, onNavigate }) {
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
 
   const targetUsername = username || currentUser?.username?.replace(/^@/, '');
-  const isSelf = !username || username.toLowerCase() === currentUser?.username?.toLowerCase().replace(/^@/, '');
-  const isTopicRoute = Boolean(targetUsername) && SYSTEM_TOPICS.some((t) => t.toLowerCase() === targetUsername.toLowerCase());
+  const cleanTargetUname = targetUsername?.toLowerCase().replace(/^@/, '');
+  const cleanCurrentUserUname = currentUser?.username?.toLowerCase().replace(/^@/, '');
+
+  // Route is self if username is omitted or matches the current user's profile handle
+  const isSelf = !username || (Boolean(cleanTargetUname) && Boolean(cleanCurrentUserUname) && cleanTargetUname === cleanCurrentUserUname);
+  // Route is a topic route ONLY if it is not self AND matches a valid topic/subtopic name
+  const isTopicRoute = !isSelf && Boolean(username) && isTopicName(username);
+
+
 
   useEffect(() => {
     let isMounted = true;
@@ -98,8 +123,8 @@ export function ProfilePage({ username, onNavigate }) {
             setEditBio(currentUser?.bio || '');
           }
         } else if (targetUsername) {
-          const isTopicRoute = SYSTEM_TOPICS.some((t) => t.toLowerCase() === targetUsername.toLowerCase());
-          if (isTopicRoute) {
+          const isTopicChannel = isTopicName(targetUsername);
+          if (isTopicChannel) {
             if (isMounted) {
               setProfileData({
                 username: `#${targetUsername.toUpperCase()}`,
@@ -110,6 +135,7 @@ export function ProfilePage({ username, onNavigate }) {
               });
             }
           } else {
+
             const res = await apiProfileService.getPublicProfile(targetUsername).catch(() => null);
             if (isMounted && res?.data) {
               setProfileData(res.data);
@@ -135,25 +161,36 @@ export function ProfilePage({ username, onNavigate }) {
   }, [username, currentUser, isSelf, targetUsername]);
 
   const cleanProfileUname = profileData?.username?.toLowerCase().replace(/^@/, '');
-  const cleanTargetUname = targetUsername?.toLowerCase().replace(/^@/, '');
 
   // Filter posts matching topic name or user username
   const userPosts = posts.filter((p) => {
+
     if (p.status !== 'PUBLISHED' && p.status !== 'ACTIVE') return false;
+
+    // If viewing a Topic Channel Route (e.g. /profile/shayari, /profile/love, /profile/cricket)
+    if (isTopicRoute) {
+      const pTopic = (p.topic || '').toLowerCase();
+      const pSubtopic = (p.subtopic || '').toLowerCase();
+      return Boolean(cleanTargetUname && (pTopic === cleanTargetUname || pSubtopic === cleanTargetUname));
+    }
+
+    // If viewing a User Profile Page (e.g. /profile/purushottam)
     if (isSelf && currentUser?.id && (p.userId === currentUser.id || String(p.userId) === String(currentUser.id))) {
       return true;
     }
     const pAuthor = (p.username || p.authorUsername || p.handle || '').toLowerCase().replace(/^@/, '');
     const pTopic = (p.topic || '').toLowerCase();
+    const pSubtopic = (p.subtopic || '').toLowerCase();
 
-    if (cleanTargetUname && (pAuthor === cleanTargetUname || pTopic === cleanTargetUname)) {
+    if (cleanTargetUname && (pAuthor === cleanTargetUname || pTopic === cleanTargetUname || pSubtopic === cleanTargetUname)) {
       return true;
     }
-    if (cleanProfileUname && (pAuthor === cleanProfileUname || pTopic === cleanProfileUname)) {
+    if (cleanProfileUname && (pAuthor === cleanProfileUname || pTopic === cleanProfileUname || pSubtopic === cleanProfileUname)) {
       return true;
     }
     return false;
   });
+
 
   const lastPostTime = userPosts.length > 0 && userPosts[0].createdAt
     ? formatDate(userPosts[0].createdAt)
@@ -329,10 +366,11 @@ export function ProfilePage({ username, onNavigate }) {
                 <Button
                   variant="primary"
                   size="md"
-                  onClick={() => onNavigate(`/home?create=true&topic=${encodeURIComponent((targetUsername || 'GENERAL').toUpperCase())}`)}
+                  onClick={() => setIsCreateModalOpen(true)}
                 >
                   {t('addYourThought', '+ Add Your Thought')}
                 </Button>
+
               ) : (
                 isSelf ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -643,6 +681,137 @@ export function ProfilePage({ username, onNavigate }) {
           }}
         />
       )}
+
+      {/* ── CREATE THOUGHT ON TOPIC MODAL OVERLAY ── */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title={`Create Anonymous Thought in #${(targetUsername || 'GENERAL').toUpperCase()}`}
+      >
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!postContent.trim() || submittingPost) return;
+            setSubmittingPost(true);
+            try {
+              const targetTopic = (targetUsername || 'GENERAL').toUpperCase();
+              await createPost({
+                title: postTitle.trim(),
+                content: postContent.trim(),
+                topic: targetTopic,
+                imageUrl,
+              });
+
+              addToast(`Thought published under #${targetTopic}!`, 'success');
+              setPostTitle('');
+              setPostContent('');
+              setImageUrl('');
+              setIsCreateModalOpen(false);
+            } catch (err) {
+              console.error(err);
+              addToast(err?.message || 'Failed to publish thought.', 'error');
+            } finally {
+              setSubmittingPost(false);
+            }
+          }}
+          style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
+        >
+          <div style={{ borderBottom: '1px solid #E1DCDB', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AvatarThumbnail
+              username={currentUser?.username || '@writer'}
+              initials={currentUser?.avatarInitials || 'AN'}
+              config={currentUser?.avatarConfig}
+              size={32}
+            />
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#2D1D15' }}>
+              Posting as <span style={{ color: '#6F405F' }}>{currentUser?.username || '@anonymous'}</span> under <span style={{ color: '#D96C3D', fontWeight: 800 }}>#{(targetUsername || 'GENERAL').toUpperCase()}</span>
+            </span>
+          </div>
+
+          <input
+            type="text"
+            placeholder={t('titlePlaceholder', 'Title / Headline (optional)...')}
+            value={postTitle}
+            onChange={(e) => setPostTitle(e.target.value)}
+            style={{
+              padding: '10px 14px',
+              borderRadius: '10px',
+              border: '1px solid #D4CECC',
+              fontSize: '14px',
+              outline: 'none',
+            }}
+          />
+
+          <div style={{ position: 'relative', width: '100%' }}>
+            <textarea
+              rows={4}
+              placeholder={t('shareThoughtsFreely', "What's on your mind? Share your unspoken thoughts anonymously...")}
+              value={postContent}
+              onChange={(e) => setPostContent(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 42px 12px 14px',
+                borderRadius: '12px',
+                border: '1px solid #D4CECC',
+                fontSize: '14px',
+                outline: 'none',
+                resize: 'vertical',
+              }}
+            />
+
+            <button
+              type="button"
+              {...bindMicProps}
+              title={isRecording ? 'Release mic to transcribe' : 'Press & Hold mic to record voice'}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                bottom: '16px',
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                backgroundColor: isRecording ? '#B33A3A' : 'rgba(111,64,95,0.12)',
+                color: isRecording ? '#FFFFFF' : '#6F405F',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {isTranscribing ? <Loader2 size={16} className="spin-animation" /> : isRecording ? <MicOff size={16} /> : <Mic size={16} />}
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(false)}
+              style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #D4CECC', background: '#FFF', fontSize: '13px' }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submittingPost || !postContent.trim()}
+              style={{
+                padding: '8px 20px',
+                borderRadius: '8px',
+                border: 'none',
+                background: 'var(--deep-plum)',
+                color: '#FFF',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              {submittingPost ? t('publishing', 'Publishing...') : t('publishThought', 'Publish Thought')}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </UserLayout>
   );
 }
+
