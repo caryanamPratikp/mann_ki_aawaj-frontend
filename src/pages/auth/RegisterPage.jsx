@@ -8,6 +8,7 @@ import {
   Eye, EyeOff, CheckCircle2,
   Mic2, ArrowLeft, Check, KeyRound, Mail
 } from 'lucide-react';
+import { validateStandardPassword, getPasswordStrengthChecks } from '../../utils/passwordValidation.js';
 
 /* ─── Palette ──────────────────────────────────────────── */
 const C = {
@@ -92,10 +93,11 @@ export function RegisterPage({ onNavigate }) {
       return;
     }
 
-    // Validate password: 8-30 chars
-    if (password.length < 8 || password.length > 30) {
-      setFieldErrors(p => ({ ...p, password: 'Password must be between 8 and 30 characters' }));
-      addToast('Password must be between 8 and 30 characters', 'error');
+    // Validate standard password rules (OWASP)
+    const pwError = validateStandardPassword(password);
+    if (pwError) {
+      setFieldErrors(p => ({ ...p, password: pwError }));
+      addToast(pwError, 'error');
       return;
     }
 
@@ -318,6 +320,30 @@ export function RegisterPage({ onNavigate }) {
                 {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
+
+            {/* Realtime Password Strength Requirements Checklist */}
+            {password && (
+              <div style={{ marginTop: '6px', padding: '8px 12px', borderRadius: '8px', background: 'rgba(111,64,95,0.04)', border: '1px solid #E1DCDB', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: C.eclipse, marginBottom: '2px' }}>
+                  Password Requirements:
+                </span>
+                {[
+                  { key: 'length', text: 'At least 8 characters' },
+                  { key: 'hasUpper', text: 'At least 1 uppercase letter (A-Z)' },
+                  { key: 'hasLower', text: 'At least 1 lowercase letter (a-z)' },
+                  { key: 'hasNumber', text: 'At least 1 number (0-9)' },
+                  { key: 'hasSpecial', text: 'At least 1 special character (@, $, #, !, %, &...)' },
+                ].map((req) => {
+                  const passed = getPasswordStrengthChecks(password)[req.key];
+                  return (
+                    <div key={req.key} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: passed ? '#2E7D52' : '#8C8385', fontWeight: passed ? 700 : 500 }}>
+                      <Check size={12} color={passed ? '#2E7D52' : '#D4CECC'} strokeWidth={3} />
+                      <span>{req.text}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Divider */}

@@ -16,8 +16,21 @@ export const registerSchema = z.object({
   password: z
     .string()
     .min(8, 'Password must be at least 8 characters')
-    .max(30, 'Password must not exceed 30 characters'),
+    .max(64, 'Password must not exceed 64 characters')
+    .regex(/[A-Z]/, 'Password must contain at least 1 uppercase letter (A-Z)')
+    .regex(/[a-z]/, 'Password must contain at least 1 lowercase letter (a-z)')
+    .regex(/[0-9]/, 'Password must contain at least 1 number (0-9)')
+    .regex(/[@$!%*?&#\-_.]/, 'Password must contain at least 1 special character (@, $, !, %, *, ?, &, #, -, _, .)'),
 });
+
+export const passwordSchema = z
+  .string()
+  .min(8, 'Password must be at least 8 characters')
+  .max(64, 'Password must not exceed 64 characters')
+  .regex(/[A-Z]/, 'Password must contain at least 1 uppercase letter (A-Z)')
+  .regex(/[a-z]/, 'Password must contain at least 1 lowercase letter (a-z)')
+  .regex(/[0-9]/, 'Password must contain at least 1 number (0-9)')
+  .regex(/[@$!%*?&#\-_.]/, 'Password must contain at least 1 special character (@, $, !, %, *, ?, &, #, -, _, .)');
 
 export const loginSchema = z.object({
   email: z

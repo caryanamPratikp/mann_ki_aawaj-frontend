@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '../../components/layout/AuthLayout.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { authService } from '../../services/authService.js';
-import { ArrowLeft, KeyRound, Mail, Smartphone, Lock, Eye, EyeOff, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, KeyRound, Mail, Smartphone, Lock, Eye, EyeOff, AlertCircle, RefreshCw, CheckCircle2, Check } from 'lucide-react';
+import { validateStandardPassword, getPasswordStrengthChecks } from '../../utils/passwordValidation.js';
 
 export function ForgotPasswordPage({ onNavigate }) {
   const { addToast } = useToast();
@@ -115,8 +116,11 @@ export function ForgotPasswordPage({ onNavigate }) {
     e.preventDefault();
     setErrorMsg('');
 
-    if (newPassword.length < 8) {
-      setErrorMsg('New password must be at least 8 characters long.');
+    // Validate standard password strength (OWASP)
+    const pwError = validateStandardPassword(newPassword);
+    if (pwError) {
+      setErrorMsg(pwError);
+      addToast(pwError, 'error');
       return;
     }
 
@@ -380,6 +384,30 @@ export function ForgotPasswordPage({ onNavigate }) {
                 </button>
               </div>
             </div>
+
+            {/* Realtime Password Strength Requirements Checklist */}
+            {newPassword && (
+              <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(111,64,95,0.04)', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--eclipse)', marginBottom: '2px' }}>
+                  Password Requirements:
+                </span>
+                {[
+                  { key: 'length', text: 'At least 8 characters' },
+                  { key: 'hasUpper', text: 'At least 1 uppercase letter (A-Z)' },
+                  { key: 'hasLower', text: 'At least 1 lowercase letter (a-z)' },
+                  { key: 'hasNumber', text: 'At least 1 number (0-9)' },
+                  { key: 'hasSpecial', text: 'At least 1 special character (@, $, #, !, %, &...)' },
+                ].map((req) => {
+                  const passed = getPasswordStrengthChecks(newPassword)[req.key];
+                  return (
+                    <div key={req.key} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: passed ? '#2E7D52' : '#8C8385', fontWeight: passed ? 700 : 500 }}>
+                      <Check size={12} color={passed ? '#2E7D52' : '#D4CECC'} strokeWidth={3} />
+                      <span>{req.text}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Confirm Password */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>

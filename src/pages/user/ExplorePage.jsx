@@ -21,32 +21,48 @@ export function ExplorePage({ onNavigate }) {
   const [activeCommentsPost, setActiveCommentsPost] = useState(null);
 
   const TOPIC_PRESETS = [
-    { name: 'BOLLYWOOD', category: 'Entertainment', categoryKey: 'ENTERTAINMENT_CAT', isTrending: true, isNew: false, defaultTime: '2mins ago' },
-    { name: 'CRICKET', category: 'Sports', categoryKey: 'SPORTS_CAT', isTrending: true, isNew: true, defaultTime: '5mins ago' },
-    { name: 'TECHNOLOGY', category: 'Innovation', categoryKey: 'INNOVATION_CAT', isTrending: false, isNew: true, defaultTime: '12mins ago' },
-    { name: 'POLITICS', category: 'News', categoryKey: 'NEWS_CAT', isTrending: true, isNew: false, defaultTime: '18mins ago' },
-    { name: 'ENTERTAINMENT', category: 'Media', categoryKey: 'MEDIA_CAT', isTrending: false, isNew: false, defaultTime: '25mins ago' },
-    { name: 'LIFESTYLE', category: 'Personal', categoryKey: 'PERSONAL_CAT', isTrending: false, isNew: true, defaultTime: '35mins ago' },
-    { name: 'SPORTS', category: 'Fitness', categoryKey: 'FITNESS_CAT', isTrending: false, isNew: false, defaultTime: '42mins ago' },
-    { name: 'NEWS', category: 'Current Affairs', categoryKey: 'CURRENT_AFFAIRS_CAT', isTrending: true, isNew: false, defaultTime: '1h ago' },
-    { name: 'GENERAL', category: 'Community', categoryKey: 'COMMUNITY_CAT', isTrending: false, isNew: false, defaultTime: '2h ago' },
+    { name: 'BOLLYWOOD', category: 'Entertainment', categoryKey: 'ENTERTAINMENT_CAT' },
+    { name: 'CRICKET', category: 'Sports', categoryKey: 'SPORTS_CAT' },
+    { name: 'TECHNOLOGY', category: 'Innovation', categoryKey: 'INNOVATION_CAT' },
+    { name: 'POLITICS', category: 'News', categoryKey: 'NEWS_CAT' },
+    { name: 'ENTERTAINMENT', category: 'Media', categoryKey: 'MEDIA_CAT' },
+    { name: 'LIFESTYLE', category: 'Personal', categoryKey: 'PERSONAL_CAT' },
+    { name: 'SPORTS', category: 'Fitness', categoryKey: 'FITNESS_CAT' },
+    { name: 'NEWS', category: 'Current Affairs', categoryKey: 'CURRENT_AFFAIRS_CAT' },
+    { name: 'GENERAL', category: 'Community', categoryKey: 'COMMUNITY_CAT' },
   ];
 
-  // Dynamic calculation of topic statistics from real posts
+  // Dynamic calculation of topic statistics strictly from real posts (No dummy labels!)
   const topicStats = useMemo(() => {
     const statsMap = {};
     TOPIC_PRESETS.forEach(tItem => {
-      statsMap[tItem.name] = { count: 0, lastPostTime: tItem.defaultTime, isNew: tItem.isNew, isTrending: tItem.isTrending };
+      statsMap[tItem.name] = { count: 0, lastPostTime: 'No posts yet', lastPostMs: 0, isNew: false, isTrending: false };
     });
 
     posts.forEach(p => {
-      const topicName = (p.topic || 'GENERAL').toUpperCase();
+      if (!p) return;
+      const topicName = (p.topic || 'GENERAL').toUpperCase().trim();
       if (!statsMap[topicName]) {
-        statsMap[topicName] = { count: 0, lastPostTime: 'Just now', isNew: true, isTrending: false };
+        statsMap[topicName] = { count: 0, lastPostTime: 'No posts yet', lastPostMs: 0, isNew: false, isTrending: false };
       }
-      statsMap[topicName].count += 1;
-      if (p.createdAt) {
-        statsMap[topicName].lastPostTime = formatDate(p.createdAt);
+      const stat = statsMap[topicName];
+      stat.count += 1;
+
+      const createdAtMs = p.createdAt ? new Date(p.createdAt).getTime() : 0;
+      if (createdAtMs > stat.lastPostMs) {
+        stat.lastPostMs = createdAtMs;
+        stat.lastPostTime = formatDate(p.createdAt);
+      }
+    });
+
+    // Only apply NEW or TRENDING badges if real posts exist (> 0)
+    Object.values(statsMap).forEach(stat => {
+      if (stat.count > 0) {
+        stat.isNew = true;
+        stat.isTrending = stat.count >= 2;
+      } else {
+        stat.isNew = false;
+        stat.isTrending = false;
       }
     });
 
@@ -141,17 +157,20 @@ export function ExplorePage({ onNavigate }) {
             </div>
 
             {/* Topic Cards Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(145px, 1fr))', gap: '12px' }}>
               {filteredTopicPresets.map((tItem) => {
-                const stat = topicStats[tItem.name] || { count: 0, lastPostTime: tItem.defaultTime };
+                const stat = topicStats[tItem.name] || { count: 0, lastPostTime: 'No posts yet', isNew: false, isTrending: false };
                 const isSelected = activeTopic === tItem.name;
 
                 return (
                   <div
                     key={tItem.name}
                     onClick={() => {
-                      setActiveTopic(isSelected ? 'All' : tItem.name);
-                      onNavigate(`/profile/${tItem.name.toLowerCase()}`);
+                      const nextTopic = isSelected ? 'All' : tItem.name;
+                      setActiveTopic(nextTopic);
+                      setTimeout(() => {
+                        document.getElementById('explore-posts-section')?.scrollIntoView({ behavior: 'smooth' });
+                      }, 80);
                     }}
                     style={{
                       padding: '16px',
@@ -173,12 +192,12 @@ export function ExplorePage({ onNavigate }) {
                           {t(tItem.categoryKey, tItem.category)}
                         </span>
                         <div style={{ display: 'flex', gap: '4px' }}>
-                          {tItem.isTrending && (
+                          {stat.isTrending && (
                             <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 6px', borderRadius: '8px', background: '#D96C3D', color: '#FFF' }}>
                               {t('trending', 'TRENDING')}
                             </span>
                           )}
-                          {tItem.isNew && (
+                          {stat.isNew && (
                             <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 6px', borderRadius: '8px', background: '#3F7772', color: '#FFF' }}>
                               {t('new', 'NEW')}
                             </span>
@@ -207,7 +226,7 @@ export function ExplorePage({ onNavigate }) {
           </div>
 
           {/* ── SEARCH RESULTS / POST LISTING ── */}
-          <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+          <div id="explore-posts-section" style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', scrollMarginTop: '90px' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--eclipse)', margin: 0 }}>
                 {t('recentThoughts', 'Recent Thoughts')} {activeTopic !== 'All' ? `under #${t(activeTopic, activeTopic)}` : ''} ({displayPosts.length})

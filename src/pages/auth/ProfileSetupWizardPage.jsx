@@ -19,9 +19,11 @@ const AVATAR_COLORS = [
   { id: 'indigo', hex: '#4A3B6F', name: 'Indigo' },
 ];
 
+import { validateUsernameString } from '../../utils/usernameValidation.js';
+
 // Profile Validation Schema
 const profileSchema = z.object({
-  username: z.string().min(3, 'Please select a suggested handle').max(25, 'Username too long'),
+  username: z.string().min(3, 'Please enter or select a valid handle').max(30, 'Username too long'),
   bio: z.string().min(5, 'Bio must be at least 5 characters').max(250, 'Bio cannot exceed 250 characters'),
   avatar: z.string().optional(),
 });
@@ -39,6 +41,7 @@ export function ProfileSetupWizardPage({ onNavigate }) {
   const [suggestions, setSuggestions] = useState([]);
   const [spinning, setSpinning] = useState(false);
   const [bio, setBio] = useState('');
+  const [selectedTopics, setSelectedTopics] = useState(['GENERAL']);
   const [preferredLanguage, setPreferredLanguage] = useState('EN');
   const [submitting, setSubmitting] = useState(false);
 
@@ -77,19 +80,21 @@ export function ProfileSetupWizardPage({ onNavigate }) {
 
   // Step 2 -> Step 3
   const handleNextStep2 = () => {
-    if (!username) {
-      addToast('Please select one of the suggested handles.', 'error');
-      setErrors({ username: 'Please select a handle' });
+    if (!username || !username.trim()) {
+      addToast('Please enter or select an anonymous handle.', 'error');
+      setErrors({ username: 'Please enter or select a handle' });
       return;
     }
-    const cleanUname = username.startsWith('@') ? username.slice(1) : username;
-    const result = profileSchema.pick({ username: true }).safeParse({ username: cleanUname });
-    if (!result.success) {
-      const fieldError = result.error.errors[0]?.message;
-      setErrors({ username: fieldError });
-      addToast(fieldError, 'error');
+    const cleanUname = username.trim().startsWith('@') ? username.trim().slice(1) : username.trim();
+
+    // Anonymity validation against real names & user's own full name
+    const validationError = validateUsernameString(cleanUname, currentUser?.fullName);
+    if (validationError) {
+      setErrors({ username: validationError });
+      addToast(validationError, 'error');
       return;
     }
+
     setErrors({});
     setStep(3);
   };
@@ -178,7 +183,7 @@ export function ProfileSetupWizardPage({ onNavigate }) {
 
   return (
     <AuthLayout title="Profile Setup" subtitle="Share your thoughts, not your identity">
-      <div className="mka-card" style={{ padding: '28px', width: '100%', maxWidth: '520px', borderRadius: '16px' }}>
+      <div className="mka-card" style={{ padding: '24px 18px', width: '100%', maxWidth: '520px', borderRadius: '20px', boxSizing: 'border-box' }}>
 
         {/* Wizard Stepper Progress Bar */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
@@ -279,39 +284,77 @@ export function ProfileSetupWizardPage({ onNavigate }) {
           </div>
         )}
 
-        {/* ── STEP 2: USERNAME SELECTION (NO INPUT BOX - SUGGESTED ONLY) ── */}
+        {/* ── STEP 2: USERNAME SELECTION & ANONYMOUS HANDLE INPUT ── */}
         {step === 2 && (
           <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div>
               <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--eclipse)', margin: 0 }}>
-                Select Your Anonymous Handle
+                Select or Type Your Anonymous Handle
               </h2>
               <p style={{ fontSize: '13px', color: 'var(--hurricane)', margin: '4px 0 0 0' }}>
-                Select one of the guaranteed unique anonymous handles below to represent you.
+                Type a custom handle below or pick one of the unique suggestions. Real human names are blocked to preserve anonymity.
               </p>
             </div>
 
-            {/* Currently Selected Handle Display Box */}
-            <div
-              style={{
-                padding: '14px 18px',
-                borderRadius: '12px',
-                border: '2px solid var(--deep-plum)',
-                backgroundColor: 'rgba(111,64,95,0.06)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <div>
-                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--hurricane)', textTransform: 'uppercase' }}>
-                  Selected Anonymous Handle
+            {/* Custom Handle Input Field with Realtime Anonymity Validation */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--eclipse)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Custom Anonymous Handle:
+              </label>
+
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <span
+                  style={{
+                    position: 'absolute',
+                    left: '16px',
+                    fontSize: '16px',
+                    fontWeight: 800,
+                    color: errors.username ? '#D93838' : 'var(--deep-plum)',
+                  }}
+                >
+                  @
                 </span>
-                <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--deep-plum)', marginTop: '2px' }}>
-                  {username || 'None selected'}
-                </div>
+                <input
+                  type="text"
+                  value={username ? username.replace(/^@/, '') : ''}
+                  onChange={(e) => {
+                    const rawVal = e.target.value;
+                    const cleanVal = rawVal.trim().replace(/^@/, '');
+                    const formatted = cleanVal ? `@${cleanVal}` : '';
+                    setUsername(formatted);
+                    if (cleanVal) {
+                      const err = validateUsernameString(cleanVal, currentUser?.fullName);
+                      setErrors(err ? { username: err } : {});
+                    } else {
+                      setErrors({});
+                    }
+                  }}
+                  placeholder="e.g. hiddenchapter14, quietvoice99"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px 12px 34px',
+                    borderRadius: '12px',
+                    border: errors.username ? '2px solid #D93838' : '2px solid var(--deep-plum)',
+                    backgroundColor: errors.username ? 'rgba(217, 56, 56, 0.04)' : 'rgba(111, 64, 95, 0.04)',
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    color: 'var(--eclipse)',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    transition: 'all 0.2s ease',
+                  }}
+                />
               </div>
-              <CheckCircle2 size={24} color="var(--deep-plum)" />
+
+              {errors.username ? (
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#D93838', marginTop: '2px' }}>
+                  ⚠️ {errors.username}
+                </span>
+              ) : username ? (
+                <span style={{ fontSize: '11.5px', fontWeight: 600, color: '#2E7D52', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                  <Check size={14} /> Valid anonymous handle. Real names are protected.
+                </span>
+              ) : null}
             </div>
 
             {/* Suggestions Grid */}
@@ -445,41 +488,51 @@ export function ProfileSetupWizardPage({ onNavigate }) {
               )}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--eclipse)' }}>
-                Preferred Topics * (Select 3-4 topics)
-              </label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
+            {/* Preferred Topics Picklist (New Modern Premium Look - Separate from Bio) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--eclipse)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Preferred Topics (Select 2-4 topics)
+                </label>
+                <span style={{ fontSize: '11px', color: '#6F405F', fontWeight: 700 }}>
+                  {selectedTopics.length} Selected
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '2px' }}>
                 {['BOLLYWOOD', 'CRICKET', 'TECHNOLOGY', 'POLITICS', 'LIFESTYLE', 'ENTERTAINMENT', 'SPORTS', 'NEWS', 'GENERAL'].map((topic) => {
-                  const selectedTopics = (bio.match(/\[Topics: (.*?)\]/)?.[1] || '').split(',').map(t => t.trim()).filter(Boolean);
                   const isSelected = selectedTopics.includes(topic);
                   return (
                     <button
                       key={topic}
                       type="button"
                       onClick={() => {
-                        let next;
                         if (isSelected) {
-                          next = selectedTopics.filter(t => t !== topic);
+                          if (selectedTopics.length > 1) {
+                            setSelectedTopics(selectedTopics.filter((t) => t !== topic));
+                          }
                         } else {
-                          next = [...selectedTopics, topic];
+                          setSelectedTopics([...selectedTopics, topic]);
                         }
-                        const cleanBio = bio.replace(/\n?\[Topics: .*?\]/, '');
-                        setBio(next.length > 0 ? `${cleanBio}\n[Topics: ${next.join(', ')}]` : cleanBio);
                       }}
                       style={{
-                        padding: '6px 12px',
+                        padding: '8px 14px',
                         borderRadius: '20px',
                         fontSize: '12px',
-                        fontWeight: 700,
-                        border: isSelected ? '2px solid var(--deep-plum)' : '1px solid var(--border-light)',
-                        background: isSelected ? 'var(--deep-plum-light)' : 'var(--pure-white)',
-                        color: isSelected ? 'var(--deep-plum)' : 'var(--eclipse)',
+                        fontWeight: 800,
+                        border: isSelected ? '1.5px solid #6F405F' : '1.5px solid #E8E2E0',
+                        background: isSelected ? 'linear-gradient(135deg, #6F405F 0%, #3D2334 100%)' : '#FFFFFF',
+                        color: isSelected ? '#FFFFFF' : '#2D1D15',
+                        boxShadow: isSelected ? '0 4px 12px rgba(111,64,95,0.22)' : 'none',
                         cursor: 'pointer',
-                        transition: 'all 0.15s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                       }}
                     >
-                      {topic} {isSelected ? '✓' : '+'}
+                      <span>#{topic}</span>
+                      {isSelected ? <Check size={13} color="#FFFFFF" strokeWidth={3} /> : <span style={{ opacity: 0.5 }}>+</span>}
                     </button>
                   );
                 })}

@@ -36,15 +36,20 @@ export function MyPostsPage({ onNavigate }) {
   const cleanActive = (activeUsername || '').replace(/^@/, '').toLowerCase();
   const currentUserId = currentUser?.id || currentUser?.userId;
 
-  // Filter posts created strictly by current user (by ID or handle match)
+  // Filter posts created strictly by current user (by isOwnPost, ID, or handle match)
   const myPosts = posts.filter((p) => {
     if (!currentUser) return false;
+    if (p.isOwnPost) return true;
     const postUserId = p.userId || p.authorId;
     if (currentUserId && postUserId && String(postUserId) === String(currentUserId)) {
       return true;
     }
-    const postUname = (p.username || '').replace(/^@/, '').toLowerCase();
-    return Boolean(cleanActive && postUname && postUname === cleanActive);
+    const postUname = (p.username || p.authorUsername || p.handle || '').replace(/^@/, '').toLowerCase();
+    const cleanAuthUname = (currentUser?.username || '').replace(/^@/, '').toLowerCase();
+    return Boolean(
+      (cleanActive && postUname && postUname === cleanActive) ||
+      (cleanAuthUname && postUname && postUname === cleanAuthUname)
+    );
   });
 
   const handleToggleComments = (post) => {

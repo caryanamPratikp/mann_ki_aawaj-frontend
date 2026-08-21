@@ -15,6 +15,16 @@ export function UserLayout({ children, activeRoute, onNavigate, wide = true }) {
     !currentPath.includes('/settings')
   );
 
+  const [isMobile, setIsMobile] = React.useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  );
+
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <div className={`app-container user-layout ${wide ? 'user-layout-wide' : ''}`}>
       <TopNavbar activeRoute={activeRoute} onNavigate={onNavigate} />
@@ -24,8 +34,13 @@ export function UserLayout({ children, activeRoute, onNavigate, wide = true }) {
           maxWidth: '1280px',
           width: '100%',
           margin: '0 auto',
-          padding: isTopicPage ? '20px 24px 20px 28px' : '20px 24px 20px 96px',
+          padding: isMobile
+            ? '12px 12px 80px 12px'
+            : isTopicPage
+            ? '20px 24px 20px 28px'
+            : '20px 24px 20px 96px',
           transition: 'padding 0.3s ease',
+          boxSizing: 'border-box',
         }}
       >
         <LeftSidebar activeRoute={activeRoute} onNavigate={onNavigate} />

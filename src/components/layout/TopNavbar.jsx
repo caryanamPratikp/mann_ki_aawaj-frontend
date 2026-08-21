@@ -8,6 +8,7 @@ import { useChat } from '../../context/ChatContext.jsx';
 import { InitialAvatar } from '../profile/InitialAvatar.jsx';
 import { Tooltip } from '../common/Tooltip.jsx';
 import { Drawer } from '../common/Drawer.jsx';
+import { NavbarMoodWidget } from '../mood/NavbarMoodWidget.jsx';
 
 export function TopNavbar({ activeRoute, onNavigate }) {
   const { currentUser, logout } = useAuth();
@@ -112,7 +113,7 @@ export function TopNavbar({ activeRoute, onNavigate }) {
             : '0 6px 24px rgba(45, 29, 21, 0.06)',
           padding: '0 18px',
           boxSizing: 'border-box',
-          overflow: 'hidden',
+          overflow: 'visible',
           transition: 'border 0.2s ease, box-shadow 0.2s ease',
         }}
       >
@@ -209,6 +210,8 @@ export function TopNavbar({ activeRoute, onNavigate }) {
 
           {/* ── RIGHT SIDE ACTIONS ── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+            {/* Mood Button & Popup */}
+            <NavbarMoodWidget isDarkNavbar={isDarkNavbar} textColor={textColor} />
 
             {/* Notification Bell — ALWAYS VISIBLE */}
             <button

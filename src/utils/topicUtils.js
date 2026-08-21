@@ -107,15 +107,14 @@ export function computeTopicStats(posts = []) {
     }
   });
 
-  // Calculate dynamic badges & sorting priority
+  // Calculate dynamic badges & sorting priority (Only apply badges if topic has REAL posts > 0)
   return Object.values(statsMap).map((stat) => {
     const timeDiffMs = stat.lastPostMs > 0 ? nowMs - stat.lastPostMs : Infinity;
-    
-    // Dynamic Trending: 2-3 posts in last 5 mins
-    const isTrending = stat.recent5MinCount >= 2;
-    
-    // Dynamic New: last post created within last 15 mins
-    const isNew = timeDiffMs <= fifteenMinsMs;
+
+    // Only set Trending / New if stat.count > 0 (No dummy labels!)
+    const hasRealPosts = stat.count > 0;
+    const isTrending = hasRealPosts && stat.recent5MinCount >= 2;
+    const isNew = hasRealPosts && timeDiffMs <= fifteenMinsMs;
     const isUserAdded = stat.isUserAdded || !SYSTEM_TOPICS.includes(stat.name);
 
     return {
@@ -123,12 +122,12 @@ export function computeTopicStats(posts = []) {
       isTrending,
       isNew,
       isUserAdded,
-      priority: isTrending ? 3 : isNew ? 2 : isUserAdded ? 1 : 0,
+      priority: isTrending ? 3 : isNew ? 2 : (hasRealPosts ? 1 : 0),
     };
   }).sort((a, b) => {
-    // Trending, New, and User Added topics shown on top!
+    // Sort topics with real posts first, then by count descending, then by recent activity
+    if (b.count !== a.count) return b.count - a.count;
     if (b.priority !== a.priority) return b.priority - a.priority;
-    if (b.lastPostMs !== a.lastPostMs) return b.lastPostMs - a.lastPostMs;
-    return b.count - a.count;
+    return b.lastPostMs - a.lastPostMs;
   });
 }

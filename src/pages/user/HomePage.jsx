@@ -517,510 +517,101 @@ export function HomePage({ onNavigate }) {
           </div>
         )}
 
-        {/* ── MAIN LAYOUT: Fixed 2-Column Layout (Feed + Fixed Right Topics Stream) ── */}
+        {/* ── MAIN LAYOUT: Clean Centered Posts Feed (Only posts shown on Home Screen) ── */}
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1fr) 340px',
-            gap: '20px',
-            alignItems: 'flex-start',
+            maxWidth: '720px',
             width: '100%',
+            margin: '0 auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
           }}
         >
-          {/* ── LEFT COLUMN: MAIN POSTS FEED ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
-            {/* Feature 17: Today's Question Interactive Banner */}
-            <div
-              style={{
-                padding: '18px 24px',
-                borderRadius: '20px',
-                background: 'linear-gradient(135deg, #6F405F 0%, #3D2334 100%)',
-                color: '#FFFFFF',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '16px',
-                width: '100%',
-                boxSizing: 'border-box',
-                boxShadow: '0 8px 24px rgba(61, 35, 52, 0.25)',
-                position: 'relative',
-                overflow: 'hidden',
-              }}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 1, flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 900, background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '10px', letterSpacing: '0.04em' }}>
-                    ❤️ {t('todaysQuestion', "Today's Question")}
-                  </span>
-                </div>
-                <h3 style={{ fontSize: '16.5px', fontWeight: 800, margin: '4px 0 0 0', color: '#FFFFFF', lineHeight: 1.3 }}>
-                  "{DAILY_QUESTIONS[dailyQuestionIdx]}"
-                </h3>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setPostTitle(`Re: Today's Question - "${DAILY_QUESTIONS[dailyQuestionIdx]}"`);
-                  setPostTopic('FEELINGS');
-                  setIsCreateModalOpen(true);
-                }}
-                style={{
-                  padding: '10px 18px',
-                  borderRadius: '20px',
-                  background: '#FFFFFF',
-                  color: '#6F405F',
-                  fontSize: '12.5px',
-                  fontWeight: 800,
-                  border: 'none',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                  flexShrink: 0,
-                  zIndex: 1,
-                  transition: 'transform 0.2s ease',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.04)')}
-                onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-              >
-                💬 {t('answerAnonymously', 'Answer Anonymously')} →
-              </button>
-            </div>
-
-            {filteredPosts.length === 0 ? (
-              <EmptyState
-                icon={MessageSquare}
-                title="No thoughts found"
-                description="Be the first author to share a thought under this topic."
-                actionLabel="Share Thought"
-                onAction={handleOpenGeneralCreateModal}
-              />
-            ) : (
-              filteredPosts.map((post) => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  onNavigate={onNavigate}
-                  onToggleComments={() => {
-                    if (activeCommentsPost?.id === post.id) setActiveCommentsPost(null);
-                    else setActiveCommentsPost(post);
-                  }}
-                  activeCommentsPostId={activeCommentsPost?.id}
-                />
-              ))
-            )}
-          </div>
-
-          {/* ── RIGHT COLUMN: FEATURED TOPICS STREAM & MOOD OF INDIA BAROMETER ── */}
+          {/* Feature 17: Today's Question Interactive Banner */}
           <div
             style={{
+              padding: '18px 24px',
+              borderRadius: '20px',
+              background: 'linear-gradient(135deg, #6F405F 0%, #3D2334 100%)',
+              color: '#FFFFFF',
               display: 'flex',
-              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'space-between',
               gap: '16px',
-              position: 'sticky',
-              top: '80px',
+              width: '100%',
+              boxSizing: 'border-box',
+              boxShadow: '0 8px 24px rgba(61, 35, 52, 0.25)',
+              position: 'relative',
+              overflow: 'hidden',
             }}
           >
-            {/* Feature 18: Mood of India Barometer Card (Initially Collapsed, DB-Backed, Click Outside to Collapse) */}
-            <div
-              ref={moodWidgetRef}
-              onClick={() => setIsMoodWidgetExpanded((prev) => !prev)}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 1, flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 900, background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '10px', letterSpacing: '0.04em' }}>
+                  ❤️ {t('todaysQuestion', "Today's Question")}
+                </span>
+              </div>
+              <h3 style={{ fontSize: '16.5px', fontWeight: 800, margin: '4px 0 0 0', color: '#FFFFFF', lineHeight: 1.3 }}>
+                "{DAILY_QUESTIONS[dailyQuestionIdx]}"
+              </h3>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setPostTitle(`Re: Today's Question - "${DAILY_QUESTIONS[dailyQuestionIdx]}"`);
+                setPostTopic('FEELINGS');
+                setIsCreateModalOpen(true);
+              }}
               style={{
-                padding: '16px 18px',
-                borderRadius: '24px',
-                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 242, 246, 0.95) 100%)',
-                backdropFilter: 'blur(16px)',
-                border: isMoodWidgetExpanded ? '1.5px solid #6F405F' : '1.5px solid rgba(111, 64, 95, 0.18)',
-                boxShadow: isMoodWidgetExpanded ? '0 10px 30px rgba(111, 64, 95, 0.15)' : '0 6px 20px rgba(45, 29, 21, 0.05)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px',
+                padding: '10px 18px',
+                borderRadius: '20px',
+                background: '#FFFFFF',
+                color: '#6F405F',
+                fontSize: '12.5px',
+                fontWeight: 800,
+                border: 'none',
                 cursor: 'pointer',
-                transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                flexShrink: 0,
+                zIndex: 1,
+                transition: 'transform 0.2s ease',
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.04)')}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '18px' }}>🇮🇳</span>
-                  <div>
-                    <h4 style={{ fontSize: '14.5px', fontWeight: 800, color: '#2D1D15', margin: 0 }}>
-                      {t('moodOfIndia', 'Mood of India')}
-                    </h4>
-                    {!isMoodWidgetExpanded && (
-                      <p style={{ fontSize: '11px', color: '#8C8385', margin: '2px 0 0 0', fontWeight: 600 }}>
-                        {userSelectedMood ? `Your feeling: ${userSelectedMood} • Tap to view` : 'Tap to express how you feel today'}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  {userSelectedMood && (
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        fontWeight: 800,
-                        padding: '2px 8px',
-                        borderRadius: '12px',
-                        background: 'linear-gradient(135deg, #6F405F 0%, #3D2334 100%)',
-                        color: '#FFFFFF',
-                      }}
-                    >
-                      {userSelectedMood}
-                    </span>
-                  )}
-                  {isMoodWidgetExpanded ? <ChevronUp size={18} color="#6F405F" /> : <ChevronDown size={18} color="#6F405F" />}
-                </div>
-              </div>
-
-              {/* Smooth Animated Accordion Panel */}
-              <div
-                style={{
-                  maxHeight: isMoodWidgetExpanded ? '600px' : '0px',
-                  opacity: isMoodWidgetExpanded ? 1 : 0,
-                  transform: isMoodWidgetExpanded ? 'translateY(0)' : 'translateY(-6px)',
-                  transition: 'max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, transform 0.25s ease, margin 0.25s ease, padding 0.25s ease',
-                  overflow: 'hidden',
-                  pointerEvents: isMoodWidgetExpanded ? 'auto' : 'none',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px',
-                  marginTop: isMoodWidgetExpanded ? '4px' : '0px',
-                  borderTop: isMoodWidgetExpanded ? '1px solid rgba(111,64,95,0.12)' : 'none',
-                  paddingTop: isMoodWidgetExpanded ? '10px' : '0px',
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                  <p style={{ fontSize: '11px', color: '#8C8385', margin: 0, fontWeight: 600 }}>
-                    Select how you are feeling right now (Updates DB in real-time):
-                  </p>
-
-                  {/* Interactive Emoji Buttons */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {MOOD_OPTIONS.map((m) => {
-                      const isUserVoted = userSelectedMood.toUpperCase() === m.label.toUpperCase();
-                      return (
-                        <button
-                          key={m.label}
-                          type="button"
-                          onClick={() => handleVoteMood(m.label)}
-                          style={{
-                            padding: '5px 10px',
-                            borderRadius: '16px',
-                            fontSize: '12px',
-                            fontWeight: 800,
-                            border: isUserVoted ? '1.5px solid #6F405F' : '1px solid #EFEAE8',
-                            background: isUserVoted ? 'linear-gradient(135deg, #6F405F 0%, #3D2334 100%)' : '#FFFFFF',
-                            color: isUserVoted ? '#FFFFFF' : '#2D1D15',
-                            cursor: 'pointer',
-                            boxShadow: isUserVoted ? '0 3px 10px rgba(111,64,95,0.3)' : '0 2px 6px rgba(0,0,0,0.03)',
-                            transition: 'all 0.15s ease',
-                          }}
-                        >
-                          {m.emoji} {m.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Real DB Barometer Breakdown (No Dummy Data) */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
-                    <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#6F405F', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Nationwide Sentiment Breakdown</span>
-                      <span>{totalMoodVotes} Total Votes</span>
-                    </div>
-
-                    {totalMoodVotes === 0 ? (
-                      <div style={{ fontSize: '11.5px', color: '#8C8385', fontStyle: 'italic', padding: '8px 0', textAlign: 'center' }}>
-                        No votes recorded yet today. Be the first to express your mood!
-                      </div>
-                    ) : (
-                      moodStats.map((m) => {
-                        const isUserVoted = userSelectedMood.toUpperCase() === m.label.toUpperCase();
-                        return (
-                          <div
-                            key={m.label}
-                            onClick={() => handleVoteMood(m.label)}
-                            style={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '3px',
-                              cursor: 'pointer',
-                              padding: '6px 10px',
-                              borderRadius: '12px',
-                              background: isUserVoted ? 'rgba(111,64,95,0.08)' : '#FFFFFF',
-                              border: isUserVoted ? '1.5px solid #6F405F' : '1px solid #EFEAE8',
-                              transition: 'all 0.15s ease',
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700, color: '#2D1D15' }}>
-                              <span>{m.emoji} {m.label} {isUserVoted ? '✓' : ''}</span>
-                              <span style={{ color: '#6F405F', fontWeight: 800 }}>{m.percentage}% ({m.count} votes)</span>
-                            </div>
-                            <div style={{ height: '6px', width: '100%', borderRadius: '4px', background: '#EFEAE8', overflow: 'hidden' }}>
-                              <div
-                                style={{
-                                  height: '100%',
-                                  width: `${Math.max(m.percentage, m.count > 0 ? 5 : 0)}%`,
-                                  background: isUserVoted ? 'linear-gradient(90deg, #6F405F 0%, #3D2334 100%)' : 'linear-gradient(90deg, #8E527A 0%, #B2739E 100%)',
-                                  borderRadius: '4px',
-                                  transition: 'width 0.3s ease',
-                                }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-            </div>
-
-            {/* Topics Stream Card */}
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '14px',
-                padding: '18px',
-                borderRadius: '24px',
-                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 242, 246, 0.95) 100%)',
-                backdropFilter: 'blur(16px)',
-                border: '1.5px solid rgba(111, 64, 95, 0.18)',
-                boxShadow: '0 12px 36px rgba(45, 29, 21, 0.08)',
-              }}
-            >
-              {/* Header */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  paddingBottom: '12px',
-                  borderBottom: '1.5px solid rgba(111, 64, 95, 0.12)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div
-                    style={{
-                      width: '36px',
-                      height: '36px',
-                      borderRadius: '12px',
-                      background: 'linear-gradient(135deg, rgba(111, 64, 95, 0.16) 0%, rgba(217, 108, 61, 0.22) 100%)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: '0 2px 8px rgba(111, 64, 95, 0.12)',
-                    }}
-                  >
-                    <Sparkles size={18} color="#6F405F" />
-                  </div>
-                  <div>
-                    <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#2D1D15', margin: 0, letterSpacing: '-0.01em' }}>
-                      Topics Stream
-                    </h3>
-                    <p style={{ fontSize: '11px', color: '#8C8385', margin: '2px 0 0 0', fontWeight: 600 }}>
-                      Explore Anonymous Discussions
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsCreateTopicModalOpen(true)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '7px 14px',
-                    borderRadius: '20px',
-                    background: 'linear-gradient(135deg, #6F405F 0%, #4A2840 100%)',
-                    color: '#FFFFFF',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    border: 'none',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(111, 64, 95, 0.25)',
-                    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                    letterSpacing: '0.01em',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-1.5px) scale(1.02)';
-                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(111, 64, 95, 0.35)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(111, 64, 95, 0.25)';
-                  }}
-                >
-                  <PlusSquare size={14} color="#FFF" />
-                  <span>{t('createTopic', 'Create Topic')}</span>
-                </button>
-              </div>
-
-              {/* Dynamic Topic Cards List */}
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px',
-                  maxHeight: 'calc(100vh - 200px)',
-                  overflowY: 'auto',
-                  scrollbarWidth: 'none',
-                  msOverflowStyle: 'none',
-                }}
-                className="hide-scrollbar"
-              >
-                {sortedTopics.map((tStat) => {
-                  const isSelected = selectedTopic.toUpperCase() === tStat.name;
-
-                  return (
-                    <div
-                      key={tStat.name}
-                      onClick={() => {
-                        setSelectedTopic(isSelected ? 'All' : tStat.name);
-                        onNavigate(`/profile/${tStat.name.toLowerCase()}`);
-                      }}
-                      style={{
-                        padding: '12px 14px',
-                        borderRadius: '16px',
-                        backgroundColor: isSelected
-                          ? 'linear-gradient(135deg, #6F405F 0%, #3D2334 100%)'
-                          : '#FFFFFF',
-                        background: isSelected
-                          ? 'linear-gradient(135deg, #6F405F 0%, #3D2334 100%)'
-                          : '#FFFFFF',
-                        border: isSelected ? '1.5px solid #6F405F' : '1.5px solid #EFEAE8',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px',
-                        boxShadow: isSelected
-                          ? '0 6px 18px rgba(111, 64, 95, 0.35)'
-                          : '0 2px 6px rgba(0, 0, 0, 0.02)',
-                        transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.transform = 'translateX(4px) translateY(-1.5px)';
-                          e.currentTarget.style.borderColor = '#6F405F';
-                          e.currentTarget.style.boxShadow = '0 6px 16px rgba(111, 64, 95, 0.12)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.transform = 'translateX(0) translateY(0)';
-                          e.currentTarget.style.borderColor = '#EFEAE8';
-                          e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.02)';
-                        }
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span
-                          style={{
-                            fontSize: '14px',
-                            fontWeight: 800,
-                            color: isSelected ? '#FFFFFF' : '#2D1D15',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                          }}
-                        >
-                          <span style={{ color: isSelected ? '#FF9933' : '#6F405F', fontWeight: 900 }}>#</span>
-                          {t(tStat.name, tStat.name)}
-                        </span>
-                        
-                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                          {tStat.isUserAdded && (
-                            <span
-                              style={{
-                                fontSize: '9px',
-                                fontWeight: 900,
-                                padding: '2px 7px',
-                                borderRadius: '10px',
-                                background: 'linear-gradient(135deg, #6F405F 0%, #3D2334 100%)',
-                                color: '#FFFFFF',
-                                boxShadow: '0 2px 6px rgba(111, 64, 95, 0.3)',
-                                letterSpacing: '0.03em',
-                                border: '1px solid rgba(255, 255, 255, 0.4)',
-                              }}
-                            >
-                              👤 USER ADDED
-                            </span>
-                          )}
-                          {tStat.isTrending && (
-                            <span
-                              style={{
-                                fontSize: '9px',
-                                fontWeight: 900,
-                                padding: '2px 7px',
-                                borderRadius: '10px',
-                                background: 'linear-gradient(135deg, #FF9933 0%, #D96C3D 100%)',
-                                color: '#FFFFFF',
-                                boxShadow: '0 2px 6px rgba(255, 153, 51, 0.3)',
-                                letterSpacing: '0.03em',
-                              }}
-                            >
-                              🔥 {t('trending', 'TRENDING')}
-                            </span>
-                          )}
-                          {tStat.isNew && (
-                            <span
-                              style={{
-                                fontSize: '9px',
-                                fontWeight: 900,
-                                padding: '2px 7px',
-                                borderRadius: '10px',
-                                background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                                color: '#FFFFFF',
-                                boxShadow: '0 2px 6px rgba(16, 185, 129, 0.3)',
-                                letterSpacing: '0.03em',
-                              }}
-                            >
-                              ✨ NEW
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          fontSize: '11px',
-                          color: isSelected ? 'rgba(255, 255, 255, 0.85)' : '#8C8385',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <Clock size={11} color={isSelected ? '#FFFFFF' : '#8C8385'} />
-                          <span>
-                            {tStat.lastPostTime
-                              ? `${t('lastPost', 'Last post')} ${formatDate(tStat.lastPostTime)}`
-                              : t('noThoughtsTopicYet', 'No posts yet')}
-                          </span>
-                        </div>
-                        <span
-                          style={{
-                            fontWeight: 800,
-                            color: isSelected ? '#FFFFFF' : '#6F405F',
-                            background: isSelected ? 'rgba(255, 255, 255, 0.2)' : '#F3EBF0',
-                            padding: '2px 8px',
-                            borderRadius: '10px',
-                          }}
-                        >
-                          {tStat.count} {t('posts', 'posts')}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
+              💬 {t('answerAnonymously', 'Answer Anonymously')} →
+            </button>
           </div>
+
+          {/* Posts Feed */}
+          {filteredPosts.length === 0 ? (
+            <EmptyState
+              icon={MessageSquare}
+              title="No thoughts found"
+              description="Be the first author to share a thought under this topic."
+              actionLabel="Share Thought"
+              onAction={handleOpenGeneralCreateModal}
+            />
+          ) : (
+            filteredPosts.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                onNavigate={onNavigate}
+                onToggleComments={() => {
+                  if (activeCommentsPost?.id === post.id) setActiveCommentsPost(null);
+                  else setActiveCommentsPost(post);
+                }}
+                activeCommentsPostId={activeCommentsPost?.id}
+              />
+            ))
+          )}
         </div>
       </div>
-    </div>
-  </TopicBackgroundRotator>
+    </TopicBackgroundRotator>
 
       {/* ── CREATE POST MODAL OVERLAY WITH BLUR BACKDROP & GOOGLE MIC INPUT ── */}
       <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title={t('createAnonymousThought', 'Create Anonymous Thought')}>
