@@ -16,6 +16,28 @@ export function ContactPage({ onNavigate }) {
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submittedTicket, setSubmittedTicket] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      addToast('Please select a valid image file (PNG, JPG, WEBP)', 'error');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      addToast('Image size cannot exceed 5MB', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSelectedImage(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,9 +54,16 @@ export function ContactPage({ onNavigate }) {
         email,
         subject,
         message,
+        imageUrl: selectedImage,
       });
 
-      const ticketId = response.data || `MKA-INQ-${Math.floor(10000 + Math.random() * 90000)}`;
+      const resData = response.data;
+      const rawTicketId = typeof resData === 'string' 
+        ? resData 
+        : (typeof resData?.data === 'string' ? resData.data : `MKA-INQ-${Math.floor(10000 + Math.random() * 90000)}`);
+      
+      const ticketId = typeof rawTicketId === 'string' ? rawTicketId : `MKA-INQ-${Math.floor(10000 + Math.random() * 90000)}`;
+
       setSubmittedTicket(ticketId);
       addToast(`Inquiry submitted! Ticket ID: #${ticketId}`, 'success');
     } catch (err) {
@@ -54,7 +83,9 @@ export function ContactPage({ onNavigate }) {
     setEmail('');
     setSubject('');
     setMessage('');
+    setSelectedImage(null);
   };
+
 
   return (
     <PublicLayout activeRoute="/contact" onNavigate={onNavigate}>
@@ -101,8 +132,9 @@ export function ContactPage({ onNavigate }) {
                       Reference Ticket Number
                     </span>
                     <span style={{ fontSize: '24px', fontWeight: 800, color: '#63344F', letterSpacing: '0.05em' }}>
-                      #{submittedTicket}
+                      #{typeof submittedTicket === 'string' ? submittedTicket : String(submittedTicket?.data || 'MKA-INQ-PENDING')}
                     </span>
+
                     <span style={{ fontSize: '12px', color: '#29965A', fontWeight: 600, paddingTop: '4px' }}>
                       ● Status: Received & Assigned to Admin
                     </span>
@@ -196,9 +228,70 @@ export function ContactPage({ onNavigate }) {
                     required
                   />
 
+                  {/* Optional Image Attachment */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: 700, color: '#332821' }}>
+                      Attachment (Optional Screenshot / Reference Image)
+                    </label>
+
+                    {selectedImage ? (
+                      <div style={{ position: 'relative', width: 'fit-content', borderRadius: '14px', overflow: 'hidden', border: '1.5px solid #E8DDD5', backgroundColor: '#FFF8F2', padding: '6px' }}>
+                        <img src={selectedImage} alt="Attachment Preview" style={{ maxWidth: '200px', maxHeight: '130px', objectFit: 'cover', borderRadius: '10px' }} />
+                        <button
+                          type="button"
+                          onClick={() => setSelectedImage(null)}
+                          style={{
+                            position: 'absolute',
+                            top: '10px',
+                            right: '10px',
+                            backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '24px',
+                            height: '24px',
+                            cursor: 'pointer',
+                            display: 'grid',
+                            placeItems: 'center',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <label
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '12px 16px',
+                          borderRadius: '12px',
+                          border: '1.5px dashed #F2B08D',
+                          backgroundColor: '#FFF8F2',
+                          color: '#63344F',
+                          fontSize: '13.5px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          width: 'fit-content',
+                        }}
+                      >
+                        📷 Attach Image / Screenshot
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          style={{ display: 'none' }}
+                        />
+                      </label>
+                    )}
+                  </div>
+
                   <Button type="submit" variant="primary" icon={Send} disabled={submitting}>
                     {submitting ? 'Submitting to Admin...' : 'Submit Support Inquiry'}
                   </Button>
+
                 </form>
               )}
 

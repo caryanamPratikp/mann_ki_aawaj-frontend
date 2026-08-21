@@ -25,18 +25,19 @@ export function CommentList({ postId, postAuthorUsername, onNavigate }) {
     return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
   });
 
-  // Auto-scroll to bottom on new comments or initial load
+  // Auto-scroll inside comment list container only (never scroll main window)
   useEffect(() => {
-    if (commentsEndRef.current) {
-      commentsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [comments.length]);
 
+
   return (
-    <div className="flex-col gap-sm" style={{ marginTop: '6px' }}>
+    <div className="flex-col gap-sm" style={{ marginTop: '10px', paddingTop: '4px' }}>
       {comments.length > 0 && (
-        <div className="flex-row justify-between items-center" style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '6px', marginBottom: '8px' }}>
-          <h3 className="card-heading" style={{ fontSize: '13px', fontWeight: 700, color: '#6F405F' }}>
+        <div className="flex-row justify-between items-center" style={{ borderBottom: '1.5px solid #EAE2E0', paddingBottom: '8px', marginBottom: '12px' }}>
+          <h3 className="card-heading" style={{ fontSize: '13.5px', fontWeight: 800, color: '#6F405F', margin: 0 }}>
             💬 Comments ({comments.length})
           </h3>
           <CommentSort
@@ -48,6 +49,7 @@ export function CommentList({ postId, postAuthorUsername, onNavigate }) {
           />
         </div>
       )}
+
 
       {comments.length === 0 ? (
         <div
@@ -71,12 +73,14 @@ export function CommentList({ postId, postAuthorUsername, onNavigate }) {
           style={{
             maxHeight: '340px',
             overflowY: 'auto',
+            paddingTop: '28px',
             paddingRight: '4px',
             display: 'flex',
             flexDirection: 'column',
             gap: '12px',
           }}
         >
+
           {comments.map((comment) => (
             <CommentCard
               key={comment.id}

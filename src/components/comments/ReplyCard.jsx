@@ -171,17 +171,19 @@ export function ReplyCard({ reply, postId, commentId, onNavigate, onReplyTrigger
             position: 'absolute',
             top: '-26px',
             left: '32px',
-            zIndex: 30,
+            zIndex: 99999,
             display: 'flex',
             alignItems: 'center',
             gap: '4px',
             background: '#ffffff',
-            padding: '3px 8px',
-            borderRadius: '20px',
-            boxShadow: '0 4px 16px rgba(45,29,21,0.16)',
+            padding: '4px 10px',
+            borderRadius: '24px',
+            boxShadow: '0 6px 20px rgba(45,29,21,0.22), 0 2px 6px rgba(0,0,0,0.1)',
             border: '1.5px solid #6F405F',
+            pointerEvents: 'auto',
           }}
         >
+
           {EMOJI_REACTIONS.map((emoji) => (
             <button
               key={emoji}

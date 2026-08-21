@@ -344,4 +344,40 @@ export const apiAdminService = {
       throw err;
     }
   },
+
+  // GET /api/admin/enquiries
+  async getEnquiries() {
+    try {
+      const response = await apiClient.get('/api/admin/enquiries');
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      throw err;
+    }
+  },
+
+  // PUT /api/admin/enquiries/{id}/status
+  async updateEnquiryStatus(id, status, adminNotes) {
+    try {
+      const response = await apiClient.put(`/api/admin/enquiries/${id}/status`, null, {
+        params: { status, adminNotes },
+      });
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      throw err;
+    }
+  },
+
+  // DELETE /api/admin/enquiries/{id}
+  async deleteEnquiry(id) {
+    try {
+      const response = await apiClient.delete(`/api/admin/enquiries/${id}`);
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      throw err;
+    }
+  },
 };
+

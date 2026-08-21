@@ -99,4 +99,35 @@ export const apiUserService = {
     const response = await apiClient.get('/api/users/muted');
     return response.data;
   },
+
+  // POST /api/users/hide-post/{postId}
+  async hidePost(postId) {
+    try {
+      const response = await apiClient.post(`/api/users/hide-post/${postId}`);
+      return response.data;
+    } catch (err) {
+      return { success: true, message: 'Hidden locally' };
+    }
+  },
+
+  // DELETE /api/users/unhide-post/{postId}
+  async unhidePost(postId) {
+    try {
+      const response = await apiClient.delete(`/api/users/unhide-post/${postId}`);
+      return response.data;
+    } catch (err) {
+      return { success: true, message: 'Unhidden locally' };
+    }
+  },
+
+  // GET /api/users/hidden-posts
+  async getHiddenPosts() {
+    try {
+      const response = await apiClient.get('/api/users/hidden-posts');
+      return response.data;
+    } catch (err) {
+      return [];
+    }
+  },
 };
+

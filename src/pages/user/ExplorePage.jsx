@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { PostCard } from '../../components/posts/PostCard.jsx';
 import { usePosts } from '../../context/PostContext.jsx';
@@ -11,6 +11,7 @@ import {
 import { useLanguage } from '../../context/LanguageContext.jsx';
 import { TopicBackgroundRotator } from '../../components/topics/TopicBackgroundRotator.jsx';
 import { formatDate } from '../../utils/formatDate.js';
+import { TOPIC_CATEGORIES, SYSTEM_TOPICS } from '../../utils/topicUtils.js';
 
 export function ExplorePage({ onNavigate }) {
   const { posts } = usePosts();
@@ -22,22 +23,34 @@ export function ExplorePage({ onNavigate }) {
   const [activeTopic, setActiveTopic] = useState('All');
   const [hoveredTopic, setHoveredTopic] = useState(null);
 
-  const TOPIC_PRESETS = [
-    { name: 'BOLLYWOOD', category: 'Entertainment', categoryKey: 'ENTERTAINMENT_CAT', icon: Film, accent: '#E5A93C', gradient: 'linear-gradient(135deg, rgba(229,169,60,0.12) 0%, #FFFFFF 100%)' },
-    { name: 'CRICKET', category: 'Sports', categoryKey: 'SPORTS_CAT', icon: Trophy, accent: '#2E7D32', gradient: 'linear-gradient(135deg, rgba(46,125,50,0.12) 0%, #FFFFFF 100%)' },
-    { name: 'TECHNOLOGY', category: 'Innovation', categoryKey: 'INNOVATION_CAT', icon: Cpu, accent: '#7B1FA2', gradient: 'linear-gradient(135deg, rgba(123,31,162,0.12) 0%, #FFFFFF 100%)' },
-    { name: 'POLITICS', category: 'News', categoryKey: 'NEWS_CAT', icon: Landmark, accent: '#C62828', gradient: 'linear-gradient(135deg, rgba(198,40,40,0.12) 0%, #FFFFFF 100%)' },
-    { name: 'ENTERTAINMENT', category: 'Media', categoryKey: 'MEDIA_CAT', icon: Clapperboard, accent: '#AD1457', gradient: 'linear-gradient(135deg, rgba(173,20,87,0.12) 0%, #FFFFFF 100%)' },
-    { name: 'LIFESTYLE', category: 'Personal', categoryKey: 'PERSONAL_CAT', icon: HeartPulse, accent: '#D81B60', gradient: 'linear-gradient(135deg, rgba(216,27,96,0.12) 0%, #FFFFFF 100%)' },
-    { name: 'SPORTS', category: 'Fitness', categoryKey: 'FITNESS_CAT', icon: Dumbbell, accent: '#00838F', gradient: 'linear-gradient(135deg, rgba(0,131,143,0.12) 0%, #FFFFFF 100%)' },
-    { name: 'NEWS', category: 'Current Affairs', categoryKey: 'CURRENT_AFFAIRS_CAT', icon: Newspaper, accent: '#1565C0', gradient: 'linear-gradient(135deg, rgba(21,101,192,0.12) 0%, #FFFFFF 100%)' },
-    { name: 'GENERAL', category: 'Community', categoryKey: 'COMMUNITY_CAT', icon: Users, accent: '#6F405F', gradient: 'linear-gradient(135deg, rgba(111,64,95,0.12) 0%, #FFFFFF 100%)' },
-  ];
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, []);
+
+  // Standardized Topic Presets matching HomePage categories & subtopics 100%
+  const TOPIC_PRESETS = useMemo(() => {
+    const presets = [];
+    TOPIC_CATEGORIES.forEach((cat) => {
+      cat.subtopics.forEach((sub) => {
+        presets.push({
+          name: sub.id,
+          label: sub.label,
+          category: cat.name,
+          categoryKey: cat.categoryKey,
+          icon: sub.icon,
+          accent: cat.accent,
+          gradient: cat.gradient,
+        });
+      });
+    });
+    return presets;
+  }, []);
 
   // Dynamic calculation of topic statistics strictly from real posts
   const topicStats = useMemo(() => {
     const statsMap = {};
     TOPIC_PRESETS.forEach(tItem => {
+
       statsMap[tItem.name] = { count: 0, lastPostTime: 'No posts yet', lastPostMs: 0, isNew: false, isTrending: false };
     });
 
@@ -161,23 +174,25 @@ export function ExplorePage({ onNavigate }) {
             </div>
           </div>
 
-          {/* ── FEATURED TOPIC CARDS GRID ── */}
+          {/* ── CREATIVE COMPACT TOPIC CATEGORIES MATRIX ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {/* Header & Active Topic Filter Indicator */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--eclipse)', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Tag size={22} color="var(--deep-plum)" /> {t('featuredTopics', 'Featured Topics')}
+                <Tag size={22} color="var(--deep-plum)" /> {t('exploreCategories', 'Explore Topic Channels')}
               </h3>
               {activeTopic !== 'All' && (
                 <button
+                  type="button"
                   onClick={() => setActiveTopic('All')}
-                  style={{ 
-                    fontSize: '13px', 
-                    fontWeight: 700, 
-                    color: 'var(--deep-plum)', 
-                    background: 'var(--deep-plum-light)', 
+                  style={{
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    color: '#6F405F',
+                    background: 'rgba(111,64,95,0.12)',
                     padding: '6px 14px',
                     borderRadius: '20px',
-                    border: 'none', 
+                    border: '1px solid rgba(111,64,95,0.2)',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -185,154 +200,116 @@ export function ExplorePage({ onNavigate }) {
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  {t('clearTopicFilter', 'Clear Topic Filter')} ({t(activeTopic, activeTopic)})
+                  ✕ {t('clearFilter', 'Clear Filter')} ({activeTopic})
                 </button>
               )}
             </div>
 
-            {/* Generous Responsive Grid with minmax(230px, 1fr) so text never overflows */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '16px' }}>
-              {filteredTopicPresets.map((tItem) => {
-                const Icon = tItem.icon;
-                const stat = topicStats[tItem.name] || { count: 0, lastPostTime: 'No posts yet', isNew: false, isTrending: false };
-                const isSelected = activeTopic === tItem.name;
-                const isHovered = hoveredTopic === tItem.name;
+            {/* Compact Category Cards Grid (7 Categories total) */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+              {TOPIC_CATEGORIES.map((cat) => {
+                const catMatchesQuery = !query.trim() || 
+                  cat.name.toLowerCase().includes(query.toLowerCase()) ||
+                  cat.subtopics.some(s => s.label.toLowerCase().includes(query.toLowerCase()) || s.id.toLowerCase().includes(query.toLowerCase()));
+
+                if (!catMatchesQuery) return null;
 
                 return (
                   <div
-                    key={tItem.name}
-                    onMouseEnter={() => setHoveredTopic(tItem.name)}
-                    onMouseLeave={() => setHoveredTopic(null)}
-                    onClick={() => {
-                      const nextTopic = isSelected ? 'All' : tItem.name;
-                      setActiveTopic(nextTopic);
-                      setTimeout(() => {
-                        document.getElementById('explore-posts-section')?.scrollIntoView({ behavior: 'smooth' });
-                      }, 80);
-                    }}
+                    key={cat.categoryKey}
                     style={{
-                      padding: '20px',
+                      padding: '18px 20px',
                       borderRadius: '20px',
-                      background: isSelected 
-                        ? `linear-gradient(135deg, rgba(111,64,95,0.15) 0%, #FFFFFF 100%)`
-                        : tItem.gradient,
-                      border: isSelected 
-                        ? '2.5px solid var(--deep-plum)' 
-                        : isHovered 
-                        ? `2px solid ${tItem.accent}` 
-                        : '1.5px solid rgba(111,64,95,0.12)',
-                      cursor: 'pointer',
+                      background: cat.gradient,
+                      border: `1.5px solid ${cat.accent}30`,
+                      boxShadow: '0 4px 18px rgba(0,0,0,0.04)',
                       display: 'flex',
                       flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      gap: '16px',
-                      transform: isHovered ? 'translateY(-4px)' : 'none',
-                      transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                      boxShadow: isSelected
-                        ? '0 10px 30px rgba(111,64,95,0.22)'
-                        : isHovered
-                        ? `0 12px 28px ${tItem.accent}25`
-                        : '0 4px 16px rgba(0,0,0,0.04)',
+                      gap: '12px',
+                      transition: 'all 0.2s ease',
                     }}
                   >
-                    <div>
-                      {/* Top Header: Category Label & Icon */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <div 
-                            style={{ 
-                              width: '34px', 
-                              height: '34px', 
-                              borderRadius: '10px', 
-                              backgroundColor: `${tItem.accent}20`, 
-                              color: tItem.accent, 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center',
-                              flexShrink: 0,
-                            }}
-                          >
-                            <Icon size={18} />
-                          </div>
-                          <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--hurricane)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                            {t(tItem.categoryKey, tItem.category)}
+                    {/* Category Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${cat.accent}20`, paddingBottom: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div
+                          style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '12px',
+                            backgroundColor: `${cat.accent}20`,
+                            color: cat.accent,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '18px',
+                            fontWeight: 800,
+                          }}
+                        >
+                          {cat.subtopics[0]?.icon || '💡'}
+                        </div>
+                        <div>
+                          <h4 style={{ fontSize: '16px', fontWeight: 800, color: '#2D1D15', margin: 0 }}>
+                            {t(cat.categoryKey, cat.name)}
+                          </h4>
+                          <span style={{ fontSize: '11px', fontWeight: 600, color: '#8C8385' }}>
+                            {cat.subtopics.length} {t('topics', 'topics')}
                           </span>
                         </div>
-
-                        {/* Badges */}
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                          {stat.isTrending && (
-                            <span 
-                              style={{ 
-                                fontSize: '10px', 
-                                fontWeight: 800, 
-                                padding: '3px 8px', 
-                                borderRadius: '12px', 
-                                background: 'linear-gradient(135deg, #FF6B35 0%, #D96C3D 100%)', 
-                                color: '#FFF',
-                                boxShadow: '0 2px 6px rgba(255,107,53,0.3)',
-                              }}
-                            >
-                              🔥 {t('trending', 'TRENDING')}
-                            </span>
-                          )}
-                          {stat.isNew && !stat.isTrending && (
-                            <span 
-                              style={{ 
-                                fontSize: '10px', 
-                                fontWeight: 800, 
-                                padding: '3px 8px', 
-                                borderRadius: '12px', 
-                                background: 'linear-gradient(135deg, #3F7772 0%, #2E5854 100%)', 
-                                color: '#FFF',
-                                boxShadow: '0 2px 6px rgba(63,119,114,0.3)',
-                              }}
-                            >
-                              ✨ {t('new', 'NEW')}
-                            </span>
-                          )}
-                        </div>
                       </div>
-
-                      {/* Topic Name */}
-                      <h4 
-                        style={{ 
-                          fontSize: '18px', 
-                          fontWeight: 800, 
-                          color: isSelected ? 'var(--deep-plum)' : 'var(--eclipse)', 
-                          margin: 0,
-                          lineHeight: 1.3,
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        #{t(tItem.name, tItem.name)}
-                      </h4>
                     </div>
 
-                    {/* Stats Footer */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: 'var(--hurricane)', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <Clock size={14} color="var(--hurricane)" />
-                        <span style={{ fontSize: '11.5px' }}>{stat.lastPostTime}</span>
-                      </div>
-                      <span 
-                        style={{ 
-                          fontWeight: 800, 
-                          color: isSelected ? '#FFFFFF' : 'var(--deep-plum)', 
-                          backgroundColor: isSelected ? 'var(--deep-plum)' : 'var(--deep-plum-light)',
-                          padding: '3px 9px',
-                          borderRadius: '12px',
-                          fontSize: '11.5px',
-                        }}
-                      >
-                        {stat.count} {t('posts', 'posts')}
-                      </span>
+                    {/* Compact Subtopic Chips Array */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {cat.subtopics.map((sub) => {
+                        const isSelected = activeTopic.toUpperCase() === sub.id.toUpperCase();
+                        const isQueryMatch = query.trim() && (
+                          sub.label.toLowerCase().includes(query.toLowerCase()) || 
+                          sub.id.toLowerCase().includes(query.toLowerCase())
+                        );
+
+                        return (
+                          <button
+                            key={sub.id}
+                            type="button"
+                            onClick={() => {
+                              const nextTopic = isSelected ? 'All' : sub.id;
+                              setActiveTopic(nextTopic);
+                            }}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '6px 12px',
+                              borderRadius: '20px',
+                              fontSize: '12.5px',
+                              fontWeight: isSelected || isQueryMatch ? 800 : 600,
+                              color: isSelected ? '#FFFFFF' : '#2D1D15',
+                              backgroundColor: isSelected
+                                ? cat.accent
+                                : isQueryMatch
+                                ? `${cat.accent}25`
+                                : '#FFFFFF',
+                              border: isSelected
+                                ? `1.5px solid ${cat.accent}`
+                                : `1px solid ${cat.accent}35`,
+                              cursor: 'pointer',
+                              boxShadow: isSelected ? `0 4px 12px ${cat.accent}40` : '0 2px 6px rgba(0,0,0,0.03)',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <span>{sub.icon}</span>
+                            <span>{t(sub.id, sub.label)}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 );
               })}
             </div>
           </div>
+
 
           {/* ── SEARCH RESULTS & POST LISTINGS ── */}
           <div id="explore-posts-section" style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', scrollMarginTop: '90px', marginTop: '12px' }}>

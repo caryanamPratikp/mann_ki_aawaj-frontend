@@ -10,6 +10,11 @@ export function PublicLayout({ children, activeRoute, onNavigate }) {
   const { t } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  React.useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [activeRoute]);
+
+
   const NAV_LINKS = [
     { label: t('home') || 'Home', route: currentUser ? '/home' : '/' },
     { label: t('explore') || 'Explore', route: '/explore' },

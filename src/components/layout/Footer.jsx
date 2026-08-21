@@ -3,9 +3,59 @@ import logoMKA from '../../assets/logo_MKA.png';
 import { Mail, Phone, MapPin } from 'lucide-react';
 
 export function Footer({ onNavigate }) {
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleScrollTopNav = (path) => {
+    if (onNavigate) onNavigate(path);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }, 100);
   };
+
+  const scrollToSection = (sectionId) => {
+    if (sectionId === 'hero') {
+      const heroEl = document.getElementById('hero');
+      if (heroEl) {
+        heroEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+      document.documentElement.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+      return;
+    }
+    const el = document.getElementById(sectionId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleQuickLinkScroll = (sectionId) => {
+    if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
+      if (onNavigate) onNavigate('/');
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
+        const el = document.getElementById(sectionId);
+        if (el) {
+          clearInterval(interval);
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          if (sectionId === 'hero') {
+            window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+          }
+        } else if (sectionId === 'hero') {
+          clearInterval(interval);
+          window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+        } else if (attempts > 15) {
+          clearInterval(interval);
+        }
+      }, 50);
+    } else {
+      scrollToSection(sectionId);
+    }
+  };
+
+
+
 
   return (
     <footer id="about" style={{ backgroundColor: '#0B0D1B', color: '#FFFFFF', paddingTop: '68px', paddingBottom: '32px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
@@ -14,7 +64,7 @@ export function Footer({ onNavigate }) {
           
           {/* Column 1: Logo & Narrative */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '300px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => onNavigate('/')}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => handleScrollTopNav('/')}>
               <img
                 src={logoMKA}
                 alt="Aawaj Man Ki Logo"
@@ -32,21 +82,24 @@ export function Footer({ onNavigate }) {
             </p>
           </div>
 
-          {/* Column 2: Quick Links (Landing Page Sections & About) */}
+          {/* Column 2: Quick Links (Smooth Scroll to Landing Page Sections) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <h4 style={{ fontSize: '16px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>Quick Links</h4>
-            <span onClick={() => onNavigate('/')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>Home</span>
-            <a href="/#features" onClick={(e) => { e.preventDefault(); onNavigate('/'); setTimeout(() => { document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }, 100); }} className="footer-link" style={{ color: '#A0A5BD', textDecoration: 'none', cursor: 'pointer', fontSize: '14px' }}>Features</a>
-            <a href="/#how-it-works" onClick={(e) => { e.preventDefault(); onNavigate('/'); setTimeout(() => { document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }); }, 100); }} className="footer-link" style={{ color: '#A0A5BD', textDecoration: 'none', cursor: 'pointer', fontSize: '14px' }}>How It Works</a>
-            <span onClick={() => onNavigate('/about')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>About Us</span>
+            <span onClick={() => handleQuickLinkScroll('hero')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>Home</span>
+            <span onClick={() => handleQuickLinkScroll('why-man-ki-aawaj')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>Features</span>
+            <span onClick={() => handleQuickLinkScroll('features')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>How It Works</span>
+            <span onClick={() => handleScrollTopNav('/about')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>About Us</span>
+
+
           </div>
 
-          {/* Column 3: Resources */}
+
+          {/* Column 3: Resources (Scroll to top on page open) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <h4 style={{ fontSize: '16px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>Resources</h4>
-            <span onClick={() => onNavigate('/faq')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>FAQs</span>
-            <span onClick={() => onNavigate('/privacy-policy')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>Privacy Policy</span>
-            <span onClick={() => onNavigate('/community-guidelines')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>Community Guidelines</span>
+            <span onClick={() => handleScrollTopNav('/faq')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>FAQs</span>
+            <span onClick={() => handleScrollTopNav('/privacy-policy')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>Privacy Policy</span>
+            <span onClick={() => handleScrollTopNav('/community-guidelines')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>Community Guidelines</span>
           </div>
 
           {/* Column 4: Contact Us */}
@@ -68,18 +121,12 @@ export function Footer({ onNavigate }) {
         </div>
 
         {/* Bottom Bar */}
-        <div
-  style={{
-    display: 'flex',
-    justifyContent: 'center',
-  }}
->
-  <span style={{ fontSize: '13.5px', color: '#A0A5BD' }}>
-    © 2026 Aawaj Man Ki. All rights reserved by Caryanamindia Pvt Ltd
-  </span>
-</div>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <span style={{ fontSize: '13.5px', color: '#A0A5BD' }}>
+            © 2026 Aawaj Man Ki. All rights reserved by Caryanamindia Pvt Ltd
+          </span>
+        </div>
       </div>
     </footer>
   );
 }
-

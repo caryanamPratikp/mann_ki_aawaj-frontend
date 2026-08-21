@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import { PublicLayout } from '../../components/layout/PublicLayout.jsx';
 import { HelpCircle, Search, ChevronDown, ShieldCheck, Lock, Trash2, Mic, AlertTriangle, ArrowRight, MessageSquare } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext.jsx';
@@ -8,6 +8,11 @@ export function FaqPage({ onNavigate }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [openIndex, setOpenIndex] = useState(0);
+
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, []);
+
 
   const categories = ['All', 'Identity & Privacy', 'Posting & Voice', '30-Day Data Rule', 'Safety & 3-Strikes'];
 

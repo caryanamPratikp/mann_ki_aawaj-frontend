@@ -42,8 +42,10 @@ import { AdminContentReviewPage } from '../pages/admin/AdminContentReviewPage.js
 import { AdminBlockedContentPage } from '../pages/admin/AdminBlockedContentPage.jsx';
 import { AdminUsersPage } from '../pages/admin/AdminUsersPage.jsx';
 import { AdminAnalyticsPage } from '../pages/admin/AdminAnalyticsPage.jsx';
+import { AdminEnquiriesPage } from '../pages/admin/AdminEnquiriesPage.jsx';
 
 export function AppRoutes() {
+
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const { currentUser } = useAuth();
 
@@ -55,11 +57,26 @@ export function AppRoutes() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    const timer = setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [currentPath]);
+
   const navigate = (path) => {
     window.history.pushState({}, '', path);
     setCurrentPath(path);
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   };
+
 
   // Clean path normalization (strip trailing slashes, query params, hash)
   const normalizedPath = (currentPath ? currentPath.split('?')[0].split('#')[0].replace(/\/+$/, '') : '') || '/';
@@ -123,7 +140,11 @@ export function AppRoutes() {
   if (normalizedPath === '/admin/blocked-content') {
     return <AdminBlockedContentPage onNavigate={navigate} />;
   }
+  if (normalizedPath === '/admin/enquiries') {
+    return <AdminEnquiriesPage onNavigate={navigate} />;
+  }
   if (normalizedPath === '/admin/users') {
+
     return <AdminUsersPage onNavigate={navigate} />;
   }
   if (normalizedPath === '/admin/analytics') {

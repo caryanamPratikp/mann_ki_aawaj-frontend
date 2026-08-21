@@ -61,7 +61,7 @@ export function CommentComposer({
   initialText = '',
   placeholder = 'Write a comment...',
   onNavigate,
-  autoFocus = true,
+  autoFocus = false,
 }) {
   const [text, setText] = useState(initialText);
   const [submitting, setSubmitting] = useState(false);

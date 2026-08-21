@@ -25,6 +25,12 @@ export function UserLayout({ children, activeRoute, onNavigate, wide = true }) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  React.useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeRoute, window.location.pathname]);
+
+
+
   return (
     <div className={`app-container user-layout ${wide ? 'user-layout-wide' : ''}`}>
       <TopNavbar activeRoute={activeRoute} onNavigate={onNavigate} />

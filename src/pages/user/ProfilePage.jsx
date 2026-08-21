@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { InitialAvatar } from '../../components/profile/InitialAvatar.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -9,10 +9,11 @@ import { PostCard } from '../../components/posts/PostCard.jsx';
 import { Button } from '../../components/common/Button.jsx';
 import { Modal } from '../../components/common/Modal.jsx';
 import { useReports } from '../../context/ReportContext.jsx';
-import { Edit3, Trash2, Calendar, Globe, Heart, AlertTriangle, Check, Sparkles, Volume2, VolumeX, ShieldOff, Clock, Flame, MessageSquare, RefreshCw, Info, Mic, MicOff, Loader2, Upload, X, ArrowLeft, Image as ImageIcon } from 'lucide-react';
+import { Edit3, Trash2, Calendar, Globe, Heart, AlertTriangle, Check, Sparkles, Volume2, VolumeX, ShieldOff, Clock, Flame, MessageSquare, RefreshCw, Info, Mic, MicOff, Loader2, Upload, X, ArrowLeft, Image as ImageIcon, EyeOff, Eye } from 'lucide-react';
 import { apiClient } from '../../services/apiClient.js';
 
-import { formatDate } from '../../utils/formatDate.js';
+import { formatDate, RealtimeTimestamp } from '../../utils/formatDate.js';
+
 import { generateUsernameSuggestions } from '../../utils/generateUsername.js';
 import { validateUsernameString, getSuggestedNumberVariants } from '../../utils/usernameValidation.js';
 import { EmptyState } from '../../components/common/EmptyState.jsx';
@@ -43,7 +44,7 @@ export function ProfilePage({ username, onNavigate }) {
   const { currentUser, updateProfile, deleteAccount, logout } = useAuth();
   const { posts, createPost } = usePosts();
   const { addToast } = useToast();
-  const { mutedUsers = [], unmuteUser } = useReports();
+  const { mutedUsers = [], unmuteUser, hiddenPosts = [], unhidePost } = useReports();
   const { t } = useLanguage();
   const [spokenLanguage] = useSpokenLanguage();
 
@@ -92,12 +93,27 @@ export function ProfilePage({ username, onNavigate }) {
   // Route is a topic route ONLY if it is not self AND matches a valid topic/subtopic name
   const isTopicRoute = !isSelf && Boolean(username) && isTopicName(username);
 
+  const uniqueMutedHandles = useMemo(() => {
+    const map = new Map();
+    (mutedUsers || []).forEach((u) => {
+      if (!u) return;
+      const clean = String(u).toLowerCase().replace(/^@/, '').trim();
+      if (clean && !map.has(clean)) {
+        map.set(clean, `@${clean}`);
+      }
+    });
+    return Array.from(map.values());
+  }, [mutedUsers]);
+
+
 
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     let isMounted = true;
     async function loadProfile() {
       setLoadingProfile(true);
+
       try {
         if (isSelf) {
           if (currentUser) {
@@ -155,12 +171,16 @@ export function ProfilePage({ username, onNavigate }) {
       } catch (err) {
         console.error(err);
       } finally {
-        if (isMounted) setLoadingProfile(false);
+        if (isMounted) {
+          setLoadingProfile(false);
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        }
       }
     }
     loadProfile();
     return () => { isMounted = false; };
   }, [username, currentUser, isSelf, targetUsername]);
+
 
   const cleanProfileUname = profileData?.username?.toLowerCase().replace(/^@/, '');
 
@@ -469,9 +489,12 @@ export function ProfilePage({ username, onNavigate }) {
                   fontSize: '14px',
                   fontWeight: activeTab === 'Posts' ? 700 : 500,
                   color: activeTab === 'Posts' ? '#6F405F' : '#6E625F',
-                  borderBottom: activeTab === 'Posts' ? '2.5px solid #6F405F' : 'none',
+                  borderTop: 'none',
+                  borderLeft: 'none',
+                  borderRight: 'none',
+                  borderBottom: activeTab === 'Posts' ? '2.5px solid #6F405F' : '2.5px solid transparent',
                   background: 'none',
-                  border: 'none',
+                  outline: 'none',
                   cursor: 'pointer',
                 }}
               >
@@ -479,77 +502,233 @@ export function ProfilePage({ username, onNavigate }) {
               </button>
 
               {isSelf && (
-                <button
-                  onClick={() => setActiveTab('Muted')}
-                  style={{
-                    padding: '8px 16px',
-                    fontSize: '14px',
-                    fontWeight: activeTab === 'Muted' ? 700 : 500,
-                    color: activeTab === 'Muted' ? '#6F405F' : '#6E625F',
-                    borderBottom: activeTab === 'Muted' ? '2.5px solid #6F405F' : 'none',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Muted Handles ({mutedUsers.length})
-                </button>
+                <>
+                  <button
+                    onClick={() => setActiveTab('Muted')}
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '14px',
+                      fontWeight: activeTab === 'Muted' ? 700 : 500,
+                      color: activeTab === 'Muted' ? '#6F405F' : '#6E625F',
+                      borderTop: 'none',
+                      borderLeft: 'none',
+                      borderRight: 'none',
+                      borderBottom: activeTab === 'Muted' ? '2.5px solid #6F405F' : '2.5px solid transparent',
+                      background: 'none',
+                      outline: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Muted Handles ({uniqueMutedHandles.length})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('Hidden')}
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '14px',
+                      fontWeight: activeTab === 'Hidden' ? 700 : 500,
+                      color: activeTab === 'Hidden' ? '#6F405F' : '#6E625F',
+                      borderTop: 'none',
+                      borderLeft: 'none',
+                      borderRight: 'none',
+                      borderBottom: activeTab === 'Hidden' ? '2.5px solid #6F405F' : '2.5px solid transparent',
+                      background: 'none',
+                      outline: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Hidden Thoughts ({hiddenPosts.length})
+                  </button>
+                </>
+              )}
+
+          </div>
+
+          {/* Tab Content: Posts Stream */}
+          {activeTab === 'Posts' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+              {userPosts.length === 0 ? (
+                <EmptyState
+                  title={t('noThoughtsTopicYet', 'No thoughts under this topic yet')}
+                  description={t('beFirstAuthor', 'Be the first author to post a thought under this topic category.')}
+                  icon={Calendar}
+                />
+              ) : (
+                userPosts.map((post) => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    onNavigate={onNavigate}
+                    onToggleComments={() => {
+                      if (activeCommentsPost?.id === post.id) setActiveCommentsPost(null);
+                      else setActiveCommentsPost(post);
+                    }}
+                    activeCommentsPostId={activeCommentsPost?.id}
+                  />
+                ))
               )}
             </div>
+          )}
 
-            {/* Tab Content: Posts Stream */}
-            {activeTab === 'Posts' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
-                {userPosts.length === 0 ? (
-                  <EmptyState
-                    title={t('noThoughtsTopicYet', 'No thoughts under this topic yet')}
-                    description={t('beFirstAuthor', 'Be the first author to post a thought under this topic category.')}
-                    icon={Calendar}
-                  />
-                ) : (
-                  userPosts.map((post) => (
-                    <PostCard
-                      key={post.id}
-                      post={post}
-                      onNavigate={onNavigate}
-                      onToggleComments={() => {
-                        if (activeCommentsPost?.id === post.id) setActiveCommentsPost(null);
-                        else setActiveCommentsPost(post);
-                      }}
-                      activeCommentsPostId={activeCommentsPost?.id}
-                    />
-                  ))
-                )}
-              </div>
-            )}
-
-            {activeTab === 'Muted' && isSelf && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
-                {mutedUsers.length === 0 ? (
-                  <EmptyState title="No muted handles" description="Handles you mute will appear here." icon={VolumeX} />
-                ) : (
-                  mutedUsers.map((handle) => (
+          {activeTab === 'Muted' && isSelf && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+              {uniqueMutedHandles.length === 0 ? (
+                <EmptyState title="No muted handles" description="Handles you mute will appear here." icon={VolumeX} />
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '10px' }}>
+                  {uniqueMutedHandles.map((handle) => (
                     <div
                       key={handle}
-                      className="mka-card"
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        padding: '12px 16px',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        backgroundColor: '#FFFFFF',
+                        border: '1.5px solid #EAE4E4',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
                       }}
                     >
-                      <span style={{ fontWeight: 600, color: 'var(--eclipse)' }}>
-                        {handle.startsWith('@') ? handle : `@${handle}`}
+                      <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#2D1D15' }}>
+                        {handle}
                       </span>
-                      <Button size="sm" variant="outline" onClick={() => unmuteUser(handle)}>
-                        Unmute
-                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => unmuteUser(handle)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '4px 10px',
+                          borderRadius: '8px',
+                          background: 'rgba(111,64,95,0.1)',
+                          color: 'var(--deep-plum)',
+                          border: '1px solid rgba(111,64,95,0.2)',
+                          fontSize: '11.5px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <Volume2 size={13} />
+                        <span>Unmute</span>
+                      </button>
                     </div>
-                  ))
-                )}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab Content: Hidden Thoughts Stream */}
+          {activeTab === 'Hidden' && isSelf && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+              {hiddenPosts.length === 0 ? (
+                <EmptyState title="No hidden thoughts" description="Thoughts you hide using post options (...) will appear here so you can unhide them anytime." icon={EyeOff} />
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
+                  {hiddenPosts.map((item) => {
+                    const id = typeof item === 'object' ? item.id : item;
+                    const title = typeof item === 'object' ? (item.title || item.content || `Thought #${id}`) : `Thought #${id}`;
+                    const author = typeof item === 'object' ? (item.username || '@anonymous') : '@author';
+                    const fullPost = posts.find(p => String(p.id) === String(id));
+                    const imageUrl = fullPost?.imageUrl || (typeof item === 'object' ? item.imageUrl : null);
+                    const displayTitle = fullPost?.title || title;
+                    const displayContent = fullPost?.originalContent || fullPost?.content || (typeof item === 'object' ? item.content : '');
+
+                    return (
+                      <div
+                        key={id}
+                        style={{
+                          aspectRatio: '1 / 1',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          padding: '16px',
+                          borderRadius: '16px',
+                          backgroundColor: '#FFFFFF',
+                          border: '1.5px solid #EAE4E4',
+                          boxShadow: '0 4px 14px rgba(0,0,0,0.04)',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        {/* Image background thumbnail if post has image */}
+                        {imageUrl && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              inset: 0,
+                              backgroundImage: `url(${imageUrl})`,
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center',
+                              opacity: 0.12,
+                              filter: 'blur(1px)',
+                              pointerEvents: 'none',
+                            }}
+                          />
+                        )}
+
+                        <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '8px', overflow: 'hidden' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                            <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#6F405F', background: 'rgba(111,64,95,0.1)', padding: '3px 9px', borderRadius: '10px' }}>
+                              {author.startsWith('@') ? author : `@${author}`}
+                            </span>
+                            <span style={{ fontSize: '11px', fontWeight: 700, color: '#8C8385' }}>
+                              #{id}
+                            </span>
+                          </div>
+
+                          <h4 style={{ fontSize: '14px', fontWeight: 800, color: '#2D1D15', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.3' }}>
+                            {displayTitle}
+                          </h4>
+
+                          {displayContent && displayContent !== displayTitle && (
+                            <p style={{ fontSize: '12px', color: '#6E625F', margin: 0, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.4' }}>
+                              {displayContent}
+                            </p>
+                          )}
+                        </div>
+
+                        <div style={{ position: 'relative', zIndex: 1, marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #F0ECEB' }}>
+                          <button
+                            type="button"
+                            onClick={() => unhidePost(id)}
+                            style={{
+                              width: '100%',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px',
+                              padding: '8px 12px',
+                              borderRadius: '12px',
+                              background: 'linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%)',
+                              color: '#FFFFFF',
+                              border: 'none',
+                              fontSize: '12.5px',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 8px rgba(46,125,50,0.25)',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <Eye size={14} />
+                            <span>Unhide Thought</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+
+
           </div>
         </div>
       </TopicBackgroundRotator>
@@ -821,73 +1000,55 @@ export function ProfilePage({ username, onNavigate }) {
             </button>
           </div>
 
-          {/* ── IMAGE ATTACHMENT INPUT FIELD ── */}
+          {/* ── IMAGE ATTACHMENT INPUT FIELD (FILE UPLOAD ONLY) ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#4A3E3D', display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <ImageIcon size={15} color="var(--deep-plum)" />
-              <span>{t('attachImageLabel', 'Attach Image (URL or File)')}</span>
-            </label>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <label
+              style={{
+                padding: '10px 16px',
+                borderRadius: '12px',
+                background: imageUrl ? 'rgba(111,64,95,0.08)' : 'rgba(111,64,95,0.12)',
+                color: 'var(--deep-plum)',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                border: '1.5px dashed rgba(111,64,95,0.3)',
+                transition: 'all 0.2s ease',
+                width: '100%',
+              }}
+            >
+              <Upload size={16} />
+              <span>{imageUrl ? t('changeImage', 'Change Attached Image') : t('uploadImageFile', '📷 Attach Image File')}</span>
               <input
-                type="text"
-                placeholder={t('imageUrlPlaceholder', 'Paste image URL (e.g. https://...)...')}
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                style={{
-                  flex: 1,
-                  padding: '9px 12px',
-                  borderRadius: '10px',
-                  border: '1px solid #D4CECC',
-                  fontSize: '13px',
-                  outline: 'none',
-                }}
-              />
-              <label
-                style={{
-                  padding: '9px 14px',
-                  borderRadius: '10px',
-                  background: 'rgba(111,64,95,0.12)',
-                  color: 'var(--deep-plum)',
-                  fontSize: '12.5px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  whiteSpace: 'nowrap',
-                  border: '1px solid rgba(111,64,95,0.2)',
-                }}
-              >
-                <Upload size={14} />
-                <span>{t('uploadImage', 'Upload Image')}</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    try {
-                      const formData = new FormData();
-                      formData.append('file', file);
-                      const res = await apiClient.post('/api/upload/image', formData, {
-                        headers: { 'Content-Type': 'multipart/form-data' },
-                      });
-                      if (res.data?.success && res.data?.data?.imageUrl) {
-                        setImageUrl(res.data.data.imageUrl);
-                        addToast('Image uploaded successfully!', 'success');
-                      }
-                    } catch (err) {
-                      addToast('Failed to upload image.', 'error');
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    const res = await apiClient.post('/api/upload/image', formData, {
+                      headers: { 'Content-Type': 'multipart/form-data' },
+                    });
+                    if (res.data?.success && res.data?.data?.imageUrl) {
+                      setImageUrl(res.data.data.imageUrl);
+                      addToast('Image attached successfully!', 'success');
                     }
-                  }}
-                  style={{ display: 'none' }}
-                />
-              </label>
-            </div>
+                  } catch (err) {
+                    addToast('Failed to upload image.', 'error');
+                  }
+                }}
+                style={{ display: 'none' }}
+              />
+            </label>
 
             {imageUrl && (
-              <div style={{ position: 'relative', marginTop: '6px', width: 'fit-content' }}>
-                <img src={imageUrl} alt="Uploaded Preview" style={{ height: '70px', borderRadius: '8px', border: '1px solid #D4CECC', objectFit: 'cover' }} />
+              <div style={{ position: 'relative', marginTop: '4px', width: 'fit-content' }}>
+                <img src={imageUrl} alt="Attached Preview" style={{ height: '76px', borderRadius: '10px', border: '1px solid #D4CECC', objectFit: 'cover' }} />
                 <button
                   type="button"
                   onClick={() => setImageUrl('')}
@@ -915,6 +1076,7 @@ export function ProfilePage({ username, onNavigate }) {
               </div>
             )}
           </div>
+
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
 

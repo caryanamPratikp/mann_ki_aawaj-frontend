@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useLayoutEffect } from 'react';
 import { PublicLayout } from '../../components/layout/PublicLayout.jsx';
 import { Heart, ShieldCheck, Mic, Sparkles, ArrowLeft } from 'lucide-react';
 
 export function AboutPage({ onNavigate }) {
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, []);
+
   return (
     <PublicLayout activeRoute="/about" onNavigate={onNavigate}>
       <div style={{ backgroundColor: '#FFF8F2', minHeight: '100vh', paddingBottom: '70px' }}>

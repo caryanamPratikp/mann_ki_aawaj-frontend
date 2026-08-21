@@ -92,11 +92,21 @@ export function ReportProvider({ children }) {
 
   const muteUser = useCallback(async (username) => {
     if (!username) return;
-    const cleanHandle = username.startsWith('@') ? username : `@${username}`;
-    const rawClean = username.replace('@', '');
+    const rawClean = String(username).replace(/^@/, '').trim();
+    if (!rawClean) return;
+    const cleanHandle = `@${rawClean}`;
 
-    setMutedUsers((prev) => {
-      const next = [...new Set([...prev, cleanHandle, username, rawClean])];
+    setMutedUsers((prev = []) => {
+      const current = Array.isArray(prev) ? prev : [];
+      const map = new Map();
+      [...current, cleanHandle].forEach((u) => {
+        if (!u) return;
+        const key = String(u).toLowerCase().replace(/^@/, '').trim();
+        if (key && !map.has(key)) {
+          map.set(key, `@${key}`);
+        }
+      });
+      const next = Array.from(map.values());
       try { localStorage.setItem('mka_muted_users', JSON.stringify(next)); } catch {}
       return next;
     });
@@ -105,7 +115,7 @@ export function ReportProvider({ children }) {
 
     try {
       console.log('[ReportContext] Executing Mute User API call for:', rawClean);
-      await apiUserService.muteUser(rawClean);
+      if (apiUserService?.muteUser) await apiUserService.muteUser(rawClean);
     } catch (err) {
       console.warn('[ReportContext] Mute user API notice:', err?.message || err);
     }
@@ -113,10 +123,11 @@ export function ReportProvider({ children }) {
 
   const unmuteUser = useCallback(async (username) => {
     if (!username) return;
-    const rawClean = username.replace('@', '').toLowerCase();
+    const rawClean = String(username).replace(/^@/, '').toLowerCase().trim();
 
-    setMutedUsers((prev) => {
-      const next = prev.filter((item) => item.toLowerCase().replace('@', '') !== rawClean);
+    setMutedUsers((prev = []) => {
+      const current = Array.isArray(prev) ? prev : [];
+      const next = current.filter((item) => String(item).toLowerCase().replace(/^@/, '').trim() !== rawClean);
       try { localStorage.setItem('mka_muted_users', JSON.stringify(next)); } catch {}
       return next;
     });
@@ -125,11 +136,12 @@ export function ReportProvider({ children }) {
 
     try {
       console.log('[ReportContext] Executing Unmute User API call for:', rawClean);
-      await apiUserService.unmuteUser(rawClean);
+      if (apiUserService?.unmuteUser) await apiUserService.unmuteUser(rawClean);
     } catch (err) {
       console.warn('[ReportContext] Unmute user API notice:', err?.message || err);
     }
   }, [addToast]);
+
 
   const performAdminAction = async (reportId, actionType, actionReason) => {
     try {
@@ -144,45 +156,88 @@ export function ReportProvider({ children }) {
     }
   };
 
-  const [hiddenPosts, setHiddenPosts] = useState(() => {
-    try {
-      const userKey = currentUser?.id || currentUser?.username || 'guest';
-      const saved = localStorage.getItem(`mka_hidden_posts_${userKey}`);
-      const globalSaved = localStorage.getItem('mka_hidden_posts_global');
-      const parsed1 = saved ? JSON.parse(saved) : [];
-      const parsed2 = globalSaved ? JSON.parse(globalSaved) : [];
-      return [...new Set([...parsed1, ...parsed2])];
-    } catch {
-      return [];
-    }
-  });
+  const [hiddenPosts, setHiddenPosts] = useState([]);
 
-  useEffect(() => {
+  // Sync hidden posts list directly from backend DB on mount / login
+  const refreshHiddenPosts = useCallback(async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!currentUser || !token || token.startsWith('mock')) return;
+
     try {
-      const userKey = currentUser?.id || currentUser?.username || 'guest';
-      const saved = localStorage.getItem(`mka_hidden_posts_${userKey}`);
-      const globalSaved = localStorage.getItem('mka_hidden_posts_global');
-      const parsed1 = saved ? JSON.parse(saved) : [];
-      const parsed2 = globalSaved ? JSON.parse(globalSaved) : [];
-      setHiddenPosts([...new Set([...parsed1, ...parsed2])]);
-    } catch (e) {}
+      const res = await apiUserService.getHiddenPosts();
+      const list = res?.data || res || [];
+      if (Array.isArray(list)) {
+        const formatted = list.map((item) => ({
+          id: item.postId || item.id,
+          title: item.postTitle || item.title || `Thought #${item.postId || item.id}`,
+          content: item.postTitle || item.content || '',
+          username: item.authorUsername || item.username || '@anonymous',
+          hiddenAt: item.createdAt || new Date().toISOString(),
+        }));
+        setHiddenPosts(formatted);
+      }
+    } catch (err) {
+      console.warn('[ReportContext] Backend hidden posts sync notice:', err?.message || err);
+    }
   }, [currentUser]);
 
-  const hidePost = useCallback((postId) => {
+  useEffect(() => {
+    refreshReports();
+    refreshMutedUsers();
+    refreshHiddenPosts();
+  }, [refreshReports, refreshMutedUsers, refreshHiddenPosts]);
+
+  const hidePost = useCallback(async (postId, postData = {}) => {
+    if (!postId) return;
+
+    setHiddenPosts((prev = []) => {
+      const current = Array.isArray(prev) ? prev : [];
+      const strId = String(postId);
+      const exists = current.some((item) => (typeof item === 'object' ? String(item.id) === strId : String(item) === strId));
+      if (exists) return current;
+
+      const record = {
+        id: postId,
+        title: postData.title || postData.originalTitle || 'Hidden Thought',
+        content: postData.content || postData.originalContent || '',
+        username: postData.username || postData.authorUsername || '@anonymous',
+        hiddenAt: new Date().toISOString(),
+      };
+      return [record, ...current];
+    });
+
+    addToast('Post hidden. You can unhide it anytime from Profile / Safety Settings.', 'info');
+
+    try {
+      if (apiUserService?.hidePost) {
+        await apiUserService.hidePost(postId);
+        refreshHiddenPosts();
+      }
+    } catch (e) {
+      console.warn('[ReportContext] Hide post API notice:', e?.message || e);
+    }
+  }, [addToast, refreshHiddenPosts]);
+
+  const unhidePost = useCallback(async (postId) => {
     if (!postId) return;
     const strId = String(postId);
-    const numId = Number(postId);
-    setHiddenPosts((prev) => {
-      const next = [...new Set([...prev, strId, numId])];
-      try {
-        const userKey = currentUser?.id || currentUser?.username || 'guest';
-        localStorage.setItem(`mka_hidden_posts_${userKey}`, JSON.stringify(next));
-        localStorage.setItem('mka_hidden_posts_global', JSON.stringify(next));
-      } catch (e) {}
-      return next;
+
+    setHiddenPosts((prev = []) => {
+      const current = Array.isArray(prev) ? prev : [];
+      return current.filter((item) => (typeof item === 'object' ? String(item.id) !== strId : String(item) !== strId));
     });
-    addToast('Thought hidden. It will not be shown to you again.', 'info');
-  }, [currentUser, addToast]);
+
+    addToast('Post unhidden! It is now visible in your feed again.', 'success');
+
+    try {
+      if (apiUserService?.unhidePost) {
+        await apiUserService.unhidePost(postId);
+        refreshHiddenPosts();
+      }
+    } catch (e) {
+      console.warn('[ReportContext] Unhide post API notice:', e?.message || e);
+    }
+  }, [addToast, refreshHiddenPosts]);
 
   return (
     <ReportContext.Provider value={{
@@ -193,17 +248,21 @@ export function ReportProvider({ children }) {
       hiddenPosts,
       refreshReports,
       refreshMutedUsers,
+      refreshHiddenPosts,
       submitReport,
       blockUser,
       unblockUser,
       muteUser,
       unmuteUser,
       hidePost,
+      unhidePost,
       performAdminAction
     }}>
       {children}
     </ReportContext.Provider>
   );
+
+
 }
 
 

@@ -5,6 +5,11 @@
 @import './utilities.css';
 @import './responsive.css';
 
+html {
+  scroll-behavior: smooth;
+}
+
+
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;

@@ -440,6 +440,7 @@ export function LandingPage({ onNavigate }) {
 
       {/* ── 1. MODE A: HERO SECTION (VIDEO BACKGROUND) ── */}
       <section
+        id="hero"
         style={{
           backgroundColor: '#080A18',
           color: '#FFF8F2',
@@ -601,7 +602,8 @@ export function LandingPage({ onNavigate }) {
       </section>
 
       {/* ── 2. MODE B: WHY AAWAJ MAN KI? (SCROLL CONVERGENCE ANIMATION) ── */}
-      <section ref={vsRef} className="section-space" style={{ backgroundColor: '#FFF8F2', position: 'relative', overflow: 'hidden' }}>
+      <section id="why-man-ki-aawaj" ref={vsRef} className="section-space" style={{ backgroundColor: '#FFF8F2', position: 'relative', overflow: 'hidden' }}>
+
         <div className="section-container">
           <div style={{ display: 'flex', gap: '50px', alignItems: 'center', flexWrap: 'wrap' }}>
             {/* Left Column Narrative */}

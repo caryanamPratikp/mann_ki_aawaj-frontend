@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { AvatarThumbnail } from '../avatar/AvatarThumbnail.jsx';
-import { formatDate } from '../../utils/formatDate.js';
+import { formatDate, RealtimeTimestamp } from '../../utils/formatDate.js';
+
 import { ReactionsBar } from './ReactionsBar.jsx';
 import { PostMenu } from './PostMenu.jsx';
 import { Modal } from '../common/Modal.jsx';
-import { MessageSquare, Bookmark, Globe, Languages, ChevronDown, ChevronUp, Trash2, Loader2 } from 'lucide-react';
+import { MessageSquare, Bookmark, Globe, Languages, ChevronDown, ChevronUp, Trash2, Loader2, Edit3, Upload, Image as ImageIcon } from 'lucide-react';
 import { CommentComposer } from '../comments/CommentComposer.jsx';
 import { CommentList } from '../comments/CommentList.jsx';
 import { usePosts } from '../../context/PostContext.jsx';
@@ -14,9 +15,11 @@ import { useLanguage } from '../../context/LanguageContext.jsx';
 import { getMediaUrl } from '../../config/env.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ReportModal } from '../reports/ReportModal.jsx';
+import { apiClient } from '../../services/apiClient.js';
 
 export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false, onToggleComments, activeCommentsPostId }) {
-  const { reactToPost, toggleSavePost, savedPostIds, deletePost } = usePosts();
+  const { reactToPost, toggleSavePost, savedPostIds, deletePost, updatePost } = usePosts();
+
   const { commentsByPost, createComment, fetchComments } = useComments();
   const { currentUser } = useAuth();
   const { blockUser, muteUser, hidePost, hiddenPosts = [] } = useReports();
@@ -29,21 +32,20 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
   const [manualToggle, setManualToggle] = useState(false);
   const [showInlineComments, setShowInlineComments] = useState(true);
   const [isSpoilerRevealed, setIsSpoilerRevealed] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState(post.title || post.originalTitle || '');
+  const [editContent, setEditContent] = useState(post.originalContent || post.content || '');
+  const [editImageUrl, setEditImageUrl] = useState(post.imageUrl || '');
+  const [updatingPost, setUpdatingPost] = useState(false);
+
+
 
   useEffect(() => {
     if (post?.id && fetchComments) {
       fetchComments(post.id);
     }
   }, [post?.id, fetchComments]);
-
-  const isPostHiddenInContext = Boolean(
-    hiddenPosts && (hiddenPosts.includes(String(post?.id)) || hiddenPosts.includes(Number(post?.id)))
-  );
-
-  if (hidden || isPostHiddenInContext) {
-    return null;
-  }
-
 
   const [dynamicTitleTranslation, setDynamicTitleTranslation] = useState(null);
   const [dynamicContentTranslation, setDynamicContentTranslation] = useState(null);
@@ -69,7 +71,6 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
     return () => { isMounted = false; };
   }, [rawTopic, currentLanguage, t, translateTextAsync]);
 
-
   useEffect(() => {
     let isMounted = true;
     const titleText = post.title || post.originalTitle;
@@ -93,6 +94,10 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
 
     return () => { isMounted = false; };
   }, [currentLanguage, post.title, post.originalTitle, post.originalContent, post.content, post.description, translateTextAsync]);
+
+  const isPostHiddenInContext = Boolean(
+    hiddenPosts && (hiddenPosts.includes(String(post?.id)) || hiddenPosts.includes(Number(post?.id)))
+  );
 
   const isSaved = savedPostIds.includes(post.id);
   const isOwner = Boolean(
@@ -118,9 +123,13 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
 
   const displayContent = rawDisplayContent.replace(/^#[\w\u0900-\u097F]+(?:\s+|$)/i, '').trim() || rawDisplayContent;
 
-
   const postComments = commentsByPost[post.id] || [];
   const matchedCommentCount = postComments.length > 0 ? postComments.length : (post.commentCount || 0);
+
+  if (hidden || isPostHiddenInContext) {
+    return null;
+  }
+
 
   return (
     <article
@@ -209,7 +218,8 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#8C8385' }}>
-              <span>{formatDate(post.createdAt)}</span>
+              <RealtimeTimestamp date={post.createdAt} />
+
               {post.language && (
                 <>
                   <span>•</span>
@@ -227,7 +237,14 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
           <PostMenu
             isSaved={isSaved}
             isOwner={isOwner}
+            onEdit={() => {
+              setEditTitle(post.title || post.originalTitle || '');
+              setEditContent(post.originalContent || post.content || '');
+              setEditImageUrl(post.imageUrl || '');
+              setIsEditModalOpen(true);
+            }}
             onDelete={async () => {
+
               try {
                 await deletePost(post.id);
               } catch (e) {
@@ -327,7 +344,21 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
               {displayContent}
             </p>
             {post.imageUrl && (
-              <div style={{ marginTop: '8px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #EAE6E5' }}>
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsImageModalOpen(true);
+                }}
+                style={{
+                  marginTop: '8px',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  border: '1px solid #EAE6E5',
+                  cursor: 'zoom-in',
+                  transition: 'opacity 0.2s ease',
+                }}
+                title="Click to view full image"
+              >
                 <img
                   src={getMediaUrl(post.imageUrl)}
                   alt="Post attachment"
@@ -335,6 +366,7 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
                 />
               </div>
             )}
+
           </>
         )}
       </div>
@@ -423,6 +455,231 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
           targetUsername={post.username}
         />
       )}
+
+      {/* Full-Screen Enlarged Image Lightbox Overlay */}
+      {isImageModalOpen && (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsImageModalOpen(false);
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.88)',
+            backdropFilter: 'blur(8px)',
+            zIndex: 999999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px',
+            cursor: 'zoom-out',
+          }}
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsImageModalOpen(false);
+            }}
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '24px',
+              background: 'rgba(255, 255, 255, 0.2)',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: '50%',
+              width: '40px',
+              height: '40px',
+              fontSize: '20px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            ✕
+          </button>
+          <img
+            src={getMediaUrl(post.imageUrl)}
+            alt="Full-size attachment view"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '92vw',
+              maxHeight: '90vh',
+              objectFit: 'contain',
+              borderRadius: '12px',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+              cursor: 'default',
+            }}
+          />
+        </div>
+      )}
+
+      {/* ── EDIT POST MODAL OVERLAY ── */}
+      {isEditModalOpen && (
+
+        <Modal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          title="Edit Your Post"
+        >
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!editContent.trim() || updatingPost) return;
+              setUpdatingPost(true);
+              try {
+                await updatePost(post.id, {
+                  title: editTitle.trim(),
+                  content: editContent.trim(),
+                  imageUrl: editImageUrl,
+                });
+                setIsEditModalOpen(false);
+              } catch (err) {
+                console.error(err);
+              } finally {
+                setUpdatingPost(false);
+              }
+            }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
+          >
+            <input
+              type="text"
+              placeholder="Title / Summary (optional)..."
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              style={{
+                padding: '10px 14px',
+                borderRadius: '10px',
+                border: '1px solid #D4CECC',
+                fontSize: '14px',
+                outline: 'none',
+              }}
+            />
+
+            <textarea
+              rows={4}
+              placeholder="Edit your post content..."
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: '12px',
+                border: '1px solid #D4CECC',
+                fontSize: '14px',
+                outline: 'none',
+                resize: 'vertical',
+              }}
+            />
+
+            {/* Image File Attachment */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: '12px',
+                  background: editImageUrl ? 'rgba(111,64,95,0.08)' : 'rgba(111,64,95,0.12)',
+                  color: 'var(--deep-plum)',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  border: '1.5px dashed rgba(111,64,95,0.3)',
+                  width: '100%',
+                }}
+              >
+                <Upload size={16} />
+                <span>{editImageUrl ? 'Change Attached Image' : '📷 Attach / Replace Image File'}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const formData = new FormData();
+                      formData.append('file', file);
+                      const res = await apiClient.post('/api/upload/image', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' },
+                      });
+                      if (res.data?.success && res.data?.data?.imageUrl) {
+                        setEditImageUrl(res.data.data.imageUrl);
+                      }
+                    } catch (err) {
+                      console.error(err);
+                    }
+                  }}
+                  style={{ display: 'none' }}
+                />
+              </label>
+
+              {editImageUrl && (
+                <div style={{ position: 'relative', marginTop: '4px', width: 'fit-content' }}>
+                  <img src={getMediaUrl(editImageUrl)} alt="Preview" style={{ height: '76px', borderRadius: '10px', border: '1px solid #D4CECC', objectFit: 'cover' }} />
+                  <button
+                    type="button"
+                    onClick={() => setEditImageUrl('')}
+                    style={{
+                      position: 'absolute',
+                      top: '-6px',
+                      right: '-6px',
+                      background: '#FF4D4F',
+                      color: '#FFF',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '20px',
+                      height: '20px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #D4CECC', background: '#FFF', fontSize: '13px' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={updatingPost || !editContent.trim()}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: 'var(--deep-plum)',
+                  color: '#FFF',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {updatingPost ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </article>
+
+
   );
 }

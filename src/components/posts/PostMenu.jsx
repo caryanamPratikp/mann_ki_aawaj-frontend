@@ -1,15 +1,21 @@
 import React from 'react';
-import { MoreHorizontal, Bookmark, EyeOff, VolumeX, ShieldAlert, Flag, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Bookmark, EyeOff, VolumeX, ShieldAlert, Flag, Trash2, Edit3 } from 'lucide-react';
 import { Dropdown, DropdownItem } from '../common/Dropdown.jsx';
 
-export function PostMenu({ isSaved, isOwner, onDelete, onSave, onHide, onMute, onBlock, onReport }) {
+export function PostMenu({ isSaved, isOwner, onEdit, onDelete, onSave, onHide, onMute, onBlock, onReport }) {
   return (
     <Dropdown trigger={<MoreHorizontal size={20} style={{ color: 'var(--hurricane)' }} />}>
       {isOwner && (
-        <DropdownItem icon={Trash2} onClick={onDelete} danger>
-          Delete Post
-        </DropdownItem>
+        <>
+          <DropdownItem icon={Edit3} onClick={onEdit}>
+            Edit Post
+          </DropdownItem>
+          <DropdownItem icon={Trash2} onClick={onDelete} danger>
+            Delete Post
+          </DropdownItem>
+        </>
       )}
+
       <DropdownItem icon={Bookmark} onClick={onSave}>
         {isSaved ? 'Remove from Saved' : 'Save Post'}
       </DropdownItem>

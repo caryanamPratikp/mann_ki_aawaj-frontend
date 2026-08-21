@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { useNotifications } from '../../context/NotificationContext.jsx';
 import { InitialAvatar } from '../../components/profile/InitialAvatar.jsx';
-import { formatDate } from '../../utils/formatDate.js';
+import { formatDate, RealtimeTimestamp } from '../../utils/formatDate.js';
+
 import { Button } from '../../components/common/Button.jsx';
 import { EmptyState } from '../../components/common/EmptyState.jsx';
 import { Bell, Check, CheckCheck, Trash2, ArrowRight } from 'lucide-react';
@@ -102,7 +103,8 @@ export function NotificationsPage({ onNavigate }) {
                     <p className="body-text" style={{ fontSize: '14px', color: 'var(--eclipse)' }}>
                       <NotificationItemText message={item.message} currentLanguage={currentLanguage} translateTextAsync={translateTextAsync} t={t} />
                     </p>
-                    <span className="caption-text">{formatDate(item.createdAt)}</span>
+                    <RealtimeTimestamp date={item.createdAt} className="caption-text" />
+
                   </div>
                 </div>
 
