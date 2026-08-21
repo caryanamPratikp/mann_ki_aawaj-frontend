@@ -517,10 +517,10 @@ export function HomePage({ onNavigate }) {
           </div>
         )}
 
-        {/* ── MAIN LAYOUT: Clean Centered Posts Feed (Only posts shown on Home Screen) ── */}
+        {/* ── MAIN LAYOUT: Full-Width Posts Feed (Only posts shown on Home Screen) ── */}
         <div
           style={{
-            maxWidth: '720px',
+            maxWidth: '100%',
             width: '100%',
             margin: '0 auto',
             display: 'flex',

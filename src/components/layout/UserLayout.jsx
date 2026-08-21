@@ -16,11 +16,11 @@ export function UserLayout({ children, activeRoute, onNavigate, wide = true }) {
   );
 
   const [isMobile, setIsMobile] = React.useState(
-    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+    typeof window !== 'undefined' ? window.innerWidth <= 900 : false
   );
 
   React.useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    const handleResize = () => setIsMobile(window.innerWidth <= 900);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
