@@ -9,7 +9,7 @@ const isMockMode = () => {
 };
 
 export const apiPostService = {
-  // GET /api/posts?page=0&size=10&sortBy=createdAt&direction=desc
+  // GET /api/posts?page=0&size=50&sortBy=createdAt&direction=desc
   async getPosts(params = {}) {
     if (isMockMode()) {
       const mockPosts = mockPostService.getPosts();
@@ -26,32 +26,40 @@ export const apiPostService = {
     }
 
     try {
-      const response = await apiClient.get('/api/posts', {
-        params: {
-          page: params.page || 0,
-          size: params.size || 10,
-          sortBy: params.sortBy || 'createdAt',
-          direction: params.direction || 'desc',
-          ...params,
-        },
-      });
-      return response.data;
-    } catch (err) {
-      if (err.response?.data) throw err.response.data;
-      if (err.isNetworkError || !err.response) {
-        const mockPosts = mockPostService.getPosts();
-        return {
-          success: true,
-          data: {
-            content: mockPosts,
-            totalElements: mockPosts.length,
-            totalPages: 1,
-            number: 0,
-            size: mockPosts.length,
-          },
-        };
+      const queryParams = {
+        page: params.page || 0,
+        size: params.size || 50,
+        sortBy: params.sortBy || 'createdAt',
+        direction: params.direction || 'desc',
+      };
+      if (params.topic && params.topic !== 'ALL' && params.topic !== 'All') {
+        queryParams.topic = params.topic;
       }
-      throw err;
+
+      const response = await apiClient.get('/api/posts', { params: queryParams });
+
+      if (response.data && (response.data.data || response.data.content || Array.isArray(response.data))) {
+        return response.data;
+      }
+      
+      const mockPosts = mockPostService.getPosts();
+      return {
+        success: true,
+        data: { content: mockPosts, totalElements: mockPosts.length, totalPages: 1, number: 0, size: mockPosts.length },
+      };
+    } catch (err) {
+      console.warn('[apiPostService] getPosts error fallback triggered:', err?.message || err);
+      const mockPosts = mockPostService.getPosts();
+      return {
+        success: true,
+        data: {
+          content: mockPosts,
+          totalElements: mockPosts.length,
+          totalPages: 1,
+          number: 0,
+          size: mockPosts.length,
+        },
+      };
     }
   },
 

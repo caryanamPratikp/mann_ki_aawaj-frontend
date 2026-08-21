@@ -248,7 +248,7 @@ export function HomePage({ onNavigate }) {
         movieName: movieName.trim() || null,
         movieRating: movieRating || null,
         isSpoiler: isSpoiler || false,
-        mood: postMood || null,
+        mood: userSelectedMood || null,
       });
 
       setPostTitle('');
