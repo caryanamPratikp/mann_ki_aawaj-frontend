@@ -4,7 +4,8 @@ import { apiClient } from './apiClient.js';
 
 const translationClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 15000,
+  validateStatus: (status) => status >= 200 && status < 500,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -106,6 +107,31 @@ export const detectTextLanguage = (text) => {
 };
 
 const translationCache = new Map();
+let rateLimitPauseUntil = 0;
+
+const getCachedTranslation = (cacheKey) => {
+  if (translationCache.has(cacheKey)) {
+    return translationCache.get(cacheKey);
+  }
+  try {
+    const lsKey = `mka_tr_${cacheKey.substring(0, 100)}`;
+    const saved = localStorage.getItem(lsKey);
+    if (saved) {
+      translationCache.set(cacheKey, saved);
+      return saved;
+    }
+  } catch (e) {}
+  return null;
+};
+
+const setCachedTranslation = (cacheKey, value) => {
+  if (!cacheKey || !value) return;
+  translationCache.set(cacheKey, value);
+  try {
+    const lsKey = `mka_tr_${cacheKey.substring(0, 100)}`;
+    localStorage.setItem(lsKey, value);
+  } catch (e) {}
+};
 
 export const apiTranslationService = {
   async translateText(text, targetLang, sourceLang = null) {
@@ -173,32 +199,38 @@ export const apiTranslationService = {
       return clean;
     };
 
-
     const cacheKey = `${srcCode || 'auto'}_${tgtCode}_${text.trim()}`;
-    if (translationCache.has(cacheKey)) {
-      return translationCache.get(cacheKey);
+    const cached = getCachedTranslation(cacheKey);
+    if (cached) {
+      return cached;
     }
 
-    // 1. Attempt primary backend translation endpoint (OpenAI / Spring Boot service) with silent error handling
-    try {
-      const response = await translationClient.post('/api/v1/translation/translate', {
-        text: maskedBody,
-        sourceLanguage: 'auto',
-        targetLanguage: tgtCode,
-      }).catch(() => null);
+    // 1. Attempt primary backend translation endpoint with rate-limit pause check
+    if (Date.now() >= rateLimitPauseUntil) {
+      try {
+        const response = await translationClient.post('/api/v1/translation/translate', {
+          text: maskedBody,
+          sourceLanguage: 'auto',
+          targetLanguage: tgtCode,
+        }).catch(() => null);
 
-      if (
-        response?.data &&
-        response.data.translatedText &&
-        response.data.translatedText !== maskedBody &&
-        response.data.engine !== 'fallback'
-      ) {
-        const result = reattachHandles(response.data.translatedText);
-        translationCache.set(cacheKey, result);
-        return result;
+        if (response?.status === 429) {
+          // Pause primary translation API calls for 20s on HTTP 429
+          rateLimitPauseUntil = Date.now() + 20000;
+        } else if (
+          response?.status === 200 &&
+          response?.data &&
+          response.data.translatedText &&
+          response.data.translatedText !== maskedBody &&
+          response.data.engine !== 'fallback'
+        ) {
+          const result = reattachHandles(response.data.translatedText);
+          setCachedTranslation(cacheKey, result);
+          return result;
+        }
+      } catch (err) {
+        // Handle rate limits / offline status silently
       }
-    } catch (err) {
-      // Handle rate limits / offline status silently
     }
 
     // 2. Secondary Fallback: Free Google Translate GTX service
@@ -215,7 +247,7 @@ export const apiTranslationService = {
 
           if (translatedParts && translatedParts.trim()) {
             const finalResult = reattachHandles(translatedParts.trim());
-            translationCache.set(cacheKey, finalResult);
+            setCachedTranslation(cacheKey, finalResult);
             return finalResult;
           }
         }
@@ -223,7 +255,6 @@ export const apiTranslationService = {
     } catch (fallbackErr) {
       // Handle fallback error silently
     }
-
 
     return text;
   },
@@ -243,8 +274,9 @@ export const apiTranslationService = {
         return;
       }
       const cacheKey = `auto_${tgtCode}_${clean}`;
-      if (translationCache.has(cacheKey)) {
-        resultMap[clean] = translationCache.get(cacheKey);
+      const cached = getCachedTranslation(cacheKey);
+      if (cached) {
+        resultMap[clean] = cached;
       } else {
         unCachedTexts.push(clean);
       }
@@ -252,23 +284,27 @@ export const apiTranslationService = {
 
     if (unCachedTexts.length === 0) return resultMap;
 
-    try {
-      const response = await translationClient.post('/api/v1/translation/batch', {
-        texts: unCachedTexts,
-        sourceLanguage: 'auto',
-        targetLanguage: tgtCode,
-      }).catch(() => null);
+    if (Date.now() >= rateLimitPauseUntil) {
+      try {
+        const response = await translationClient.post('/api/v1/translation/batch', {
+          texts: unCachedTexts,
+          sourceLanguage: 'auto',
+          targetLanguage: tgtCode,
+        }).catch(() => null);
 
-      if (response?.data && response.data.translations) {
-        Object.entries(response.data.translations).forEach(([orig, trans]) => {
-          const cacheKey = `auto_${tgtCode}_${orig}`;
-          translationCache.set(cacheKey, trans);
-          resultMap[orig] = trans;
-        });
-        return resultMap;
+        if (response?.status === 429) {
+          rateLimitPauseUntil = Date.now() + 20000;
+        } else if (response?.status === 200 && response?.data && response.data.translations) {
+          Object.entries(response.data.translations).forEach(([orig, trans]) => {
+            const cacheKey = `auto_${tgtCode}_${orig}`;
+            setCachedTranslation(cacheKey, trans);
+            resultMap[orig] = trans;
+          });
+          return resultMap;
+        }
+      } catch (err) {
+        // Silent catch
       }
-    } catch (err) {
-      // Silent catch
     }
 
     // Fallback sequentially if batch endpoint rate-limited or offline
@@ -278,3 +314,4 @@ export const apiTranslationService = {
     return resultMap;
   },
 };
+
