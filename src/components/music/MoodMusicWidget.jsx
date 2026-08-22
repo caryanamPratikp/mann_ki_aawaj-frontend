@@ -18,7 +18,7 @@ export function MoodMusicWidget() {
   if (!music.isWidgetOpen) {
     return (
       <button className="music-player-bubble" type="button" onClick={() => music.setIsWidgetOpen(true)} aria-label="Open music player">
-        <img src={music.currentTrack.coverUrl || defaultCover} alt="" />
+        <img src={music.currentTrack.coverUrl || defaultCover} alt="" onError={(e) => { e.currentTarget.src = defaultCover; }} />
         <span>{music.currentTrack.title}</span>
         {music.isPlaying ? <Pause size={16} /> : <Play size={16} />}
       </button>
@@ -31,7 +31,7 @@ export function MoodMusicWidget() {
         <X size={18} />
       </button>
       <div className="music-player-track">
-        <img src={music.currentTrack.coverUrl || defaultCover} alt={`${music.currentTrack.title} cover`} />
+        <img src={music.currentTrack.coverUrl || defaultCover} alt={`${music.currentTrack.title} cover`} onError={(e) => { e.currentTarget.src = defaultCover; }} />
         <div>
           <strong>{music.currentTrack.title}</strong>
           <span>{music.currentTrack.artist || 'Unknown artist'}</span>

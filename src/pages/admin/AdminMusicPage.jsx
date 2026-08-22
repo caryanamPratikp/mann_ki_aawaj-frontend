@@ -17,18 +17,20 @@ function PrivateCover({ track }) {
   useEffect(() => {
     let objectUrl = '';
     let active = true;
-    if (!track.id || track.coverUrl) return undefined;
+    if (!track.id || !track.coverUrl) return undefined;
     apiMusicService.getAdminCoverBlob(track.id).then((blob) => {
       if (!active) return;
       objectUrl = URL.createObjectURL(blob);
       setUrl(objectUrl);
-    }).catch(() => setUrl(''));
+    }).catch(() => {
+      if (active) setUrl('');
+    });
     return () => {
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [track.id, track.coverUrl]);
-  return <img src={url || defaultCover} alt={`${track.title} cover`} />;
+  return <img src={url || defaultCover} alt={`${track.title} cover`} onError={(e) => { e.currentTarget.src = defaultCover; }} />;
 }
 
 function TrackFormModal({ mode, track, saving, progress, onClose, onSave }) {
