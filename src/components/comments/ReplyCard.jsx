@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useComments } from '../../context/CommentContext.jsx';
 import { useReports } from '../../context/ReportContext.jsx';
@@ -9,6 +10,7 @@ import { Dropdown, DropdownItem } from '../common/Dropdown.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { InitialAvatar } from '../profile/InitialAvatar.jsx';
 import { formatDate } from '../../utils/formatDate.js';
+import { sanitizeEncodedSymbols } from '../../services/apiMappers.js';
 
 const EMOJI_REACTIONS = ['😀', '❤️', '👍', '🔥', '💯', '🤝'];
 
@@ -42,24 +44,22 @@ export function ReplyCard({ reply, postId, commentId, onNavigate, onReplyTrigger
   const [editText, setEditText] = useState(reply?.content || '');
   const [isHovered, setIsHovered] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
-  const [dynamicReplyTranslation, setDynamicReplyTranslation] = useState(null);
 
-  React.useEffect(() => {
-    let isMounted = true;
-    const sourceText = reply?.originalContent || reply?.content;
-    if (sourceText && currentLanguage && translateTextAsync) {
-      translateTextAsync(sourceText, currentLanguage)
-        .then((res) => {
-          if (isMounted && res) setDynamicReplyTranslation(res);
-        })
-        .catch(() => {
-          if (isMounted) setDynamicReplyTranslation(null);
-        });
-    } else {
-      setDynamicReplyTranslation(null);
-    }
-    return () => { isMounted = false; };
-  }, [reply, currentLanguage, translateTextAsync]);
+  // TanStack Query for Reply Translation with 3-second refetchInterval
+  const replySourceText = reply?.originalContent || reply?.content || '';
+  const replyTranslationQuery = useQuery({
+    queryKey: ['reply-translation', reply?.id, currentLanguage, replySourceText],
+    queryFn: async () => {
+      if (!replySourceText || !currentLanguage || !translateTextAsync) return null;
+      const res = await translateTextAsync(replySourceText, currentLanguage);
+      return res || null;
+    },
+    refetchInterval: 3000,
+    staleTime: 10000,
+    enabled: Boolean(replySourceText && currentLanguage),
+  });
+
+  const dynamicReplyTranslation = replyTranslationQuery.data || null;
 
   const isOwner = Boolean(
     currentUser && (
@@ -78,7 +78,7 @@ export function ReplyCard({ reply, postId, commentId, onNavigate, onReplyTrigger
     const regex = new RegExp(`^${cleanAuthorHandle.replace('@', '@\\s*')}\\s*`, 'i');
     rawDisplay = rawDisplay.replace(regex, '');
   }
-  const displayContent = rawDisplay;
+  const displayContent = sanitizeEncodedSymbols(rawDisplay);
 
 
 

@@ -33,7 +33,7 @@ import { AccountSettingsPage } from '../pages/user/AccountSettingsPage.jsx';
 import { NotificationSettingsPage } from '../pages/user/NotificationSettingsPage.jsx';
 import { SafetyModerationPage } from '../pages/user/SafetyModerationPage.jsx';
 import { HelpSupportPage } from '../pages/user/HelpSupportPage.jsx';
-import { ChatPage } from '../pages/user/ChatPage.jsx';
+import { MusicPage } from '../pages/user/MusicPage.jsx';
 
 import { AdminLoginPage } from '../pages/admin/AdminLoginPage.jsx';
 import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage.jsx';
@@ -44,11 +44,12 @@ import { AdminBlockedContentPage } from '../pages/admin/AdminBlockedContentPage.
 import { AdminUsersPage } from '../pages/admin/AdminUsersPage.jsx';
 import { AdminAnalyticsPage } from '../pages/admin/AdminAnalyticsPage.jsx';
 import { AdminEnquiriesPage } from '../pages/admin/AdminEnquiriesPage.jsx';
+import { AdminMusicPage } from '../pages/admin/AdminMusicPage.jsx';
 
 export function AppRoutes() {
 
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
-  const { currentUser } = useAuth();
+  const { currentUser, isAdminLoggedIn } = useAuth();
 
   useEffect(() => {
     const handlePopState = () => {
@@ -125,6 +126,9 @@ export function AppRoutes() {
   if (normalizedPath === '/admin/login') {
     return <AdminLoginPage onNavigate={navigate} />;
   }
+  if (normalizedPath.startsWith('/admin/') && (!isAdminLoggedIn || currentUser?.role !== 'ADMIN')) {
+    return <AdminLoginPage onNavigate={navigate} />;
+  }
   if (normalizedPath === '/admin/dashboard') {
     return <AdminDashboardPage onNavigate={navigate} />;
   }
@@ -151,6 +155,9 @@ export function AppRoutes() {
   if (normalizedPath === '/admin/analytics') {
     return <AdminAnalyticsPage onNavigate={navigate} />;
   }
+  if (normalizedPath === '/admin/music') {
+    return <AdminMusicPage onNavigate={navigate} />;
+  }
   if (normalizedPath === '/admin/settings') {
     return <AdminDashboardPage onNavigate={navigate} />;
   }
@@ -171,6 +178,9 @@ export function AppRoutes() {
   }
   if (normalizedPath.startsWith('/explore')) {
     return <ExplorePage onNavigate={navigate} />;
+  }
+  if (normalizedPath === '/music') {
+    return <MusicPage onNavigate={navigate} />;
   }
   if (normalizedPath === '/create-post') {
     return <CreatePostPage onNavigate={navigate} />;

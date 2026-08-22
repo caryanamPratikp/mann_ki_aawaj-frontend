@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Clock, Flame } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { apiTopicService } from '../../services/apiTopicService.js';
@@ -14,10 +15,27 @@ export function TopicDiscussionPage({ topicId, onNavigate }) {
   const { addToast } = useToast();
   const { t, currentLanguage, translateTextAsync } = useLanguage();
   const [topic, setTopic] = useState(null);
-  const [comments, setComments] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [translatedTopic, setTranslatedTopic] = useState('');
   const commentStreamRef = useRef(null);
+
+  // TanStack Query for Topic Discussion Comments with 3-second refetchInterval
+  const commentsQuery = useQuery({
+    queryKey: ['topic-comments', topicId],
+    queryFn: async () => {
+      const [topics, response] = await Promise.all([
+        apiTopicService.getTopics(), apiCommentService.getCommentsByTopicId(topicId),
+      ]);
+      const matchedTopic = topics.find((item) => String(item.id) === String(topicId)) || null;
+      if (matchedTopic) setTopic(matchedTopic);
+      const raw = response?.data?.content || response?.data || [];
+      return Array.isArray(raw) ? [...raw].sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0)) : [];
+    },
+    refetchInterval: 3000,
+    staleTime: 1000,
+  });
+
+  const comments = commentsQuery.data || [];
+  const loading = commentsQuery.isLoading && comments.length === 0;
 
   useEffect(() => {
     const source = topic?.label || topic?.name || '';
@@ -28,21 +46,6 @@ export function TopicDiscussionPage({ topicId, onNavigate }) {
     return () => { active = false; };
   }, [topic, currentLanguage, translateTextAsync]);
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const [topics, response] = await Promise.all([
-        apiTopicService.getTopics(), apiCommentService.getCommentsByTopicId(topicId),
-      ]);
-      setTopic(topics.find((item) => String(item.id) === String(topicId)) || null);
-      setComments([...(response?.data?.content || [])].sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0)));
-    } catch (error) {
-      addToast(error?.response?.data?.message || 'Unable to load this discussion.', 'error');
-    } finally { setLoading(false); }
-  };
-
-  useEffect(() => { load(); }, [topicId]);
-
   useEffect(() => {
     if (commentStreamRef.current) commentStreamRef.current.scrollTop = commentStreamRef.current.scrollHeight;
   }, [comments.length]);
@@ -50,7 +53,7 @@ export function TopicDiscussionPage({ topicId, onNavigate }) {
   const submit = async (content, attachedImageUrl) => {
     try {
       await apiCommentService.createTopicComment(topicId, content, getLanguageCode(currentLanguage), attachedImageUrl);
-      await load();
+      await commentsQuery.refetch();
     } catch (error) {
       addToast(error?.response?.data?.message || 'Unable to add your opinion.', 'error');
     }
@@ -59,7 +62,7 @@ export function TopicDiscussionPage({ topicId, onNavigate }) {
   const submitReply = async (commentId, content) => {
     try {
       await apiCommentService.replyToComment(commentId, content, getLanguageCode(currentLanguage));
-      await load();
+      await commentsQuery.refetch();
     } catch (error) { addToast(error?.response?.data?.message || t('replyFailed', 'Unable to add your reply.'), 'error'); }
   };
 

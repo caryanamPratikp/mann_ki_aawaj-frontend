@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { CommentCard } from './CommentCard.jsx';
 import { CommentSort } from './CommentSort.jsx';
 import { useComments } from '../../context/CommentContext.jsx';
+import { apiCommentService } from '../../services/apiCommentService.js';
+import { mapComment } from '../../services/apiMappers.js';
 import { EmptyState } from '../common/EmptyState.jsx';
 import { MessageSquare } from 'lucide-react';
 
@@ -11,9 +14,17 @@ export function CommentList({ postId, postAuthorUsername, onNavigate }) {
   const commentsEndRef = useRef(null);
   const containerRef = useRef(null);
 
-  useEffect(() => {
-    fetchComments(postId, sortBy);
-  }, [postId, sortBy, fetchComments]);
+  // TanStack Query for Post Comments with 3-second refetchInterval
+  const commentsQuery = useQuery({
+    queryKey: ['post-comments', postId, sortBy],
+    queryFn: async () => {
+      const data = await fetchComments(postId, sortBy);
+      return data || [];
+    },
+    refetchInterval: 3000,
+    staleTime: 1000,
+    enabled: Boolean(postId),
+  });
 
   const rawComments = commentsByPost[postId] || commentsByPost[String(postId)] || commentsByPost[Number(postId)] || [];
   

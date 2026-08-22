@@ -4,7 +4,7 @@ import { mockAuthService } from './mockAuthService.js';
 
 export const authService = {
   // POST /api/auth/login { email, password } → returns user data plus token
-  async login(emailOrMobile, password) {
+  async login(emailOrMobile, password, { allowMockFallback = true } = {}) {
     try {
       const response = await apiClient.post('/api/auth/login', { email: emailOrMobile, password });
       const res = response.data;
@@ -46,6 +46,9 @@ export const authService = {
         throw err.response.data;
       }
       if (err.isNetworkError || err.code === 'ECONNABORTED' || err.message?.includes('timeout') || err.message?.includes('Network Error') || err.message?.includes('Failed to fetch') || !err.response) {
+        if (!allowMockFallback) {
+          throw new Error('Admin authentication requires the backend server. Please try again when it is available.');
+        }
         console.warn('Backend server offline or timed out. Falling back to mock auth.');
         const mockUser = mockAuthService.login(emailOrMobile, password);
         return { user: mockUser, hasProfile: true };

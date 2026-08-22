@@ -62,9 +62,23 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
     }
   }, []);
 
-  const { isRecording, isTranscribing, bindMicProps } = useVoiceRecorder((transcribedText) => {
-    setText((prev) => (prev ? `${prev} ${transcribedText}` : transcribedText));
-  }, spokenLanguage);
+  const baseTextRef = useRef(null);
+
+  const handleVoiceTranscription = React.useCallback((transcribedText) => {
+    if (baseTextRef.current === null) {
+      baseTextRef.current = text;
+    }
+    const base = baseTextRef.current;
+    setText(base ? `${base} ${transcribedText}` : transcribedText);
+  }, [text]);
+
+  const { isRecording, isTranscribing, bindMicProps } = useVoiceRecorder(handleVoiceTranscription, spokenLanguage);
+
+  useEffect(() => {
+    if (!isRecording && !isTranscribing) {
+      baseTextRef.current = null;
+    }
+  }, [isRecording, isTranscribing]);
 
   const minLength = 2;
   const maxLength = 1000;

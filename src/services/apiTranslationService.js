@@ -134,10 +134,28 @@ const setCachedTranslation = (cacheKey, value) => {
 };
 
 export const apiTranslationService = {
-  async translateText(text, targetLang, sourceLang = null) {
-    if (!text || !text.trim()) {
-      return text;
+  async translateText(rawInputText, targetLang, sourceLang = null) {
+    if (!rawInputText || !rawInputText.trim()) {
+      return rawInputText;
     }
+
+    let text = rawInputText.trim();
+    if (text.includes('%')) {
+      try {
+        text = decodeURIComponent(text);
+      } catch (e) {}
+    }
+    text = text
+      .replace(/%2सी/gi, ',')
+      .replace(/%3एफ/gi, '?')
+      .replace(/%2स/gi, ',')
+      .replace(/%3ए/gi, '?')
+      .replace(/%2C/gi, ',')
+      .replace(/%3F/gi, '?')
+      .replace(/%21/gi, '!')
+      .replace(/%20/g, ' ')
+      .replace(/%3([Ff]|एफ)?/gi, '?')
+      .replace(/%2([Cc]|सी)?/gi, ',');
 
     const tgtCode = normalizeLanguageCode(targetLang) || 'EN';
     let srcCode = normalizeLanguageCode(sourceLang);
@@ -221,8 +239,8 @@ export const apiTranslationService = {
           response?.status === 200 &&
           response?.data &&
           response.data.translatedText &&
-          response.data.translatedText !== maskedBody &&
-          response.data.engine !== 'fallback'
+          response.data.translatedText.trim() !== '' &&
+          response.data.translatedText.trim() !== maskedBody.trim()
         ) {
           const result = reattachHandles(response.data.translatedText);
           setCachedTranslation(cacheKey, result);

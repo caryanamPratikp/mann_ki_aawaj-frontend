@@ -305,6 +305,7 @@ export function TopNavbar({ activeRoute, onNavigate }) {
           {[
             { label: t('home') || 'Home', route: '/home' },
             { label: t('explore') || 'Explore', route: '/explore' },
+            { label: t('music', 'Music'), route: '/music' },
             { label: t('messages') || 'Messages', route: '/chat' },
             { label: t('notifications') || 'Notifications', route: '/notifications' },
             { label: t('myPosts') || 'My Posts', route: '/my-posts' },

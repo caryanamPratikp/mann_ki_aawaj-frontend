@@ -128,17 +128,41 @@ export function mapPost(post) {
 
 }
 
+export function sanitizeEncodedSymbols(str) {
+  if (!str || typeof str !== 'string') return str;
+  let clean = str;
+  if (clean.includes('%')) {
+    try {
+      clean = decodeURIComponent(clean);
+    } catch (e) {}
+  }
+  return clean
+    .replace(/%2सी/gi, ',')
+    .replace(/%3एफ/gi, '?')
+    .replace(/%2स/gi, ',')
+    .replace(/%3ए/gi, '?')
+    .replace(/%2C/gi, ',')
+    .replace(/%3F/gi, '?')
+    .replace(/%21/gi, '!')
+    .replace(/%20/g, ' ')
+    .replace(/%3([Ff]|एफ)?/gi, '?')
+    .replace(/%2([Cc]|सी)?/gi, ',');
+}
+
 export function mapComment(comment) {
   if (!comment) return null;
 
   const formattedUname = resolveUsername(comment);
 
+  const rawContent = sanitizeEncodedSymbols(comment.originalContent || comment.content || '');
+  const rawTranslated = comment.translatedContent ? sanitizeEncodedSymbols(comment.translatedContent) : null;
+
   return {
     ...comment,
-    originalContent: comment.originalContent || comment.content || '',
-    translatedContent: comment.translatedContent || null,
+    originalContent: rawContent,
+    translatedContent: rawTranslated,
     displayLanguage: comment.displayLanguage || comment.originalLanguage || 'EN',
-    content: comment.content || comment.originalContent || '',
+    content: rawContent,
     username: formattedUname,
     avatarInitials: comment.avatarInitials || formattedUname.replace('@', '').slice(0, 2).toUpperCase(),
     avatarConfig: comment.authorAvatar || comment.avatarConfig || null,

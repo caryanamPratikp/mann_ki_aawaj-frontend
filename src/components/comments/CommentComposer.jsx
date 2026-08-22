@@ -78,15 +78,31 @@ export function CommentComposer({
   const [spokenLanguage] = useSpokenLanguage();
   const inputRef = React.useRef(null);
 
+
+
   React.useEffect(() => {
     if (autoFocus && inputRef.current) {
       inputRef.current.focus();
     }
   }, [autoFocus]);
 
-  const { isRecording, isTranscribing, bindMicProps } = useVoiceRecorder((transcribedText) => {
-    setText((prev) => (prev ? `${prev} ${transcribedText}` : transcribedText));
-  }, spokenLanguage);
+  const baseTextRef = React.useRef(null);
+
+  const handleVoiceTranscription = React.useCallback((transcribedText) => {
+    if (baseTextRef.current === null) {
+      baseTextRef.current = text;
+    }
+    const base = baseTextRef.current;
+    setText(base ? `${base} ${transcribedText}` : transcribedText);
+  }, [text]);
+
+  const { isRecording, isTranscribing, bindMicProps } = useVoiceRecorder(handleVoiceTranscription, spokenLanguage);
+
+  React.useEffect(() => {
+    if (!isRecording && !isTranscribing) {
+      baseTextRef.current = null;
+    }
+  }, [isRecording, isTranscribing]);
 
   const minLength = 2;
   const maxLength = 1000;
@@ -231,7 +247,7 @@ export function CommentComposer({
             type="button"
             {...bindMicProps}
             disabled={isTranscribing || currentUser?.status === 'COMMENT_RESTRICTED'}
-            title={isRecording ? 'Release to stop recording' : 'Hold microphone to speak'}
+            title={isRecording ? 'Release or click to finish' : 'Tap or hold microphone to speak'}
             style={{
               background: isRecording ? '#FFEBEB' : 'transparent',
               border: 'none',

@@ -1,287 +1,223 @@
-import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-
-// Indian Regional Languages List
-export const INDIAN_LANGUAGES = [
-  { id: 'HI', name: 'Hindi', native: 'हिन्दी', flag: '🇮🇳' },
-  { id: 'PA', name: 'Punjabi', native: 'ਪੰਜਾਬੀ', flag: '🌾' },
-  { id: 'MR', name: 'Marathi', native: 'मराठी', flag: '🚩' },
-  { id: 'BN', name: 'Bengali', native: 'বাংলা', flag: '🌺' },
-  { id: 'TA', name: 'South', native: 'தமிழ்/తెలుగు', flag: '🌴' },
-];
-
-// Mood categories
-export const MOOD_CATEGORIES = [
-  { id: 'Romantic', label: 'Romantic Melodies 💖', emoji: '💖', color: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%)' },
-  { id: 'Calm', label: 'Calm Bansuri Flute 🪈', emoji: '😌', color: 'linear-gradient(135deg, #42E695 0%, #3BB2B8 100%)' },
-  { id: 'Energetic', label: 'Dhol & Bhangra Beats 🥁', emoji: '🔥', color: 'linear-gradient(135deg, #FF416C 0%, #FF4B2B 100%)' },
-  { id: 'Confused', label: 'Classical Sitar Raga 🪕', emoji: '🤔', color: 'linear-gradient(135deg, #8A2387 0%, #E94057 50%, #F27121 100%)' },
-  { id: 'Melancholy', label: 'Monsoon Rain & Sarangi 🌧️', emoji: '🌧️', color: 'linear-gradient(135deg, #3A1C71 0%, #D76D77 50%, #FFAF7B 100%)' },
-  { id: 'Focus', label: 'Chai & Lo-Fi Study 🧘', emoji: '🧘', color: 'linear-gradient(135deg, #614385 0%, #516395 100%)' },
-];
-
-// High Quality Real Music Audio Streams (Direct Production CORS Permitted MP3 Streams)
-export const REGIONAL_PLAYLISTS = {
-  HI: {
-    Romantic: [
-      {
-        id: 'hi_r1',
-        title: 'Kesariya Acoustic Strings',
-        artist: 'Soft Indian Love Melodies',
-        language: 'Hindi',
-        mood: 'Romantic',
-        coverUrl: 'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=400&q=80',
-        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-      },
-      {
-        id: 'hi_r2',
-        title: 'Tum Hi Ho Sunset Session',
-        artist: 'Acoustic Guitar & Bansuri Mix',
-        language: 'Hindi',
-        mood: 'Romantic',
-        coverUrl: 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=400&q=80',
-        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-      },
-    ],
-    Calm: [
-      {
-        id: 'hi_cl1',
-        title: 'Kashi Indian Bansuri Flute',
-        artist: 'Peaceful Meditation Bansuri Flute',
-        language: 'Hindi',
-        mood: 'Calm',
-        coverUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&q=80',
-        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-      },
-      {
-        id: 'hi_cl2',
-        title: 'Traditional Sitar Raga Evening',
-        artist: 'Classical Indian Sitar Ensemble',
-        language: 'Hindi',
-        mood: 'Calm',
-        coverUrl: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=400&q=80',
-        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
-      },
-    ],
-    Energetic: [
-      {
-        id: 'hi_e1',
-        title: 'Bhangra Dhol & Dholak Beats',
-        artist: 'High Energy Indian Percussion',
-        language: 'Hindi',
-        mood: 'Energetic',
-        coverUrl: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=400&q=80',
-        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3',
-      },
-    ],
-    Confused: [
-      {
-        id: 'hi_c1',
-        title: 'Raga Bhairavi Classical Sitar',
-        artist: 'Traditional Indian Classical Raga',
-        language: 'Hindi',
-        mood: 'Confused',
-        coverUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=80',
-        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3',
-      },
-    ],
-    Melancholy: [
-      {
-        id: 'hi_m1',
-        title: 'Monsoon Rain & Quiet Sarangi',
-        artist: 'Rain Ambience & Sad String Melodies',
-        language: 'Hindi',
-        mood: 'Melancholy',
-        coverUrl: 'https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?w=400&q=80',
-        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3',
-      },
-    ],
-    Focus: [
-      {
-        id: 'hi_f1',
-        title: 'Chai & Code Indian Lo-Fi',
-        artist: 'Desi Chill Beats',
-        language: 'Hindi',
-        mood: 'Focus',
-        coverUrl: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8?w=400&q=80',
-        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3',
-      },
-    ],
-  },
-  PA: {
-    Romantic: [
-      {
-        id: 'pa_r1',
-        title: 'Punjabi Folk Flute & Tumbi',
-        artist: 'Traditional Punjabi Melodies',
-        language: 'Punjabi',
-        mood: 'Romantic',
-        coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&q=80',
-        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-      },
-    ],
-  },
-  MR: {
-    Romantic: [
-      {
-        id: 'mr_r1',
-        title: 'Marathi Lavani & Shehnai Harmony',
-        artist: 'Traditional Maharashtrian Instrumentals',
-        language: 'Marathi',
-        mood: 'Romantic',
-        coverUrl: 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=400&q=80',
-        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-      },
-    ],
-  },
-};
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { apiMusicService } from '../services/apiMusicService.js';
 
 const MoodMusicContext = createContext(null);
 
 export function MoodMusicProvider({ children }) {
-  const [selectedLanguage, setSelectedLanguage] = useState('HI');
-  const [currentMood, setCurrentMood] = useState('Romantic');
-  const [trackIndex, setTrackIndex] = useState(0);
+  const [queue, setQueue] = useState([]);
+  const [trackIndex, setTrackIndex] = useState(-1);
+  const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isWidgetOpen, setIsWidgetOpen] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(180);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolumeState] = useState(0.85);
   const [isMuted, setIsMuted] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [playbackError, setPlaybackError] = useState('');
 
   const audioRef = useRef(null);
+  const queueRef = useRef([]);
+  const trackIndexRef = useRef(-1);
+  const playAtRef = useRef(() => {});
+  const nextRef = useRef(() => {});
 
-  const getActivePlaylist = () => {
-    const langObj = REGIONAL_PLAYLISTS[selectedLanguage] || REGIONAL_PLAYLISTS.HI;
-    return langObj[currentMood] || langObj.Romantic || REGIONAL_PLAYLISTS.HI.Romantic;
-  };
+  // Pre-load public catalog on startup if no active track is selected yet
+  useEffect(() => {
+    let active = true;
+    const loadCatalog = async () => {
+      try {
+        const response = await apiMusicService.getPublicTracks({ page: 0, size: 20 });
+        const tracks = response?.content || response?.data?.content || [];
+        if (active && Array.isArray(tracks) && tracks.length > 0 && !currentTrack) {
+          const playable = tracks.filter((t) => t?.audioUrl);
+          if (playable.length > 0) {
+            queueRef.current = playable;
+            trackIndexRef.current = 0;
+            setQueue(playable);
+            setTrackIndex(0);
+            setCurrentTrack(playable[0]);
+            if (audioRef.current && !audioRef.current.src) {
+              audioRef.current.src = playable[0].audioUrl;
+            }
+          }
+        }
+      } catch (e) {
+        // Silently ignore offline catalog load
+      }
+    };
+    loadCatalog();
+    return () => { active = false; };
+  }, []);
 
-  const playlist = getActivePlaylist();
-  const currentTrack = playlist[trackIndex] || playlist[0];
+  const playAt = useCallback(async (index, nextQueue = queueRef.current) => {
+    const tracks = Array.isArray(nextQueue) ? nextQueue.filter((track) => track?.audioUrl) : [];
+    if (!tracks.length) {
+      setPlaybackError('This track has no playable audio source.');
+      return;
+    }
 
-  // Initialize HTML5 Audio element
+    const safeIndex = ((index % tracks.length) + tracks.length) % tracks.length;
+    const track = tracks[safeIndex];
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    queueRef.current = tracks;
+    trackIndexRef.current = safeIndex;
+    setQueue(tracks);
+    setTrackIndex(safeIndex);
+    setCurrentTrack(track);
+    setPlaybackError('');
+    setProgress(0);
+    setDuration(track.durationSeconds || 0);
+    setIsBuffering(true);
+    setIsWidgetOpen(true);
+
+    audio.src = track.audioUrl;
+    audio.load();
+    try {
+      await audio.play();
+    } catch (error) {
+      setIsPlaying(false);
+      setIsBuffering(false);
+      setPlaybackError(error?.name === 'NotAllowedError'
+        ? 'Playback was blocked by the browser. Press play to continue.'
+        : 'Unable to play this track. Please try another track.');
+    }
+  }, []);
+
+  playAtRef.current = playAt;
+
+  const nextTrack = useCallback(() => {
+    const tracks = queueRef.current;
+    if (!tracks.length) return;
+    playAtRef.current(trackIndexRef.current + 1, tracks);
+  }, []);
+
+  nextRef.current = nextTrack;
+
+  const prevTrack = useCallback(() => {
+    const tracks = queueRef.current;
+    if (!tracks.length) return;
+    playAtRef.current(trackIndexRef.current - 1, tracks);
+  }, []);
+
   useEffect(() => {
     const audio = new Audio();
+    audio.preload = 'metadata';
     audio.volume = 0.85;
     audioRef.current = audio;
 
-    const handleTimeUpdate = () => {
-      if (audio.duration && !isNaN(audio.duration)) {
-        setProgress((audio.currentTime / audio.duration) * 100);
-        setDuration(audio.duration);
-      }
+    const updateTime = () => {
+      const actualDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
+      setDuration(actualDuration);
+      setProgress(actualDuration ? (audio.currentTime / actualDuration) * 100 : 0);
     };
-
-    const handleEnded = () => {
-      nextTrack();
+    const updateMetadata = () => setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
+    const markBuffering = () => setIsBuffering(true);
+    const markPlaying = () => {
+      setIsPlaying(true);
+      setIsBuffering(false);
+      setPlaybackError('');
     };
-
-    const handleError = (e) => {
-      console.warn('Audio playback stream error, playing fallback stream...', e);
-      if (audio.src !== 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3') {
-        audio.src = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
-        audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
-      } else {
-        setIsPlaying(false);
-      }
+    const markPaused = () => setIsPlaying(false);
+    const markReady = () => setIsBuffering(false);
+    const markError = () => {
+      setIsPlaying(false);
+      setIsBuffering(false);
+      setPlaybackError('Unable to play this track. The audio may be unavailable.');
     };
+    const handleEnded = () => nextRef.current();
 
-    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('timeupdate', updateTime);
+    audio.addEventListener('loadedmetadata', updateMetadata);
+    audio.addEventListener('waiting', markBuffering);
+    audio.addEventListener('stalled', markBuffering);
+    audio.addEventListener('playing', markPlaying);
+    audio.addEventListener('canplay', markReady);
+    audio.addEventListener('pause', markPaused);
+    audio.addEventListener('error', markError);
     audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('error', handleError);
 
     return () => {
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('error', handleError);
       audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+      audioRef.current = null;
     };
   }, []);
 
-  // Direct Audio Playback Execution
-  const playAudioTrack = () => {
-    if (audioRef.current && currentTrack?.audioUrl) {
-      audioRef.current.src = currentTrack.audioUrl;
-      audioRef.current.load();
-      
-      const playPromise = audioRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            setIsPlaying(true);
-          })
-          .catch((err) => {
-            console.log('Autoplay restriction or network fallback:', err);
-            setIsPlaying(false);
-          });
-      }
+  const playTrack = useCallback((track, visibleQueue = []) => {
+    const tracks = visibleQueue.some((item) => item.id === track.id) ? visibleQueue : [track, ...visibleQueue];
+    const index = tracks.findIndex((item) => item.id === track.id);
+    return playAt(index < 0 ? 0 : index, tracks);
+  }, [playAt]);
+
+  const togglePlay = useCallback(async () => {
+    const audio = audioRef.current;
+    if (!audio || !currentTrack) return;
+    if (!audio.paused) {
+      audio.pause();
+      return;
     }
-  };
-
-  const togglePlay = () => {
-    if (isPlaying) {
-      if (audioRef.current) audioRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      playAudioTrack();
+    setPlaybackError('');
+    setIsBuffering(true);
+    try {
+      await audio.play();
+    } catch {
+      setIsBuffering(false);
+      setPlaybackError('Unable to resume playback. Please try again.');
     }
-  };
+  }, [currentTrack]);
 
-  const changeLanguage = (langCode) => {
-    setSelectedLanguage(langCode);
-    setTrackIndex(0);
-    setTimeout(() => playAudioTrack(), 50);
-  };
+  const handleSeek = useCallback((newPercent) => {
+    const audio = audioRef.current;
+    if (!audio || !Number.isFinite(audio.duration)) return;
+    const percent = Math.min(100, Math.max(0, Number(newPercent)));
+    audio.currentTime = (percent / 100) * audio.duration;
+    setProgress(percent);
+  }, []);
 
-  const changeMood = (moodId) => {
-    setCurrentMood(moodId);
-    setTrackIndex(0);
-    setTimeout(() => playAudioTrack(), 50);
-  };
+  const setVolume = useCallback((newVolume) => {
+    const audio = audioRef.current;
+    const safeVolume = Math.min(1, Math.max(0, Number(newVolume)));
+    if (audio) {
+      audio.volume = safeVolume;
+      audio.muted = safeVolume === 0;
+    }
+    setVolumeState(safeVolume);
+    setIsMuted(safeVolume === 0);
+  }, []);
 
-  const nextTrack = () => {
-    setTrackIndex((prev) => (prev + 1) % playlist.length);
-    setTimeout(() => playAudioTrack(), 50);
-  };
-
-  const prevTrack = () => {
-    setTrackIndex((prev) => (prev - 1 + playlist.length) % playlist.length);
-    setTimeout(() => playAudioTrack(), 50);
-  };
-
-  const toggleMute = () => {
-    if (!audioRef.current) return;
-    audioRef.current.muted = !isMuted;
-    setIsMuted(!isMuted);
-  };
-
-  const handleSeek = (newPercent) => {
-    if (!audioRef.current || !duration) return;
-    audioRef.current.currentTime = (newPercent / 100) * duration;
-    setProgress(newPercent);
-  };
+  const toggleMute = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.muted = !audio.muted;
+    setIsMuted(audio.muted);
+  }, []);
 
   return (
-    <MoodMusicContext.Provider
-      value={{
-        selectedLanguage,
-        currentMood,
-        playlist,
-        trackIndex,
-        currentTrack,
-        isPlaying,
-        isWidgetOpen,
-        progress,
-        duration,
-        isMuted,
-        setIsWidgetOpen,
-        togglePlay,
-        changeLanguage,
-        changeMood,
-        nextTrack,
-        prevTrack,
-        toggleMute,
-        handleSeek,
-      }}
-    >
+    <MoodMusicContext.Provider value={{
+      queue,
+      trackIndex,
+      currentTrack,
+      isPlaying,
+      isWidgetOpen,
+      progress,
+      duration,
+      volume,
+      isMuted,
+      isBuffering,
+      playbackError,
+      setIsWidgetOpen,
+      playTrack,
+      togglePlay,
+      nextTrack,
+      prevTrack,
+      handleSeek,
+      setVolume,
+      toggleMute,
+    }}>
       {children}
     </MoodMusicContext.Provider>
   );
@@ -289,8 +225,6 @@ export function MoodMusicProvider({ children }) {
 
 export function useMoodMusic() {
   const context = useContext(MoodMusicContext);
-  if (!context) {
-    throw new Error('useMoodMusic must be used within MoodMusicProvider');
-  }
+  if (!context) throw new Error('useMoodMusic must be used within MoodMusicProvider');
   return context;
 }

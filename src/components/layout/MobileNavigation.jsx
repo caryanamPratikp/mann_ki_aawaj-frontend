@@ -1,17 +1,11 @@
 import React from 'react';
-import { Home, Compass, PlusSquare, MessageSquare, User } from 'lucide-react';
+import { Home, Compass, PlusSquare, Music2, User } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
-import { useNotifications } from '../../context/NotificationContext.jsx';
-import { useChat } from '../../context/ChatContext.jsx';
 
 export function MobileNavigation({ activeRoute, onNavigate }) {
   const { currentUser } = useAuth();
   const { t } = useLanguage();
-  const { unreadCount } = useNotifications();
-  const chatContext = useChat();
-  const hasUnreadMessages = chatContext?.hasUnreadMessages || false;
-
   const navItems = [
     {
       icon: Home,
@@ -32,11 +26,10 @@ export function MobileNavigation({ activeRoute, onNavigate }) {
       isFab: true,
     },
     {
-      icon: MessageSquare,
-      label: t('messages'),
-      route: '/chat',
-      badge: hasUnreadMessages,
-      routePrefix: '/chat',
+      icon: Music2,
+      label: t('music', 'Music'),
+      route: '/music',
+      badge: false,
     },
     {
       icon: User,

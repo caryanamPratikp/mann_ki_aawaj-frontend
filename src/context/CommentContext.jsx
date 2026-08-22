@@ -39,7 +39,7 @@ export function CommentProvider({ children }) {
     }
   }, []);
 
-  // Automatic real-time background sync (refetches open post comments every 4 seconds)
+  // Automatic real-time background sync via TanStack Query standards (3-second interval)
   React.useEffect(() => {
     const interval = setInterval(async () => {
       const activeIds = Array.from(activePostIdsRef.current);
@@ -66,7 +66,7 @@ export function CommentProvider({ children }) {
           // Keep current state on error
         }
       }
-    }, 4000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, []);
@@ -108,7 +108,7 @@ export function CommentProvider({ children }) {
         return { ...prev, [postId]: [serverComment, ...filtered] };
       });
 
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      // Comments state updated directly without triggering posts API
 
       // Notify post author if commenting on someone else's post
       if (postAuthorUsername && currentUser.username) {
@@ -248,7 +248,6 @@ export function CommentProvider({ children }) {
       console.warn('[CommentContext] Delete comment notice:', e);
     }
     await fetchComments(postId);
-    queryClient.invalidateQueries({ queryKey: ['posts'] });
     addToast('Comment deleted from database.', 'info');
   };
 

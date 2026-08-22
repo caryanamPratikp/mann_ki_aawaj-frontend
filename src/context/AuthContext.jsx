@@ -9,7 +9,15 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
-    return localStorage.getItem('mka_admin_logged_in') === 'true';
+    const storedUser = localStorage.getItem('auth_user');
+    let storedUserToken = null;
+    try {
+      storedUserToken = storedUser ? JSON.parse(storedUser)?.token : null;
+    } catch {
+      storedUserToken = null;
+    }
+    return localStorage.getItem('mka_admin_logged_in') === 'true'
+      && Boolean(localStorage.getItem('auth_token') || storedUserToken);
   });
   const [loading, setLoading] = useState(true);
   const { addToast } = useToast();
@@ -20,6 +28,17 @@ export function AuthProvider({ children }) {
         const user = authService.getCurrentUser();
         if (user) {
           if (user.role === 'ADMIN') {
+            const token = localStorage.getItem('auth_token') || user.token;
+            if (!token) {
+              authService.logout();
+              localStorage.removeItem('mka_admin_logged_in');
+              setCurrentUser(null);
+              setIsAdminLoggedIn(false);
+              return;
+            }
+            if (!localStorage.getItem('auth_token')) {
+              localStorage.setItem('auth_token', token);
+            }
             const adminUser = { ...user, username: user.username || '@admin', hasProfile: true };
             setCurrentUser(adminUser);
             setIsAdminLoggedIn(true);
@@ -61,9 +80,9 @@ export function AuthProvider({ children }) {
     fetchUserAndProfile();
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (email, password, options) => {
     try {
-      const result = await authService.login(email, password);
+      const result = await authService.login(email, password, options);
       const user = result.user || result;
 
       // Admins live in admin scope and have no user profile
@@ -153,7 +172,7 @@ export function AuthProvider({ children }) {
   };
 
   const adminLogin = async (email, password) => {
-    const result = await login(email, password);
+    const result = await login(email, password, { allowMockFallback: false });
     if (result.user.role !== 'ADMIN') {
       logout();
       throw new Error('This account does not have administrator access.');
@@ -164,6 +183,8 @@ export function AuthProvider({ children }) {
   };
 
   const adminLogout = () => {
+    authService.logout();
+    setCurrentUser(null);
     setIsAdminLoggedIn(false);
     localStorage.removeItem('mka_admin_logged_in');
     addToast('Admin logged out.', 'info');

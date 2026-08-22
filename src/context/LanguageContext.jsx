@@ -178,7 +178,7 @@ export function LanguageProvider({ children }) {
             await queryClient.invalidateQueries({
               predicate: (query) => {
                 const key = query.queryKey[0];
-                return ['posts', 'comments', 'notifications', 'profile', 'savedPosts', 'chatMessages', 'myPosts'].includes(key);
+                return ['comments', 'notifications', 'profile', 'chatMessages'].includes(key);
               },
             });
           }
@@ -199,7 +199,7 @@ export function LanguageProvider({ children }) {
         const norm = normalizeLanguage(e.detail);
         setCurrentLanguage(norm);
         localStorage.setItem('mka_preferred_language', norm);
-        queryClient.invalidateQueries({ queryKey: ['posts'] });
+        queryClient.invalidateQueries({ queryKey: ['comments'] });
       }
     };
     window.addEventListener('mka_language_changed', handleCustomLangChange);
@@ -252,7 +252,7 @@ export function LanguageProvider({ children }) {
     await queryClient.invalidateQueries({
       predicate: (query) => {
         const key = query.queryKey[0];
-        return ['posts', 'comments', 'notifications', 'profile', 'savedPosts', 'chatMessages', 'myPosts'].includes(key);
+        return ['comments', 'notifications', 'profile', 'chatMessages'].includes(key);
       },
     });
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { InitialAvatar } from '../profile/InitialAvatar.jsx';
 import { formatDate } from '../../utils/formatDate.js';
 import { CommentReactions } from './CommentReactions.jsx';
@@ -13,6 +14,7 @@ import { ReportModal } from '../reports/ReportModal.jsx';
 import { Reply, Languages, Heart } from 'lucide-react';
 import { useToast } from '../../context/ToastContext.jsx';
 import { getMediaUrl } from '../../config/env.js';
+import { sanitizeEncodedSymbols } from '../../services/apiMappers.js';
 
 const EMOJI_REACTIONS = ['😀', '❤️', '👍', '🔥', '💯', '🤝'];
 
@@ -48,7 +50,6 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [manualToggle, setManualToggle] = useState(false);
-  const [dynamicCommentTranslation, setDynamicCommentTranslation] = useState(null);
 
   const isOwner = Boolean(
     currentUser && (
@@ -57,22 +58,21 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
     )
   );
 
-  React.useEffect(() => {
-    let isMounted = true;
-    const sourceText = comment?.originalContent || comment?.content;
-    if (sourceText && currentLanguage && translateTextAsync) {
-      translateTextAsync(sourceText, currentLanguage)
-        .then((res) => {
-          if (isMounted && res) setDynamicCommentTranslation(res);
-        })
-        .catch(() => {
-          if (isMounted) setDynamicCommentTranslation(null);
-        });
-    } else {
-      setDynamicCommentTranslation(null);
-    }
-    return () => { isMounted = false; };
-  }, [currentLanguage, comment?.originalContent, comment?.content, translateTextAsync]);
+  // TanStack Query for Comment Translation with 3-second refetchInterval
+  const sourceText = comment?.originalContent || comment?.content || '';
+  const commentTranslationQuery = useQuery({
+    queryKey: ['comment-translation', comment?.id, currentLanguage, sourceText],
+    queryFn: async () => {
+      if (!sourceText || !currentLanguage || !translateTextAsync) return null;
+      const res = await translateTextAsync(sourceText, currentLanguage);
+      return res || null;
+    },
+    refetchInterval: 3000,
+    staleTime: 10000,
+    enabled: Boolean(sourceText && currentLanguage),
+  });
+
+  const dynamicCommentTranslation = commentTranslationQuery.data || null;
 
   const [activeEmojis, setActiveEmojis] = useState(() => {
     const list = [];
@@ -109,12 +109,6 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
     }
   };
 
-  const handleSaveEdit = async () => {
-    if (!editText.trim()) return;
-    await updateComment(comment.id, postId, editText);
-    setIsEditing(false);
-  };
-
   const handleDelete = () => {
     deleteComment(comment.id, postId);
   };
@@ -130,10 +124,11 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
     setShowReplyComposer(false);
   };
 
-  const displayContent = manualToggle
+  const rawDisplayContent = manualToggle
     ? (comment.originalContent || comment.content)
     : (dynamicCommentTranslation || comment.translatedContent || comment.content || comment.originalContent);
 
+  const displayContent = sanitizeEncodedSymbols(rawDisplayContent);
 
   const isTranslated = !manualToggle && Boolean(
     (dynamicCommentTranslation && dynamicCommentTranslation !== (comment.originalContent || comment.content)) ||
