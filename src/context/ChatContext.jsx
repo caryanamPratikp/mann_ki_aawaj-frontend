@@ -148,7 +148,7 @@ export function ChatProvider({ children }) {
     if (!currentUser || isMockMode() || window.location.pathname.startsWith('/admin')) return;
 
     const socket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket' ],
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: 10,
