@@ -419,16 +419,7 @@ export function ProfilePage({ username, onNavigate }) {
 
             {/* Action Buttons: Topic Create button for Topics, Edit/Mute buttons for User Profiles */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {isTopicRoute ? (
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => setIsCreateModalOpen(true)}
-                >
-                  {t('addYourThought', '+ Add Your Thought')}
-                </Button>
-
-              ) : (
+              {isTopicRoute ? null : (
                 isSelf ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <LanguageSelectorDropdown compact={false} />
@@ -519,7 +510,7 @@ export function ProfilePage({ username, onNavigate }) {
                       cursor: 'pointer',
                     }}
                   >
-                    Muted Handles ({uniqueMutedHandles.length})
+                    {t('mutedHandles', 'Muted Handles')} ({uniqueMutedHandles.length})
                   </button>
 
                   <button
@@ -539,7 +530,7 @@ export function ProfilePage({ username, onNavigate }) {
                       cursor: 'pointer',
                     }}
                   >
-                    Hidden Thoughts ({hiddenPosts.length})
+                    {t('hiddenThoughts', 'Hidden Thoughts')} ({hiddenPosts.length})
                   </button>
                 </>
               )}

@@ -12,6 +12,7 @@ import { useLanguage } from '../../context/LanguageContext.jsx';
 import { ReportModal } from '../reports/ReportModal.jsx';
 import { Reply, Languages, Heart } from 'lucide-react';
 import { useToast } from '../../context/ToastContext.jsx';
+import { getMediaUrl } from '../../config/env.js';
 
 const EMOJI_REACTIONS = ['😀', '❤️', '👍', '🔥', '💯', '🤝'];
 
@@ -33,7 +34,7 @@ const emojiMap = {
   '😀': 'relate'
 };
 
-export function CommentCard({ comment, postId, postAuthorUsername, onNavigate }) {
+export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, onReplySubmit }) {
   const { currentUser } = useAuth();
   const { updateComment, deleteComment, createReply, reactToComment } = useComments();
   const { blockUser } = useReports();
@@ -124,7 +125,8 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate })
   };
 
   const handleAddReply = async (replyText) => {
-    await createReply(comment.id, postId, replyText, comment.username);
+    if (onReplySubmit) await onReplySubmit(comment.id, replyText);
+    else await createReply(comment.id, postId, replyText, comment.username);
     setShowReplyComposer(false);
   };
 
@@ -303,6 +305,7 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate })
               </span>
             )}
             <span style={{ whiteSpace: 'pre-line' }}>{displayContent}</span>
+            {comment.imageUrl && <img src={getMediaUrl(comment.imageUrl)} alt={t('commentImage', 'Comment attachment')} style={{ display: 'block', maxWidth: '100%', maxHeight: 320, objectFit: 'contain', borderRadius: 10, marginTop: 8 }} />}
           </div>
         )}
 

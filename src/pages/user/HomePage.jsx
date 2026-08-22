@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { Modal } from '../../components/common/Modal.jsx';
-import { usePosts } from '../../context/PostContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
@@ -10,8 +9,10 @@ import {
   Heart, Feather, Briefcase, Landmark, Film, Trophy, Compass, 
   Search, PlusSquare, Sparkles, ChevronRight, UserCheck, Flame
 } from 'lucide-react';
-import { TOPIC_CATEGORIES, saveCustomTopic, computeTopicStats, getCustomTopics, syncTopicsWithDatabase } from '../../utils/topicUtils.js';
+import { TOPIC_CATEGORIES, saveCustomTopic, getCustomTopics, syncTopicsWithDatabase } from '../../utils/topicUtils.js';
 import { TopicBackgroundRotator } from '../../components/topics/TopicBackgroundRotator.jsx';
+import { TopicCreateModal } from '../../components/topics/TopicCreateModal.jsx';
+import { apiTopicService } from '../../services/apiTopicService.js';
 
 const CATEGORY_ICONS = {
   Heart: Heart,
@@ -25,6 +26,12 @@ const CATEGORY_ICONS = {
 };
 
 const topicTranslationCache = new Map();
+
+const CATEGORY_PARENT = {
+  FEELINGS_CAT: 'FEELINGS', EXPRESSION_CAT: 'EXPRESSION', LIFE_WORK_CAT: 'LIFE_WORK',
+  SOCIETY_POLITICS_CAT: 'SOCIETY_POLITICS', ENTERTAINMENT_CAT: 'ENTERTAINMENT',
+  SPORTS_CAT: 'SPORTS', OTHER_CAT: 'GENERAL',
+};
 
 
 function TranslatedTopicText({ text, fallbackKey }) {
@@ -77,7 +84,6 @@ function TranslatedTopicText({ text, fallbackKey }) {
 }
 
 export function HomePage({ onNavigate }) {
-  const { posts } = usePosts();
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { t } = useLanguage();
@@ -88,9 +94,14 @@ export function HomePage({ onNavigate }) {
   const [newTopicInput, setNewTopicInput] = useState('');
   const [selectedEmoji, setSelectedEmoji] = useState('💡');
   const [hoveredCategory, setHoveredCategory] = useState(null);
+  const [databaseTopics, setDatabaseTopics] = useState([]);
+  const [syncedCustomTopics, setSyncedCustomTopics] = useState([]);
 
   useEffect(() => {
-    syncTopicsWithDatabase();
+    Promise.all([syncTopicsWithDatabase(), apiTopicService.getTopics()]).then(([customTopics, topics]) => {
+      setSyncedCustomTopics(customTopics || []);
+      setDatabaseTopics(topics || []);
+    });
   }, []);
 
 
@@ -102,20 +113,21 @@ export function HomePage({ onNavigate }) {
   ];
 
 
-  // Compute live stats per topic from real posts in DB
+  // Compute live activity from direct topic comments (posts are no longer part of this flow).
   const topicStatsMap = useMemo(() => {
-    const statsList = computeTopicStats(posts);
     const map = {};
-    statsList.forEach(st => {
-      map[st.name] = st;
+    databaseTopics.forEach((topic) => {
+      const key = String(topic.name || '').toUpperCase();
+      const count = Number(topic.commentCount || 0);
+      map[key] = { count, isTrending: count > 0, lastPostMs: topic.createdAt ? new Date(topic.createdAt).getTime() : 0 };
     });
     return map;
-  }, [posts]);
+  }, [databaseTopics]);
 
   // List of user created custom topics
   const customTopicNames = useMemo(() => {
-    return getCustomTopics();
-  }, [isCreateTopicModalOpen]);
+    return syncedCustomTopics.length ? syncedCustomTopics : getCustomTopics();
+  }, [isCreateTopicModalOpen, syncedCustomTopics]);
 
   // Dynamically sort categories & subtopics based on interaction (Posts > 0 on 1st place, inactive user topics at bottom)
   const displayedCategories = useMemo(() => {
@@ -132,20 +144,24 @@ export function HomePage({ onNavigate }) {
     // Separate user custom topics into active (has posts) vs inactive (0 posts)
     const activeCustomSubtopics = [];
     const inactiveCustomSubtopics = [];
+    const customSubtopics = [];
 
     customTopicNames.forEach((tObj) => {
       const topicId = typeof tObj === 'string' ? tObj : (tObj.id || tObj.name);
       const topicLabel = typeof tObj === 'string' ? tObj : (tObj.label || tObj.name);
       const topicIcon = typeof tObj === 'string' ? '💡' : (tObj.icon || '💡');
+      const topicDbId = typeof tObj === 'string' ? null : tObj.dbId;
+      const topicParent = typeof tObj === 'string' ? 'GENERAL' : (tObj.parentTopic || 'GENERAL');
 
       const stat = topicStatsMap[topicId] || { count: 0, isTrending: false };
-      const item = { id: topicId, label: topicLabel, icon: topicIcon, isUserCreated: true };
-      if (stat.count > 0) {
-        activeCustomSubtopics.push(item);
-      } else {
-        inactiveCustomSubtopics.push(item);
-      }
+      const item = { id: topicId, dbId: topicDbId, label: topicLabel, icon: topicIcon, parentTopic: topicParent, isUserCreated: true };
+      customSubtopics.push(item);
     });
+
+    baseCategories = baseCategories.map((category) => ({
+      ...category,
+      subtopics: [...category.subtopics, ...customSubtopics.filter((topic) => topic.parentTopic === CATEGORY_PARENT[category.categoryKey])],
+    }));
 
 
     // If active custom subtopics exist, add them to Other category
@@ -188,7 +204,8 @@ export function HomePage({ onNavigate }) {
         if (statB.isTrending !== statA.isTrending) return (statB.isTrending ? 1 : 0) - (statA.isTrending ? 1 : 0);
         return statB.lastPostMs - statA.lastPostMs;
       });
-      return { ...cat, subtopics: sortedSubtopics };
+      const parentTopic = CATEGORY_PARENT[cat.categoryKey] || 'GENERAL';
+      return { ...cat, subtopics: sortedSubtopics.map((topic) => ({ ...topic, parentTopic: topic.parentTopic || parentTopic })) };
     });
 
     // Sort CATEGORIES so categories with real post interactions appear at 1st place!
@@ -213,9 +230,23 @@ export function HomePage({ onNavigate }) {
     return sortedCategories;
   }, [activeCategoryTab, searchQuery, customTopicNames, topicStatsMap, t]);
 
-  const handleSubtopicClick = (subtopicId) => {
-    const cleanId = subtopicId.toLowerCase();
-    onNavigate(`/profile/${cleanId}`);
+  const handleSubtopicClick = async (subtopic) => {
+    if (subtopic.dbId) {
+      onNavigate(`/topic/${subtopic.dbId}`);
+      return;
+    }
+    try {
+      const topic = await apiTopicService.createTopic({
+        name: subtopic.id,
+        icon: subtopic.icon,
+        parentTopic: subtopic.parentTopic || 'GENERAL',
+        createdByUsername: currentUser?.username || '@anonymous',
+      });
+      if (!topic?.id) throw new Error('Topic could not be opened.');
+      onNavigate(`/topic/${topic.id}`);
+    } catch (error) {
+      addToast(error?.message || t('topicOpenFailed', 'Unable to open this discussion.'), 'error');
+    }
   };
 
   const handleCreateTopicSubmit = (e) => {
@@ -508,7 +539,7 @@ export function HomePage({ onNavigate }) {
                             <button
                               key={subtopic.id}
                               type="button"
-                              onClick={() => handleSubtopicClick(subtopic.id)}
+                              onClick={() => handleSubtopicClick(subtopic)}
                               style={{
                                 padding: '7px 13px',
                                 borderRadius: '16px',
@@ -568,8 +599,13 @@ export function HomePage({ onNavigate }) {
       </TopicBackgroundRotator>
 
       {/* ── CREATE CUSTOM TOPIC MODAL OVERLAY ── */}
-      <Modal
+      <TopicCreateModal
         isOpen={isCreateTopicModalOpen}
+        onClose={() => setIsCreateTopicModalOpen(false)}
+        onCreated={(topic) => onNavigate(`/topic/${topic.id}`)}
+      />
+      <Modal
+        isOpen={false}
         onClose={() => setIsCreateTopicModalOpen(false)}
         title="Create New Custom Topic"
       >

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { ModerationIndicator } from '../common/ModerationIndicator.jsx';
-import { Smile, AlertCircle, Mic, MicOff, Loader2, X, Send } from 'lucide-react';
+import { Smile, AlertCircle, ImagePlus, Mic, MicOff, Loader2, X, Send } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
 import { useSpokenLanguage } from '../../hooks/useSpokenLanguage.js';
 import { moderationCheck } from '../../utils/moderationCheck.js';
+import { apiClient } from '../../services/apiClient.js';
+import { getMediaUrl } from '../../config/env.js';
 
 // WhatsApp-style categorized emoji collection
 const EMOJI_CATEGORIES = [
@@ -62,11 +64,14 @@ export function CommentComposer({
   placeholder = 'Write a comment...',
   onNavigate,
   autoFocus = false,
+  enableImage = false,
 }) {
   const [text, setText] = useState(initialText);
   const [submitting, setSubmitting] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
   const [activeCategoryIndex, setActiveCategoryIndex] = useState(0);
+  const [imageUrl, setImageUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { currentLanguage, t } = useLanguage();
@@ -85,7 +90,8 @@ export function CommentComposer({
 
   const minLength = 2;
   const maxLength = 1000;
-  const isValid = text.trim().length >= minLength && text.length <= maxLength;
+  const hasValidText = text.trim().length >= minLength && text.length <= maxLength;
+  const isValid = hasValidText || (enableImage && Boolean(imageUrl));
 
   const modCheck = moderationCheck(text);
   const isBlocked = modCheck.status === 'BLOCKED';
@@ -101,8 +107,9 @@ export function CommentComposer({
 
     setSubmitting(true);
     try {
-      await onSubmit(text.trim());
+      await onSubmit(text.trim(), imageUrl || null);
       setText('');
+      setImageUrl('');
       setShowEmojis(false);
     } catch (err) {
       console.error(err);
@@ -120,6 +127,19 @@ export function CommentComposer({
 
   const handleEmojiClick = (emoji) => {
     setText((prev) => prev + emoji);
+  };
+
+  const handleImage = async (file) => {
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const response = await apiClient.post('/api/upload/image', body, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setImageUrl(response.data?.data?.imageUrl || '');
+    } catch (error) {
+      addToast(error?.response?.data?.message || t('imageUploadFailed', 'Failed to upload image.'), 'error');
+    } finally { setUploadingImage(false); }
   };
 
   return (
@@ -202,6 +222,10 @@ export function CommentComposer({
 
         {/* Right Icons: Mic + Circular Send Arrow Button */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+          {enableImage && <label title={t('attachImage', 'Attach image')} style={{ background: 'transparent', border: 'none', cursor: uploadingImage ? 'wait' : 'pointer', padding: 6, color: imageUrl ? '#D96C3D' : '#6F405F', display: 'flex', borderRadius: '50%' }}>
+            {uploadingImage ? <Loader2 size={16} className="spin-animation" /> : <ImagePlus size={17} />}
+            <input type="file" accept="image/*" hidden disabled={uploadingImage} onChange={(event) => handleImage(event.target.files?.[0])} />
+          </label>}
           {/* Microphone Button */}
           <button
             type="button"
@@ -226,7 +250,7 @@ export function CommentComposer({
           {/* Send Arrow Button */}
           <button
             type="submit"
-            disabled={!isValid || isBlocked || submitting || currentUser?.status === 'COMMENT_RESTRICTED'}
+            disabled={!isValid || isBlocked || submitting || uploadingImage || currentUser?.status === 'COMMENT_RESTRICTED'}
             title="Send Comment (Enter)"
             style={{
               width: '32px',
@@ -247,6 +271,8 @@ export function CommentComposer({
           </button>
         </div>
       </div>
+
+      {enableImage && imageUrl && <div style={{ position: 'relative', width: 86, marginLeft: 12 }}><img src={getMediaUrl(imageUrl)} alt={t('imagePreview', 'Image preview')} style={{ width: 86, height: 62, objectFit: 'cover', borderRadius: 9 }} /><button type="button" onClick={() => setImageUrl('')} aria-label={t('removeImage', 'Remove image')} style={{ position: 'absolute', right: -6, top: -6, border: 0, borderRadius: '50%', background: '#2D1D15', color: '#fff', display: 'flex', padding: 3 }}><X size={12} /></button></div>}
 
       {/* Moderation Warning Indicator */}
       <ModerationIndicator text={text} />

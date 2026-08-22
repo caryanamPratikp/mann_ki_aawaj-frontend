@@ -185,11 +185,15 @@ export async function syncTopicsWithDatabase() {
           if (!currentMap.has(cleanName)) {
             currentMap.set(cleanName, {
               id: cleanName,
+              dbId: dt.id,
               name: cleanName,
               label: (dt.label || cleanName).replace(/_/g, ' '),
               icon: dt.icon || '💡',
               createdAt: dt.createdAt || new Date().toISOString(),
+              parentTopic: dt.parentTopic || 'GENERAL',
             });
+          } else {
+            currentMap.set(cleanName, { ...currentMap.get(cleanName), dbId: dt.id, parentTopic: dt.parentTopic || 'GENERAL' });
           }
         }
       });

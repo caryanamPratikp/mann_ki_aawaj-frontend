@@ -2,6 +2,18 @@ import { apiClient } from './apiClient.js';
 import { mockCommentService } from './mockCommentService.js';
 
 export const apiCommentService = {
+  async getCommentsByTopicId(topicId, params = {}) {
+    const response = await apiClient.get(`/api/topics/${topicId}/comments`, {
+      params: { page: params.page || 0, size: params.size || 20 },
+    });
+    return response.data;
+  },
+
+  async createTopicComment(topicId, content, originalLanguage = 'EN', imageUrl = null) {
+    const response = await apiClient.post(`/api/topics/${topicId}/comments`, { content, originalLanguage, imageUrl });
+    return response.data;
+  },
+
   // GET /api/posts/{postId}/comments?page=0&size=20
   async getCommentsByPostId(postId, params = {}) {
     // If local/mock post ID, return mock comments without triggering network 500 error

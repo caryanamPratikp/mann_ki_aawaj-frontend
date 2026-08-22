@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-export function Dropdown({ trigger, children, align = 'right' }) {
+export function Dropdown({ trigger, children, align = 'right', placement = 'down' }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -25,12 +25,12 @@ export function Dropdown({ trigger, children, align = 'right' }) {
           className="mka-card animate-fade-in"
           style={{
             position: 'absolute',
-            top: '100%',
+            [placement === 'up' ? 'bottom' : 'top']: '100%',
             [align === 'right' ? 'right' : 'left']: 0,
-            marginTop: '6px',
+            [placement === 'up' ? 'marginBottom' : 'marginTop']: '6px',
             minWidth: '180px',
             padding: '8px 0',
-            zIndex: 900,
+            zIndex: 10000,
             boxShadow: 'var(--shadow-medium)',
           }}
           onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}

@@ -1,133 +1,37 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Hash, Loader2, PlusCircle } from 'lucide-react';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
-import { PostCard } from '../../components/posts/PostCard.jsx';
-import { SleekCommentSidePanel } from '../../components/posts/SleekCommentSidePanel.jsx';
-import { usePosts } from '../../context/PostContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
-import { FileText, PlusCircle, Loader2 } from 'lucide-react';
-import { EmptyState } from '../../components/common/EmptyState.jsx';
+import { apiTopicService } from '../../services/apiTopicService.js';
+
+const PARENT_ORDER = ['FEELINGS', 'EXPRESSION', 'LIFE_WORK', 'SOCIETY_POLITICS', 'ENTERTAINMENT', 'SPORTS', 'GENERAL'];
 
 export function MyPostsPage({ onNavigate }) {
-  const { posts, refreshPosts, loading } = usePosts();
   const { currentUser } = useAuth();
   const { t } = useLanguage();
-  const [activeCommentsPost, setActiveCommentsPost] = useState(null);
+  const [topics, setTopics] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Trigger API fetch on mount
   useEffect(() => {
-    if (refreshPosts) {
-      refreshPosts();
-    }
-  }, [refreshPosts]);
+    apiTopicService.getTopics().then((items) => {
+      const handle = String(currentUser?.username || '').replace(/^@/, '').toLowerCase();
+      setTopics(items.filter((topic) => {
+        const creator = String(topic.createdByUsername || '').replace(/^@/, '').toLowerCase();
+        return handle && creator === handle;
+      }));
+    }).finally(() => setLoading(false));
+  }, [currentUser?.username]);
 
-  // Get active username handle from currentUser or user-scoped profile
-  let activeUsername = currentUser?.username || '';
-  if (!activeUsername && currentUser?.id) {
-    try {
-      const stored = localStorage.getItem(`user_profile_${currentUser.id}`) || localStorage.getItem('user_profile');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        activeUsername = parsed?.username || '';
-      }
-    } catch (e) { /* fallback */ }
-  }
+  const groups = PARENT_ORDER.map((parent) => ({ parent, topics: topics.filter((topic) => (topic.parentTopic || 'GENERAL') === parent) })).filter((group) => group.topics.length);
 
-  const cleanActive = (activeUsername || '').replace(/^@/, '').toLowerCase();
-  const currentUserId = currentUser?.id || currentUser?.userId;
-
-  // Filter posts created strictly by current user (by isOwnPost, ID, or handle match)
-  const myPosts = posts.filter((p) => {
-    if (!currentUser) return false;
-    if (p.isOwnPost) return true;
-    const postUserId = p.userId || p.authorId;
-    if (currentUserId && postUserId && String(postUserId) === String(currentUserId)) {
-      return true;
-    }
-    const postUname = (p.username || p.authorUsername || p.handle || '').replace(/^@/, '').toLowerCase();
-    const cleanAuthUname = (currentUser?.username || '').replace(/^@/, '').toLowerCase();
-    return Boolean(
-      (cleanActive && postUname && postUname === cleanActive) ||
-      (cleanAuthUname && postUname && postUname === cleanAuthUname)
-    );
-  });
-
-  const handleToggleComments = (post) => {
-    if (activeCommentsPost && activeCommentsPost.id === post.id) {
-      setActiveCommentsPost(null);
-    } else {
-      setActiveCommentsPost(post);
-    }
-  };
-
-  return (
-    <UserLayout activeRoute="/my-posts" onNavigate={onNavigate}>
-      <div className="flex-col gap-md">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-          <div>
-            <h1 className="page-heading">{t('myPosts', 'My Thoughts')} ({myPosts.length})</h1>
-            <p className="secondary-text">{t('manageThoughtsDesc', 'Manage your published thoughts, confessions, and questions.')}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => onNavigate('/home?create=true')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '20px',
-              backgroundColor: '#6F405F',
-              color: '#FFFFFF',
-              fontSize: '13px',
-              fontWeight: 700,
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <PlusCircle size={15} /> {t('createThought', '+ Create Thought')}
-          </button>
-        </div>
-
-        {loading ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#8C8385' }}>
-            <Loader2 size={24} className="spin-animation" style={{ margin: '0 auto 8px auto', display: 'block' }} />
-            <span>{t('loadingThoughts', 'Loading your published thoughts...')}</span>
-          </div>
-        ) : myPosts.length === 0 ? (
-          <EmptyState
-            title={t('noPostsYet', 'No Published Posts Yet')}
-            description={t('noPostsDesc', "You haven't written any posts under this anonymous handle yet.")}
-            icon={FileText}
-            actionText={t('createThought', '+ Create Thought')}
-            onAction={() => onNavigate('/home?create=true')}
-          />
-        ) : (
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            {/* ── LEFT/MAIN COLUMN: POSTS LIST ── */}
-            <div style={{ flex: 1, minWidth: '320px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {myPosts.map((post) => (
-                <PostCard
-                  key={post.id}
-                  post={{ ...post, isOwnPost: true }}
-                  onNavigate={onNavigate}
-                  onToggleComments={handleToggleComments}
-                  activeCommentsPostId={activeCommentsPost?.id}
-                />
-              ))}
-            </div>
-
-            {/* ── RIGHT COLUMN: SLEEK MINIMALISTIC COMMENTS SIDE PANEL ── */}
-            {activeCommentsPost && (
-              <SleekCommentSidePanel
-                post={activeCommentsPost}
-                onClose={() => setActiveCommentsPost(null)}
-                onNavigate={onNavigate}
-              />
-            )}
-          </div>
-        )}
+  return <UserLayout activeRoute="/my-posts" onNavigate={onNavigate}>
+    <div className="flex-col gap-md">
+      <div className="flex-row justify-between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <div><h1 className="page-heading">{t('myTopics', 'My Topics')} ({topics.length})</h1><p className="secondary-text">{t('myTopicsDescription', 'Subtopics and discussions you created.')}</p></div>
+        <button type="button" onClick={() => onNavigate('/create-post')} style={{ border: 0, borderRadius: 20, padding: '9px 16px', background: '#6F405F', color: '#fff', fontWeight: 700, display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}><PlusCircle size={16} />{t('createCustomTopic', 'Create Topic')}</button>
       </div>
-    </UserLayout>
-  );
+      {loading ? <div style={{ textAlign: 'center', padding: 40 }}><Loader2 className="spin-animation" /></div> : groups.length === 0 ? <div className="mka-card" style={{ textAlign: 'center', padding: 40 }}>{t('noCreatedTopics', 'You have not created any topics yet.')}</div> : groups.map((group) => <section key={group.parent} className="mka-card"><h2 className="card-heading">{group.parent === 'GENERAL' ? t('others', 'Others') : group.parent.replaceAll('_', ' ')}</h2><div className="flex-row gap-sm" style={{ flexWrap: 'wrap', marginTop: 12 }}>{group.topics.map((topic) => <button key={topic.id} type="button" onClick={() => onNavigate(`/topic/${topic.id}`)} style={{ border: '1px solid #D7C9D2', background: '#fff', color: '#432E3C', padding: '9px 14px', borderRadius: 18, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}><span>{topic.icon || <Hash size={14} />}</span>{topic.label || topic.name}</button>)}</div></section>)}
+    </div>
+  </UserLayout>;
 }

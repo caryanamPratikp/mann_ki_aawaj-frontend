@@ -4,7 +4,7 @@ import { Dropdown, DropdownItem } from '../common/Dropdown.jsx';
 
 export function CommentMenu({ isOwner, onReply, onCopy, onEdit, onDelete, onReport, onMute, onBlock }) {
   return (
-    <Dropdown trigger={<MoreHorizontal size={18} style={{ color: 'var(--hurricane)' }} />}>
+    <Dropdown placement="up" trigger={<MoreHorizontal size={18} style={{ color: 'var(--hurricane)' }} />}>
       {isOwner ? (
         <>
           <DropdownItem icon={Edit} onClick={onEdit}>

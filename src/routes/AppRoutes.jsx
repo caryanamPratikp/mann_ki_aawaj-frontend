@@ -19,6 +19,7 @@ import { DashboardPage } from '../pages/user/DashboardPage.jsx';
 import { HomePage } from '../pages/user/HomePage.jsx';
 import { ExplorePage } from '../pages/user/ExplorePage.jsx';
 import { CreatePostPage } from '../pages/user/CreatePostPage.jsx';
+import { TopicDiscussionPage } from '../pages/user/TopicDiscussionPage.jsx';
 import { PostDetailsPage } from '../pages/user/PostDetailsPage.jsx';
 import { NotificationsPage } from '../pages/user/NotificationsPage.jsx';
 import { SavedPostsPage } from '../pages/user/SavedPostsPage.jsx';
@@ -172,7 +173,11 @@ export function AppRoutes() {
     return <ExplorePage onNavigate={navigate} />;
   }
   if (normalizedPath === '/create-post') {
-    return <HomePage onNavigate={navigate} />;
+    return <CreatePostPage onNavigate={navigate} />;
+  }
+  if (normalizedPath.startsWith('/topic/')) {
+    const topicId = normalizedPath.split('/topic/')[1];
+    return <TopicDiscussionPage topicId={topicId} onNavigate={navigate} />;
   }
   if (normalizedPath.startsWith('/post/')) {
     const postId = normalizedPath.split('/post/')[1];

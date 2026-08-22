@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Home, Compass, FileText, Bookmark, ShieldAlert, Settings, HelpCircle, LogOut } from 'lucide-react';
+import { Home, Compass, FileText, ShieldAlert, Settings, HelpCircle, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 
@@ -24,8 +24,7 @@ export function LeftSidebar({ activeRoute, onNavigate }) {
   const menuItems = [
     { label: t('home', 'Home'), icon: Home, route: '/home' },
     { label: t('explore', 'Explore'), icon: Compass, route: '/explore' },
-    { label: t('myPosts', 'My Thoughts'), icon: FileText, route: '/my-posts' },
-    { label: t('savedPosts', 'Saved Posts'), icon: Bookmark, route: '/saved' },
+    { label: t('myTopics', 'My Topics'), icon: FileText, route: '/my-posts' },
     { label: t('myReports', 'My Reports'), icon: ShieldAlert, route: '/my-reports' },
     { label: t('settings', 'Settings'), icon: Settings, route: '/settings' },
     { label: t('helpSupport', 'Help & Support'), icon: HelpCircle, route: '/help' },
