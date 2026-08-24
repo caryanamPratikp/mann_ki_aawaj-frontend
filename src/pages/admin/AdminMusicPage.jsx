@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AdminLayout } from '../../components/layout/AdminLayout.jsx';
 import { apiMusicService } from '../../services/apiMusicService.js';
 import { useToast } from '../../context/ToastContext.jsx';
-import defaultCover from '../../assets/default-music-cover.svg';
+import defaultCover from '../../assets/music-cover.jpg';
 import '../../styles/music.css';
 
 const LANGUAGES = ['EN', 'HI', 'BN', 'MR', 'TE', 'TA', 'GU', 'UR', 'KN', 'OR', 'ML', 'PA', 'AS', 'SAT', 'KS', 'MNI', 'DOI', 'BHO'];
@@ -12,8 +12,10 @@ const MOODS = ['ROMANTIC', 'CALM', 'ENERGETIC', 'CONFUSED', 'MELANCHOLY', 'FOCUS
 const STATUSES = ['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'UNPUBLISHED', 'REJECTED'];
 
 function PrivateCover({ track }) {
-  const [url, setUrl] = useState(track.coverUrl || '');
+  const isPlatformTrack = track.source === 'PLATFORM' || !track.source;
+  const [url, setUrl] = useState(isPlatformTrack ? defaultCover : (track.coverUrl || ''));
   useEffect(() => {
+    if (isPlatformTrack) return undefined;
     let objectUrl = '';
     let active = true;
     if (!track.id || !track.coverUrl) return undefined;
@@ -28,8 +30,8 @@ function PrivateCover({ track }) {
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [track.id, track.coverUrl]);
-  return <img src={url || defaultCover} alt={`${track.title} cover`} onError={(e) => { e.currentTarget.src = defaultCover; }} />;
+  }, [track.id, track.coverUrl, isPlatformTrack]);
+  return <img src={isPlatformTrack ? defaultCover : (url || defaultCover)} alt={`${track.title} cover`} onError={(e) => { e.currentTarget.src = defaultCover; }} />;
 }
 
 function BulkTrackUploadModal({ saving, progressStatus, onClose, onSaveBulk }) {

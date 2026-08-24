@@ -251,9 +251,10 @@ export function CommentProvider({ children }) {
     addToast('Comment deleted from database.', 'info');
   };
 
-  const reactToComment = async (commentId, emoji) => {
+  const reactToComment = async (commentId, emoji, remove = false) => {
     try {
-      await apiCommentService.likeComment(commentId);
+      if (remove) await apiCommentService.unlikeComment(commentId);
+      else await apiCommentService.likeComment(commentId);
     } catch (e) {
       console.warn('[CommentContext] Reaction notice:', e);
     }

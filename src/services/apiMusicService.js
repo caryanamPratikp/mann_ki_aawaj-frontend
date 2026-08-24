@@ -1,5 +1,6 @@
 import { apiClient } from './apiClient.js';
 import { getMediaUrl } from '../config/env.js';
+import defaultCoverAsset from '../assets/music-cover.jpg';
 
 const ERROR_MESSAGES = {
   UNSUPPORTED_AUDIO_FORMAT: 'Unsupported audio format. Please select an MP3 file.',
@@ -23,11 +24,19 @@ export const cleanMusicParams = (params = {}) => Object.fromEntries(
 
 const unwrap = (response) => response?.data?.data ?? response?.data;
 
-export const mapMusicTrack = (track) => track ? ({
-  ...track,
-  audioUrl: getMediaUrl(track.audioUrl),
-  coverUrl: track.coverUrl ? getMediaUrl(track.coverUrl) : null,
-}) : track;
+export const mapMusicTrack = (track) => {
+  if (!track) return track;
+  const isPlatformTrack = track.source === 'PLATFORM' || !track.source;
+  const coverUrl = isPlatformTrack
+    ? defaultCoverAsset
+    : (track.coverUrl ? getMediaUrl(track.coverUrl) : defaultCoverAsset);
+
+  return {
+    ...track,
+    audioUrl: getMediaUrl(track.audioUrl),
+    coverUrl,
+  };
+};
 
 const mapMyTrack = (track) => track ? ({
   ...track,

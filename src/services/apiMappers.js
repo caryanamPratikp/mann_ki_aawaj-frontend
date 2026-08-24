@@ -167,7 +167,7 @@ export function mapComment(comment) {
     avatarInitials: comment.avatarInitials || formattedUname.replace('@', '').slice(0, 2).toUpperCase(),
     avatarConfig: comment.authorAvatar || comment.avatarConfig || null,
     reactions: comment.reactions || { relate: comment.likeCount || 0 },
-    userReaction: comment.userReaction || (comment.isLikedByCurrentUser ? 'relate' : null),
+    userReaction: comment.userReaction || ((comment.likedByCurrentUser || comment.isLikedByCurrentUser) ? 'relate' : null),
     replies: (comment.replies || []).map(mapComment),
   };
 }

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiMusicService } from '../../services/apiMusicService.js';
 import { useMoodMusic } from '../../context/MoodMusicContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
-import defaultCover from '../../assets/default-music-cover.svg';
+import defaultCover from '../../assets/music-cover.jpg';
 
 const LANGUAGES = ['EN', 'HI', 'BN', 'MR', 'TE', 'TA', 'GU', 'UR', 'KN', 'OR', 'ML', 'PA', 'AS', 'SAT', 'KS', 'MNI', 'DOI', 'BHO'];
 const MOODS = ['ROMANTIC', 'CALM', 'ENERGETIC', 'CONFUSED', 'MELANCHOLY', 'FOCUS'];
@@ -12,8 +12,10 @@ const STATUS_LABELS = { PENDING_REVIEW: 'Pending Review', PUBLISHED: 'Published'
 const EMPTY = { title: '', artistName: '', language: 'HI', mood: 'CALM', genre: '', description: '', originalWorkConfirmed: false, rightsConfirmed: false, audio: null, cover: null };
 
 function MyCover({ track }) {
-  const [url, setUrl] = useState(track.publicCoverUrl || '');
+  const isPlatformTrack = track.source === 'PLATFORM' || !track.source;
+  const [url, setUrl] = useState(isPlatformTrack ? defaultCover : (track.publicCoverUrl || ''));
   useEffect(() => {
+    if (isPlatformTrack) return undefined;
     let objectUrl = '';
     let active = true;
     if (track.publicCoverUrl || !track.privateCoverUrl) return undefined;
@@ -22,8 +24,8 @@ function MyCover({ track }) {
       objectUrl = URL.createObjectURL(blob); setUrl(objectUrl);
     }).catch(() => setUrl(''));
     return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [track.id, track.privateCoverUrl, track.publicCoverUrl]);
-  return <img src={url || defaultCover} alt={`${track.title} cover`} />;
+  }, [track.id, track.privateCoverUrl, track.publicCoverUrl, isPlatformTrack]);
+  return <img src={isPlatformTrack ? defaultCover : (url || defaultCover)} alt={`${track.title} cover`} onError={(e) => { e.currentTarget.src = defaultCover; }} />;
 }
 
 function UserTrackForm({ mode, track, busy, progress, onClose, onSave }) {

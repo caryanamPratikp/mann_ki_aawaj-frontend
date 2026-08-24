@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { LoaderCircle, Music2, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX, X } from 'lucide-react';
 import { useMoodMusic } from '../../context/MoodMusicContext.jsx';
-import defaultCover from '../../assets/default-music-cover.svg';
+import defaultCover from '../../assets/music-cover.jpg';
 import '../../styles/music.css';
 
 const formatTime = (seconds) => {

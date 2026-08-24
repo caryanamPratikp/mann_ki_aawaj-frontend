@@ -5,6 +5,7 @@ import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { apiTopicService } from '../../services/apiTopicService.js';
 import { apiCommentService } from '../../services/apiCommentService.js';
+import { mapComment } from '../../services/apiMappers.js';
 import { useLanguage, getLanguageCode } from '../../context/LanguageContext.jsx';
 import { InitialAvatar } from '../../components/profile/InitialAvatar.jsx';
 import { TopicBackgroundRotator } from '../../components/topics/TopicBackgroundRotator.jsx';
@@ -76,14 +77,7 @@ export function TopicDiscussionPage({ topicId, onNavigate }) {
     } catch (error) { addToast(error?.response?.data?.message || t('replyFailed', 'Unable to add your reply.'), 'error'); }
   };
 
-  const normalizeComment = (comment) => ({
-    ...comment,
-    content: comment.originalContent || comment.content || '',
-    username: comment.authorUsername || comment.username || '@anonymous',
-    userId: comment.authorId || comment.userId,
-    reactions: comment.reactions || {},
-    replies: (comment.replies || []).map(normalizeComment),
-  });
+  const normalizeComment = (comment) => mapComment(comment);
 
   return <UserLayout activeRoute="/home" onNavigate={onNavigate} wide>
     <TopicBackgroundRotator topicName={topic?.name || 'GENERAL'}>

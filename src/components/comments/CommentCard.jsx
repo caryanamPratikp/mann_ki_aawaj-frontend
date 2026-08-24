@@ -142,8 +142,8 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
 
   const handleEmojiClick = (emoji, e) => {
     if (e) e.stopPropagation();
+    const exists = activeEmojis.includes(emoji);
     setActiveEmojis(prev => {
-      const exists = prev.includes(emoji);
       if (exists) {
         return prev.filter(x => x !== emoji);
       } else {
@@ -152,7 +152,7 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
     });
 
     const key = emojiMap[emoji] || 'relate';
-    if (reactToComment) reactToComment(comment.id, key);
+    if (reactToComment) reactToComment(comment.id, key, exists);
   };
 
   const handleLikeToggle = (e) => {

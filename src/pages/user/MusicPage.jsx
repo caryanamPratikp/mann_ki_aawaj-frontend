@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { apiMusicService } from '../../services/apiMusicService.js';
 import { useMoodMusic } from '../../context/MoodMusicContext.jsx';
-import defaultCover from '../../assets/default-music-cover.svg';
+import defaultCover from '../../assets/music-cover.jpg';
 import '../../styles/music.css';
 import { MyTracksPanel } from '../../components/music/MyTracksPanel.jsx';
 
