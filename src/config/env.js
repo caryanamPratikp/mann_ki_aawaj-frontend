@@ -49,9 +49,10 @@ if (currentEnvMode === ENV_MODES.PRODUCTION) {
 export const API_BASE_URL = selectedApiUrl;
 export const SOCKET_URL = selectedSocketUrl;
 export const ENVIRONMENT = currentEnvMode;
+export const SERVER_URL = sanitizeUrl(import.meta.env.VITE_PRODUCTION_URL) || 'https://api.awaazmanki.com';
 
 /**
- * Resolves media URLs (e.g. /uploads/filename.jpg) against API_BASE_URL
+ * Resolves media and music upload URLs to absolute URLs using SERVER_URL (https://api.awaazmanki.com)
  */
 export const getMediaUrl = (url) => {
   if (!url) return '';
@@ -59,5 +60,5 @@ export const getMediaUrl = (url) => {
     return url;
   }
   const cleanUrl = url.startsWith('/') ? url : `/${url}`;
-  return `${API_BASE_URL}${cleanUrl}`;
+  return `${SERVER_URL}${cleanUrl}`;
 };

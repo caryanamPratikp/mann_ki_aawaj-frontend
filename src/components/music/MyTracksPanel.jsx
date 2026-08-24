@@ -37,7 +37,10 @@ function UserTrackForm({ mode, track, busy, progress, onClose, onSave }) {
   const audio = (file) => {
     setError('');
     if (!file) return change('audio', null);
-    if (!file.name.toLowerCase().endsWith('.mp3') && !['audio/mpeg', 'audio/mp3'].includes(file.type)) return setError('Please select an MP3 file.');
+    const validExts = ['.mp3', '.m4a', '.aac', '.wav', '.flac', '.ogg', '.opus'];
+    const lowerName = file.name.toLowerCase();
+    const isValidExt = validExts.some((ext) => lowerName.endsWith(ext));
+    if (!isValidExt && !file.type.startsWith('audio/')) return setError('Please select a valid audio file (MP3, M4A, AAC, WAV, FLAC, OGG, OPUS).');
     if (file.size > 40 * 1024 * 1024) return setError('Audio must be 40 MB or smaller.');
     change('audio', file);
   };
@@ -51,7 +54,7 @@ function UserTrackForm({ mode, track, busy, progress, onClose, onSave }) {
   };
   const submit = (event) => {
     event.preventDefault();
-    if (mode === 'upload' && !form.audio) return setError('An MP3 audio file is required.');
+    if (mode === 'upload' && !form.audio) return setError('An audio file is required.');
     if (mode === 'upload' && (!form.originalWorkConfirmed || !form.rightsConfirmed)) return setError('Both rights declarations are required.');
     onSave(form);
   };
@@ -65,7 +68,7 @@ function UserTrackForm({ mode, track, busy, progress, onClose, onSave }) {
       <label className="music-field"><span>Mood *</span><select value={form.mood} onChange={(e) => change('mood', e.target.value)}>{MOODS.map((value) => <option key={value}>{value}</option>)}</select></label>
       <label className="music-field full"><span>Genre</span><input maxLength="80" value={form.genre} onChange={(e) => change('genre', e.target.value)} /></label>
       <label className="music-field full"><span>Description</span><textarea rows="3" maxLength="1000" value={form.description} onChange={(e) => change('description', e.target.value)} /></label>
-      {mode === 'upload' && <><label className="music-field full"><span>MP3 * (max 40 MB)</span><input type="file" required accept="audio/mpeg,.mp3" onChange={(e) => audio(e.target.files?.[0])} />{form.audio && <small>{form.audio.name} — {(form.audio.size / 1024 / 1024).toFixed(1)} MB</small>}</label>
+      {mode === 'upload' && <><label className="music-field full"><span>Audio File *</span><input type="file" required accept="audio/*,.mp3,.m4a,.aac,.wav,.flac,.ogg,.opus" onChange={(e) => audio(e.target.files?.[0])} />{form.audio && <small>{form.audio.name} — {(form.audio.size / 1024 / 1024).toFixed(1)} MB</small>}</label>
         <label className="music-field full"><span>Cover (optional, JPEG/PNG, max 5 MB)</span><input type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" onChange={(e) => cover(e.target.files?.[0])} />{coverPreview && <img className="music-cover-preview" src={coverPreview} alt="Selected cover preview" />}</label>
         <label className="music-checkbox full"><input type="checkbox" checked={form.originalWorkConfirmed} onChange={(e) => change('originalWorkConfirmed', e.target.checked)} /> I confirm I created this track or have permission to upload it.</label>
         <label className="music-checkbox full"><input type="checkbox" checked={form.rightsConfirmed} onChange={(e) => change('rightsConfirmed', e.target.checked)} /> I understand unauthorized copyrighted material may be removed.</label></>}

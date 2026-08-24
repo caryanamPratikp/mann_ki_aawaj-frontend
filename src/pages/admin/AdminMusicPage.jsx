@@ -68,12 +68,12 @@ function BulkTrackUploadModal({ saving, progressStatus, onClose, onSaveBulk }) {
       return;
     }
 
-    const validMimes = ['audio/mpeg', 'audio/mp3', 'audio/m4a', 'audio/x-m4a', 'audio/mp4', 'audio/aac'];
+    const validExts = ['.mp3', '.m4a', '.aac', '.wav', '.flac', '.ogg', '.opus'];
     const lowerName = file.name.toLowerCase();
-    const isMp3OrM4a = lowerName.endsWith('.mp3') || lowerName.endsWith('.m4a');
+    const isValidExt = validExts.some((ext) => lowerName.endsWith(ext));
 
-    if (!validMimes.includes(file.type) && !isMp3OrM4a && !file.type.startsWith('audio/')) {
-      return setFormError('Please select an MP3 or M4A audio file for all tracks.');
+    if (!isValidExt && !file.type.startsWith('audio/')) {
+      return setFormError('Please select a valid audio file (MP3, M4A, AAC, WAV, FLAC, OGG, OPUS).');
     }
     if (file.size > 40 * 1024 * 1024) {
       return setFormError('Each audio file must be 40 MB or smaller.');
@@ -115,7 +115,7 @@ function BulkTrackUploadModal({ saving, progressStatus, onClose, onSaveBulk }) {
         </div>
 
         <p style={{ fontSize: '13px', color: '#756966', margin: '0 0 16px 0' }}>
-          Accepts Title & Music File (MP3/M4A). Cover image defaults to logo automatically. Add multiple tracks to upload in bulk.
+          Accepts Title & Music File (MP3, M4A, AAC, WAV, FLAC, OGG, OPUS). Cover image defaults to logo automatically.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
@@ -173,10 +173,10 @@ function BulkTrackUploadModal({ saving, progressStatus, onClose, onSaveBulk }) {
                 </label>
 
                 <label className="music-field">
-                  <span>Music File * (MP3/M4A)</span>
+                  <span>Music File * (MP3, M4A, AAC, WAV, FLAC, OGG, OPUS)</span>
                   <input
                     required
-                    accept="audio/mpeg,audio/mp3,audio/m4a,audio/x-m4a,audio/mp4,.mp3,.m4a"
+                    accept="audio/*,.mp3,.m4a,.aac,.wav,.flac,.ogg,.opus"
                     type="file"
                     onChange={(e) => handleAudioSelect(row.id, e.target.files?.[0])}
                     disabled={saving}
