@@ -39,7 +39,7 @@ const emojiMap = {
 export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, onReplySubmit }) {
   const { currentUser } = useAuth();
   const { updateComment, deleteComment, createReply, reactToComment } = useComments();
-  const { blockUser } = useReports();
+  const { blockUser, blockedUsers = [], mutedUsers = [] } = useReports();
   const { t, currentLanguage, translateTextAsync } = useLanguage();
   const { addToast } = useToast();
 
@@ -50,6 +50,14 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [manualToggle, setManualToggle] = useState(false);
+
+  const isBlockedOrMuted = (() => {
+    const author = (comment.username || '').toLowerCase().replace(/^@/, '').trim();
+    if (!author) return false;
+    const isB = (blockedUsers || []).some(u => String(u).toLowerCase().replace(/^@/, '').trim() === author);
+    const isM = (mutedUsers || []).some(u => String(u).toLowerCase().replace(/^@/, '').trim() === author);
+    return isB || isM;
+  })();
 
   const isOwner = Boolean(
     currentUser && (
@@ -90,12 +98,8 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
     return list;
   });
 
-  if (hidden) {
-    return (
-      <div className="mka-panel" style={{ padding: '12px', textAlign: 'center' }}>
-        <span className="secondary-text">Comment hidden.</span>
-      </div>
-    );
+  if (hidden || isBlockedOrMuted) {
+    return null;
   }
 
   const handleUpdate = (e) => {

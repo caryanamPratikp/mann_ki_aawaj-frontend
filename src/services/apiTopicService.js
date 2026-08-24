@@ -18,18 +18,7 @@ export const apiTopicService = {
     try {
       const response = await apiClient.get('/api/topics', { timeout: 10000 });
       const data = response.data?.data || response.data || [];
-      if (!Array.isArray(data)) return [];
-      return Promise.all(data.map(async (topic) => {
-        if (topic.commentCount !== undefined && topic.commentCount !== null) return topic;
-        try {
-          const comments = await apiClient.get(`/api/topics/${topic.id}/comments`, {
-            params: { page: 0, size: 1 }, timeout: 10000,
-          });
-          return { ...topic, commentCount: Number(comments.data?.data?.totalElements || 0) };
-        } catch {
-          return { ...topic, commentCount: 0 };
-        }
-      }));
+      return Array.isArray(data) ? data : [];
     } catch (err) {
       console.warn('[apiTopicService] getTopics network/DB fallback notice:', err?.message || err);
       return [];

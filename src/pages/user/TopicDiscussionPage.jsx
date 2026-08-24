@@ -22,11 +22,16 @@ export function TopicDiscussionPage({ topicId, onNavigate }) {
   const commentsQuery = useQuery({
     queryKey: ['topic-comments', topicId],
     queryFn: async () => {
-      const [topics, response] = await Promise.all([
-        apiTopicService.getTopics(), apiCommentService.getCommentsByTopicId(topicId),
-      ]);
-      const matchedTopic = topics.find((item) => String(item.id) === String(topicId)) || null;
+      const topics = await apiTopicService.getTopics();
+      let matchedTopic = topics.find((item) => String(item.id) === String(topicId));
+      if (!matchedTopic && isNaN(Number(topicId))) {
+        matchedTopic = topics.find((item) => String(item.name || '').toUpperCase() === String(topicId || '').toUpperCase());
+      }
       if (matchedTopic) setTopic(matchedTopic);
+      const targetNumericId = matchedTopic?.id || (isNaN(Number(topicId)) ? null : Number(topicId));
+      if (!targetNumericId) return [];
+
+      const response = await apiCommentService.getCommentsByTopicId(targetNumericId);
       const raw = response?.data?.content || response?.data || [];
       return Array.isArray(raw) ? [...raw].sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0)) : [];
     },
@@ -51,8 +56,13 @@ export function TopicDiscussionPage({ topicId, onNavigate }) {
   }, [comments.length]);
 
   const submit = async (content, attachedImageUrl) => {
+    const targetNumericId = topic?.id || (isNaN(Number(topicId)) ? null : Number(topicId));
+    if (!targetNumericId) {
+      addToast('Invalid topic discussion.', 'error');
+      return;
+    }
     try {
-      await apiCommentService.createTopicComment(topicId, content, getLanguageCode(currentLanguage), attachedImageUrl);
+      await apiCommentService.createTopicComment(targetNumericId, content, getLanguageCode(currentLanguage), attachedImageUrl);
       await commentsQuery.refetch();
     } catch (error) {
       addToast(error?.response?.data?.message || 'Unable to add your opinion.', 'error');

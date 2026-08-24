@@ -129,5 +129,31 @@ export const apiUserService = {
       return [];
     }
   },
+
+  // POST /api/users/block/{username}
+  async blockUser(username) {
+    const clean = (username || '').replace(/^@/, '').trim();
+    if (!clean) return null;
+    const response = await apiClient.post(`/api/users/block/${encodeURIComponent(clean)}`);
+    return response.data;
+  },
+
+  // DELETE /api/users/unblock/{username}
+  async unblockUser(username) {
+    const clean = (username || '').replace(/^@/, '').trim();
+    if (!clean) return null;
+    const response = await apiClient.delete(`/api/users/unblock/${encodeURIComponent(clean)}`);
+    return response.data;
+  },
+
+  // GET /api/users/blocked
+  async getBlockedUsers() {
+    try {
+      const response = await apiClient.get('/api/users/blocked');
+      return response.data;
+    } catch (err) {
+      return [];
+    }
+  },
 };
 

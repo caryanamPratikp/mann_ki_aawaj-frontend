@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { LoaderCircle, Plus, RefreshCw, X } from 'lucide-react';
+import { LoaderCircle, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AdminLayout } from '../../components/layout/AdminLayout.jsx';
 import { apiMusicService } from '../../services/apiMusicService.js';
@@ -10,7 +10,6 @@ import '../../styles/music.css';
 const LANGUAGES = ['EN', 'HI', 'BN', 'MR', 'TE', 'TA', 'GU', 'UR', 'KN', 'OR', 'ML', 'PA', 'AS', 'SAT', 'KS', 'MNI', 'DOI', 'BHO'];
 const MOODS = ['ROMANTIC', 'CALM', 'ENERGETIC', 'CONFUSED', 'MELANCHOLY', 'FOCUS'];
 const STATUSES = ['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'UNPUBLISHED', 'REJECTED'];
-const EMPTY_FORM = { title: '', artistName: '', language: 'HI', mood: 'CALM', genre: '', description: '', featured: false, sortOrder: 0, audio: null, cover: null };
 
 function PrivateCover({ track }) {
   const [url, setUrl] = useState(track.coverUrl || '');
@@ -33,44 +32,245 @@ function PrivateCover({ track }) {
   return <img src={url || defaultCover} alt={`${track.title} cover`} onError={(e) => { e.currentTarget.src = defaultCover; }} />;
 }
 
-function TrackFormModal({ mode, track, saving, progress, onClose, onSave }) {
-  const [form, setForm] = useState(() => track ? {
-    title: track.title || '', artistName: track.artist || '', language: track.language || 'HI', mood: track.mood || 'CALM',
-    genre: track.genre || '', description: track.description || '', featured: Boolean(track.featured), sortOrder: track.sortOrder ?? 0,
-    audio: null, cover: null,
-  } : EMPTY_FORM);
+function BulkTrackUploadModal({ saving, progressStatus, onClose, onSaveBulk }) {
+  const [rows, setRows] = useState([
+    { id: 1, title: '', audio: null },
+  ]);
   const [formError, setFormError] = useState('');
-  const [coverPreview, setCoverPreview] = useState('');
 
-  useEffect(() => () => { if (coverPreview) URL.revokeObjectURL(coverPreview); }, [coverPreview]);
+  const addRow = () => {
+    setRows((prev) => [...prev, { id: Date.now(), title: '', audio: null }]);
+  };
 
-  const change = (name, value) => setForm((current) => ({ ...current, [name]: value }));
-  const chooseAudio = (file) => {
-    setFormError('');
-    if (!file) return change('audio', null);
-    if (!['audio/mpeg', 'audio/mp3'].includes(file.type) && !file.name.toLowerCase().endsWith('.mp3')) return setFormError('Please select an MP3 audio file.');
-    if (file.size > 40 * 1024 * 1024) return setFormError('Audio file must be 40 MB or smaller.');
-    change('audio', file);
+  const removeRow = (id) => {
+    if (rows.length <= 1) return;
+    setRows((prev) => prev.filter((r) => r.id !== id));
   };
-  const chooseCover = (file) => {
-    setFormError('');
-    if (!file) return change('cover', null);
-    if (!['image/jpeg', 'image/png'].includes(file.type)) return setFormError('Cover must be a JPEG or PNG image.');
-    if (file.size > 5 * 1024 * 1024) return setFormError('Cover image must be 5 MB or smaller.');
-    if (coverPreview) URL.revokeObjectURL(coverPreview);
-    setCoverPreview(URL.createObjectURL(file));
-    change('cover', file);
+
+  const updateRow = (id, field, value) => {
+    setRows((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
+    );
   };
+
+  const handleAudioSelect = (id, file) => {
+    setFormError('');
+    if (!file) {
+      setRows((prev) =>
+        prev.map((r) => {
+          if (r.id !== id) return r;
+          if (r.previewUrl) URL.revokeObjectURL(r.previewUrl);
+          return { ...r, audio: null, previewUrl: '' };
+        })
+      );
+      return;
+    }
+
+    const validMimes = ['audio/mpeg', 'audio/mp3', 'audio/m4a', 'audio/x-m4a', 'audio/mp4', 'audio/aac'];
+    const lowerName = file.name.toLowerCase();
+    const isMp3OrM4a = lowerName.endsWith('.mp3') || lowerName.endsWith('.m4a');
+
+    if (!validMimes.includes(file.type) && !isMp3OrM4a && !file.type.startsWith('audio/')) {
+      return setFormError('Please select an MP3 or M4A audio file for all tracks.');
+    }
+    if (file.size > 40 * 1024 * 1024) {
+      return setFormError('Each audio file must be 40 MB or smaller.');
+    }
+
+    const newPreviewUrl = URL.createObjectURL(file);
+
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== id) return r;
+        if (r.previewUrl) URL.revokeObjectURL(r.previewUrl);
+        const autoTitle = r.title.trim() ? r.title : file.name.replace(/\.[^/.]+$/, '');
+        return { ...r, audio: file, title: autoTitle, previewUrl: newPreviewUrl };
+      })
+    );
+  };
+
   const submit = (event) => {
     event.preventDefault();
-    if (mode === 'upload' && !form.audio) return setFormError('An MP3 audio file is required.');
+    setFormError('');
+
+    for (let i = 0; i < rows.length; i++) {
+      if (!rows[i].audio) {
+        return setFormError(`Track #${i + 1} requires an audio file.`);
+      }
+    }
+
+    onSaveBulk(rows);
+  };
+
+  return (
+    <div className="music-modal-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}>
+      <form className="music-modal" onSubmit={submit} style={{ maxWidth: '640px', width: '100%' }}>
+        <div className="music-modal-header">
+          <h2>Upload Tracks (Bulk Supported)</h2>
+          <button className="music-icon-button" type="button" onClick={onClose} disabled={saving}>
+            <X />
+          </button>
+        </div>
+
+        <p style={{ fontSize: '13px', color: '#756966', margin: '0 0 16px 0' }}>
+          Accepts Title & Music File (MP3/M4A). Cover image defaults to logo automatically. Add multiple tracks to upload in bulk.
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
+          {rows.map((row, index) => (
+            <div
+              key={row.id}
+              style={{
+                padding: '14px',
+                borderRadius: '12px',
+                border: '1.5px solid #E5DFDD',
+                backgroundColor: '#FAF8F8',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#6F405F' }}>
+                  Track #{index + 1}
+                </span>
+                {rows.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeRow(row.id)}
+                    disabled={saving}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#C62828',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                    }}
+                  >
+                    <Trash2 size={15} />
+                    <span>Remove</span>
+                  </button>
+                )}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <label className="music-field">
+                  <span>Track Title *</span>
+                  <input
+                    required
+                    maxLength="150"
+                    value={row.title}
+                    onChange={(e) => updateRow(row.id, 'title', e.target.value)}
+                    placeholder="Enter track title"
+                    disabled={saving}
+                  />
+                </label>
+
+                <label className="music-field">
+                  <span>Music File * (MP3/M4A)</span>
+                  <input
+                    required
+                    accept="audio/mpeg,audio/mp3,audio/m4a,audio/x-m4a,audio/mp4,.mp3,.m4a"
+                    type="file"
+                    onChange={(e) => handleAudioSelect(row.id, e.target.files?.[0])}
+                    disabled={saving}
+                  />
+                </label>
+              </div>
+
+              {row.audio && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <small className="music-file-note" style={{ color: '#2E7D32', fontWeight: 700 }}>
+                      ✓ {row.audio.name} ({(row.audio.size / 1024 / 1024).toFixed(1)} MB)
+                    </small>
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: '#6F405F' }}>Audio Preview</span>
+                  </div>
+                  {row.previewUrl && (
+                    <audio
+                      controls
+                      src={row.previewUrl}
+                      style={{ width: '100%', height: '36px', borderRadius: '8px' }}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginTop: '16px' }}>
+          <button
+            type="button"
+            onClick={addRow}
+            disabled={saving}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 14px',
+              borderRadius: '10px',
+              background: 'rgba(111,64,95,0.1)',
+              color: '#6F405F',
+              border: '1.5px dashed #6F405F',
+              fontSize: '13px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              width: '100%',
+              justifyContent: 'center',
+            }}
+          >
+            <Plus size={16} />
+            <span>+ Add Another Track</span>
+          </button>
+        </div>
+
+        {formError && <p className="music-player-error" role="alert" style={{ marginTop: '12px' }}>{formError}</p>}
+        {saving && <p className="music-file-note" style={{ marginTop: '12px', fontWeight: 700, color: '#6F405F' }}>{progressStatus}</p>}
+
+        <div className="music-form-actions" style={{ marginTop: '20px' }}>
+          <button className="music-secondary" type="button" onClick={onClose} disabled={saving}>
+            Cancel
+          </button>
+          <button className="music-primary" type="submit" disabled={saving}>
+            {saving ? 'Uploading...' : `Upload & Publish (${rows.length} ${rows.length === 1 ? 'Track' : 'Tracks'})`}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function TrackEditModal({ track, saving, onClose, onSave }) {
+  const [form, setForm] = useState({
+    title: track?.title || '',
+    artistName: track?.artist || '',
+    language: track?.language || 'HI',
+    mood: track?.mood || 'CALM',
+    genre: track?.genre || '',
+    description: track?.description || '',
+    featured: Boolean(track?.featured),
+    sortOrder: track?.sortOrder ?? 0,
+  });
+
+  const change = (name, value) => setForm((current) => ({ ...current, [name]: value }));
+
+  const submit = (e) => {
+    e.preventDefault();
     onSave(form);
   };
 
   return (
-    <div className="music-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <form className="music-modal" onSubmit={submit} aria-labelledby="music-form-title">
-        <div className="music-modal-header"><h2 id="music-form-title">{mode === 'upload' ? 'Upload track' : 'Edit metadata'}</h2><button className="music-icon-button" type="button" onClick={onClose} aria-label="Close"><X /></button></div>
+    <div className="music-modal-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}>
+      <form className="music-modal" onSubmit={submit}>
+        <div className="music-modal-header">
+          <h2>Edit Track Metadata</h2>
+          <button className="music-icon-button" type="button" onClick={onClose} disabled={saving}><X /></button>
+        </div>
         <div className="music-form-grid">
           <label className="music-field"><span>Title *</span><input required maxLength="150" value={form.title} onChange={(e) => change('title', e.target.value)} /></label>
           <label className="music-field"><span>Artist *</span><input required maxLength="150" value={form.artistName} onChange={(e) => change('artistName', e.target.value)} /></label>
@@ -80,14 +280,11 @@ function TrackFormModal({ mode, track, saving, progress, onClose, onSave }) {
           <label className="music-field"><span>Sort order</span><input type="number" min="0" value={form.sortOrder} onChange={(e) => change('sortOrder', Number(e.target.value))} /></label>
           <label className="music-field full"><span>Description</span><textarea rows="4" maxLength="1000" value={form.description} onChange={(e) => change('description', e.target.value)} /></label>
           <label className="music-checkbox"><input type="checkbox" checked={form.featured} onChange={(e) => change('featured', e.target.checked)} /> Featured track</label>
-          {mode === 'upload' && <>
-            <label className="music-field full"><span>Audio file * (MP3, max 40 MB)</span><input required accept="audio/mpeg,.mp3" type="file" onChange={(e) => chooseAudio(e.target.files?.[0])} />{form.audio && <small className="music-file-note">{form.audio.name} — {(form.audio.size / 1024 / 1024).toFixed(1)} MB</small>}</label>
-            <label className="music-field full"><span>Cover (optional, JPEG/PNG, max 5 MB)</span><input accept="image/jpeg,image/png,.jpg,.jpeg,.png" type="file" onChange={(e) => chooseCover(e.target.files?.[0])} />{coverPreview && <img className="music-cover-preview" src={coverPreview} alt="Selected cover preview" />}</label>
-          </>}
         </div>
-        {formError && <p className="music-player-error" role="alert">{formError}</p>}
-        {saving && mode === 'upload' && <p className="music-file-note">Uploading… {progress}%</p>}
-        <div className="music-form-actions"><button className="music-secondary" type="button" onClick={onClose} disabled={saving}>Cancel</button><button className="music-primary" type="submit" disabled={saving}>{saving ? 'Saving…' : mode === 'upload' ? 'Upload and publish' : 'Save changes'}</button></div>
+        <div className="music-form-actions" style={{ marginTop: '20px' }}>
+          <button className="music-secondary" type="button" onClick={onClose} disabled={saving}>Cancel</button>
+          <button className="music-primary" type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save changes'}</button>
+        </div>
       </form>
     </div>
   );
@@ -124,7 +321,7 @@ export function AdminMusicPage({ onNavigate }) {
   const [modal, setModal] = useState(null);
   const [previewTrack, setPreviewTrack] = useState(null);
   const [rejectTrack, setRejectTrack] = useState(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatusText, setUploadStatusText] = useState('');
 
   useEffect(() => { const timer = setTimeout(() => setDebouncedQuery(query.trim()), 350); return () => clearTimeout(timer); }, [query]);
   useEffect(() => setPage(0), [debouncedQuery, filters]);
@@ -142,16 +339,32 @@ export function AdminMusicPage({ onNavigate }) {
     queryClient.invalidateQueries({ queryKey: ['public-music'] }),
     queryClient.invalidateQueries({ queryKey: ['featured-music'] }),
   ]);
+
   const mutation = useMutation({
-    mutationFn: async ({ action, track, form }) => {
-      if (action === 'upload') {
-        const data = new FormData();
-        ['title', 'artistName', 'language', 'mood', 'genre', 'description', 'featured', 'sortOrder'].forEach((key) => data.append(key, form[key] ?? ''));
-        data.append('audio', form.audio);
-        if (form.cover) data.append('cover', form.cover);
-        const uploaded = await apiMusicService.uploadTrack(data, (event) => setUploadProgress(event.total ? Math.round((event.loaded / event.total) * 100) : 0));
-        if (!uploaded?.id) throw new Error('The uploaded track response did not include an ID.');
-        return apiMusicService.publishTrack(uploaded.id);
+    mutationFn: async ({ action, track, form, bulkRows }) => {
+      if (action === 'uploadBulk') {
+        const total = bulkRows.length;
+        for (let i = 0; i < total; i++) {
+          const row = bulkRows[i];
+          setUploadStatusText(`Uploading track ${i + 1} of ${total}: "${row.title}"...`);
+          const data = new FormData();
+          data.append('title', row.title.trim());
+          data.append('artistName', 'Man Ki Aavaj');
+          data.append('language', 'HI');
+          data.append('mood', 'CALM');
+          data.append('genre', 'BGM');
+          data.append('description', '');
+          data.append('featured', 'false');
+          data.append('sortOrder', String(i));
+          data.append('audio', row.audio);
+          // Note: cover is omitted so platform logo is used by default
+
+          const uploaded = await apiMusicService.uploadTrack(data);
+          if (uploaded?.id) {
+            await apiMusicService.publishTrack(uploaded.id);
+          }
+        }
+        return { count: total };
       }
       if (action === 'edit') return apiMusicService.updateTrack(track.id, { title: form.title, artistName: form.artistName, language: form.language, mood: form.mood, genre: form.genre, description: form.description, featured: form.featured, sortOrder: form.sortOrder });
       if (action === 'publish') return apiMusicService.publishTrack(track.id);
@@ -161,16 +374,23 @@ export function AdminMusicPage({ onNavigate }) {
       if (action === 'delete') return apiMusicService.deleteTrack(track.id);
       return null;
     },
-    onSuccess: async (_, variables) => {
+    onSuccess: async (data, variables) => {
       await invalidateMusic();
-      const messages = { upload: 'Track uploaded and published successfully', edit: 'Music metadata updated', publish: 'Track published', unpublish: 'Track unpublished', approve: 'Community track approved and published', reject: 'Community track rejected', delete: 'Track deleted' };
-      addToast(messages[variables.action], 'success');
+      if (variables.action === 'uploadBulk') {
+        addToast(`${data?.count || 1} track(s) uploaded and published successfully!`, 'success');
+      } else {
+        const messages = { edit: 'Music metadata updated', publish: 'Track published', unpublish: 'Track unpublished', approve: 'Community track approved and published', reject: 'Community track rejected', delete: 'Track deleted' };
+        addToast(messages[variables.action], 'success');
+      }
       setModal(null);
-      setUploadProgress(0);
+      setUploadStatusText('');
       setRejectTrack(null);
       if (variables.action === 'delete' && previewTrack?.id === variables.track.id) setPreviewTrack(null);
     },
-    onError: (error) => addToast(error.message || 'Music action failed.', 'error'),
+    onError: (error) => {
+      addToast(error.message || 'Music action failed.', 'error');
+      setUploadStatusText('');
+    },
   });
 
   const confirmAction = (action, track) => {
@@ -182,7 +402,7 @@ export function AdminMusicPage({ onNavigate }) {
 
   return <AdminLayout activeRoute="/admin/music" onNavigate={onNavigate} onRefresh={() => tracksQuery.refetch()} refreshing={tracksQuery.isFetching}>
     <div className="admin-music-page">
-      <div className="admin-music-title"><div><h1>Music Management</h1><p>Upload, review and publish platform and community music.</p></div><div className="admin-music-title-actions"><button className="music-secondary" type="button" onClick={() => setFilter('status', 'PENDING_REVIEW')}>Pending Review</button><button className="music-primary" type="button" onClick={() => setModal({ mode: 'upload' })}><Plus size={16} /> Upload track</button></div></div>
+      <div className="admin-music-title"><div><h1>Music Management</h1><p>Upload, review and publish platform and community music.</p></div><div className="admin-music-title-actions"><button className="music-secondary" type="button" onClick={() => setFilter('status', 'PENDING_REVIEW')}>Pending Review</button><button className="music-primary" type="button" onClick={() => setModal({ mode: 'upload' })}><Plus size={16} /> Upload tracks</button></div></div>
       <section className="admin-music-panel">
         <div className="music-toolbar admin-music-filters">
           <label className="music-field"><span>Search</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Title or artist" /></label>
@@ -196,10 +416,10 @@ export function AdminMusicPage({ onNavigate }) {
         <div className="music-pagination"><button className="music-secondary" disabled={page === 0} onClick={() => setPage((value) => value - 1)}>Previous</button><span>Page {page + 1} of {Math.max(1, tracksQuery.data?.totalPages || 1)}</span><button className="music-secondary" disabled={page + 1 >= (tracksQuery.data?.totalPages || 1)} onClick={() => setPage((value) => value + 1)}>Next</button></div>
       </section>
     </div>
-    {modal?.mode === 'upload' && <TrackFormModal mode="upload" saving={mutation.isPending} progress={uploadProgress} onClose={() => setModal(null)} onSave={(form) => mutation.mutate({ action: 'upload', form })} />}
+    {modal?.mode === 'upload' && <BulkTrackUploadModal saving={mutation.isPending} progressStatus={uploadStatusText} onClose={() => setModal(null)} onSaveBulk={(rows) => mutation.mutate({ action: 'uploadBulk', bulkRows: rows })} />}
     {modal?.mode === 'edit' && detailQuery.isLoading && <div className="music-modal-backdrop"><div className="music-modal music-loading"><LoaderCircle className="music-spin" aria-label="Loading track details" /></div></div>}
     {modal?.mode === 'edit' && detailQuery.isError && <div className="music-modal-backdrop"><div className="music-modal music-error"><div><p>{detailQuery.error.message}</p><button className="music-secondary" type="button" onClick={() => detailQuery.refetch()}>Retry</button> <button className="music-secondary" type="button" onClick={() => setModal(null)}>Close</button></div></div></div>}
-    {modal?.mode === 'edit' && detailQuery.data && <TrackFormModal mode="edit" track={detailQuery.data} saving={mutation.isPending} progress={uploadProgress} onClose={() => setModal(null)} onSave={(form) => mutation.mutate({ action: 'edit', track: detailQuery.data, form })} />}
+    {modal?.mode === 'edit' && detailQuery.data && <TrackEditModal track={detailQuery.data} saving={mutation.isPending} onClose={() => setModal(null)} onSave={(form) => mutation.mutate({ action: 'edit', track: detailQuery.data, form })} />}
     {previewTrack && <PreviewModal track={previewTrack} onClose={() => setPreviewTrack(null)} />}
     {rejectTrack && <RejectModal track={rejectTrack} busy={mutation.isPending} onClose={() => setRejectTrack(null)} onReject={(reason) => mutation.mutate({ action: 'reject', track: rejectTrack, form: { reason } })} />}
   </AdminLayout>;

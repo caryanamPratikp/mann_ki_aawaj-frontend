@@ -85,6 +85,7 @@ export const UI_DICTIONARY = {
     noOpinionsYet: 'No opinions yet. Start the discussion.',
     commentImage: 'Comment attachment',
     mutedHandles: 'Muted Handles',
+    blockedUsers: 'Blocked Users',
     hiddenThoughts: 'Hidden Thoughts',
     topicOpenFailed: 'Unable to open this discussion.',
     recentlyUpdated: 'Recently updated',

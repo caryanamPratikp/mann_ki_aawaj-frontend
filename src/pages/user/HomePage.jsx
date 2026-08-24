@@ -236,14 +236,22 @@ export function HomePage({ onNavigate }) {
       return;
     }
     try {
-      const topic = await apiTopicService.createTopic({
+      const dbTopics = await apiTopicService.getTopics();
+      const existing = (dbTopics || []).find(
+        (t) => String(t.name || '').toUpperCase() === String(subtopic.id || '').toUpperCase()
+      );
+      if (existing?.id) {
+        onNavigate(`/topic/${existing.id}`);
+        return;
+      }
+      const created = await apiTopicService.createTopic({
         name: subtopic.id,
         icon: subtopic.icon,
         parentTopic: subtopic.parentTopic || 'GENERAL',
         createdByUsername: currentUser?.username || '@anonymous',
       });
-      if (!topic?.id) throw new Error('Topic could not be opened.');
-      onNavigate(`/topic/${topic.id}`);
+      if (!created?.id) throw new Error('Topic could not be opened.');
+      onNavigate(`/topic/${created.id}`);
     } catch (error) {
       addToast(error?.message || t('topicOpenFailed', 'Unable to open this discussion.'), 'error');
     }

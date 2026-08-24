@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { LoaderCircle, Music2, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX, X } from 'lucide-react';
 import { useMoodMusic } from '../../context/MoodMusicContext.jsx';
 import defaultCover from '../../assets/default-music-cover.svg';
@@ -11,30 +12,191 @@ const formatTime = (seconds) => {
 
 export function MoodMusicWidget() {
   const music = useMoodMusic();
+  const widgetRef = useRef(null);
+
+  // Position state (null = default CSS bottom/right)
+  const [pos, setPos] = useState({ x: null, y: null });
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef({ mouseX: 0, mouseY: 0, posX: 0, posY: 0 });
+  const hasMovedRef = useRef(false);
+
+  // Keep position constrained within viewport on window resize
+  useEffect(() => {
+    function handleResize() {
+      if (pos.x !== null && pos.y !== null) {
+        const maxX = window.innerWidth - 80;
+        const maxY = window.innerHeight - 80;
+        setPos((prev) => ({
+          x: Math.max(10, Math.min(maxX, prev.x)),
+          y: Math.max(10, Math.min(maxY, prev.y)),
+        }));
+      }
+    }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [pos]);
+
+  // Collapse player on click outside when expanded
+  useEffect(() => {
+    if (!music.isWidgetOpen) return;
+
+    function handleOutsideClick(event) {
+      if (widgetRef.current && !widgetRef.current.contains(event.target)) {
+        music.setIsWidgetOpen(false);
+      }
+    }
+
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleOutsideClick);
+      document.addEventListener('touchstart', handleOutsideClick);
+    }, 50);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+    };
+  }, [music.isWidgetOpen, music.setIsWidgetOpen]);
+
   if (!music.currentTrack) return null;
 
   const currentSeconds = music.duration * (music.progress / 100);
 
+  // Drag start handler for mouse & touch
+  const handleDragStart = (e) => {
+    if (e.type === 'mousedown' && e.button !== 0) return;
+
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    let currentX = pos.x;
+    let currentY = pos.y;
+
+    if (currentX === null || currentY === null) {
+      if (widgetRef.current) {
+        const rect = widgetRef.current.getBoundingClientRect();
+        currentX = rect.left;
+        currentY = rect.top;
+      } else {
+        currentX = window.innerWidth - 240;
+        currentY = window.innerHeight - 80;
+      }
+    }
+
+    dragStartRef.current = {
+      mouseX: clientX,
+      mouseY: clientY,
+      posX: currentX,
+      posY: currentY,
+    };
+    isDraggingRef.current = true;
+    hasMovedRef.current = false;
+
+    const handleDragMove = (moveEvent) => {
+      if (!isDraggingRef.current) return;
+      const moveX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const moveY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+      const deltaX = moveX - dragStartRef.current.mouseX;
+      const deltaY = moveY - dragStartRef.current.mouseY;
+
+      if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
+        hasMovedRef.current = true;
+      }
+
+      const widgetWidth = widgetRef.current ? widgetRef.current.offsetWidth : 220;
+      const widgetHeight = widgetRef.current ? widgetRef.current.offsetHeight : 60;
+
+      const newX = Math.max(10, Math.min(window.innerWidth - widgetWidth - 10, dragStartRef.current.posX + deltaX));
+      const newY = Math.max(10, Math.min(window.innerHeight - widgetHeight - 10, dragStartRef.current.posY + deltaY));
+
+      setPos({ x: newX, y: newY });
+    };
+
+    const handleDragEnd = () => {
+      isDraggingRef.current = false;
+      window.removeEventListener('mousemove', handleDragMove);
+      window.removeEventListener('mouseup', handleDragEnd);
+      window.removeEventListener('touchmove', handleDragMove);
+      window.removeEventListener('touchend', handleDragEnd);
+    };
+
+    window.addEventListener('mousemove', handleDragMove);
+    window.addEventListener('mouseup', handleDragEnd);
+    window.addEventListener('touchmove', handleDragMove, { passive: false });
+    window.addEventListener('touchend', handleDragEnd);
+  };
+
+  const dynamicStyle = {
+    position: 'fixed',
+    zIndex: 999999,
+    cursor: isDraggingRef.current ? 'grabbing' : 'grab',
+    touchAction: 'none',
+    ...(pos.x !== null && pos.y !== null
+      ? { left: `${pos.x}px`, top: `${pos.y}px`, right: 'auto', bottom: 'auto' }
+      : { right: '20px', bottom: '20px' }),
+  };
+
   if (!music.isWidgetOpen) {
-    return (
-      <button className="music-player-bubble" type="button" onClick={() => music.setIsWidgetOpen(true)} aria-label="Open music player">
-        <img src={music.currentTrack.coverUrl || defaultCover} alt="" onError={(e) => { e.currentTarget.src = defaultCover; }} />
-        <span>{music.currentTrack.title}</span>
-        {music.isPlaying ? <Pause size={16} /> : <Play size={16} />}
-      </button>
+    return createPortal(
+      <div
+        ref={widgetRef}
+        style={dynamicStyle}
+        onMouseDown={handleDragStart}
+        onTouchStart={handleDragStart}
+      >
+        <button
+          className="music-player-bubble"
+          type="button"
+          onClick={(e) => {
+            if (hasMovedRef.current) {
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+            music.setIsWidgetOpen(true);
+          }}
+          aria-label="Open music player"
+          style={{ position: 'relative', bottom: 'auto', right: 'auto' }}
+        >
+          <img src={music.currentTrack.coverUrl || defaultCover} alt="" onError={(e) => { e.currentTarget.src = defaultCover; }} />
+          <span>{music.currentTrack.title}</span>
+          {music.isPlaying ? <Pause size={16} /> : <Play size={16} />}
+        </button>
+      </div>,
+      document.body
     );
   }
 
-  return (
-    <section className="music-player" aria-label="Music player">
-      <button className="music-icon-button music-player-close" type="button" onClick={() => music.setIsWidgetOpen(false)} aria-label="Minimize music player">
-        <X size={18} />
-      </button>
-      <div className="music-player-track">
-        <img src={music.currentTrack.coverUrl || defaultCover} alt={`${music.currentTrack.title} cover`} onError={(e) => { e.currentTarget.src = defaultCover; }} />
-        <div>
-          <strong>{music.currentTrack.title}</strong>
-          <span>{music.currentTrack.artist || 'Unknown artist'}</span>
+  return createPortal(
+    <section
+      ref={widgetRef}
+      className="music-player"
+      aria-label="Music player"
+      style={{
+        ...dynamicStyle,
+        ...(pos.x === null ? {} : { bottom: 'auto', right: 'auto' }),
+      }}
+    >
+      <div
+        onMouseDown={handleDragStart}
+        onTouchStart={handleDragStart}
+        style={{ cursor: 'grab', userSelect: 'none', width: '100%' }}
+      >
+        <button
+          className="music-icon-button music-player-close"
+          type="button"
+          onClick={() => music.setIsWidgetOpen(false)}
+          aria-label="Minimize music player"
+        >
+          <X size={18} />
+        </button>
+        <div className="music-player-track">
+          <img src={music.currentTrack.coverUrl || defaultCover} alt={`${music.currentTrack.title} cover`} onError={(e) => { e.currentTarget.src = defaultCover; }} />
+          <div>
+            <strong>{music.currentTrack.title}</strong>
+            <span>{music.currentTrack.artist || 'Unknown artist'}</span>
+          </div>
         </div>
       </div>
 
@@ -58,6 +220,7 @@ export function MoodMusicWidget() {
         <input className="music-volume" aria-label="Volume" type="range" min="0" max="1" step="0.05" value={music.isMuted ? 0 : music.volume} onChange={(event) => music.setVolume(event.target.value)} />
       </div>
       <Music2 className="music-player-watermark" aria-hidden="true" />
-    </section>
+    </section>,
+    document.body
   );
 }

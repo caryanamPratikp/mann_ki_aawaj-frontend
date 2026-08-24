@@ -86,9 +86,78 @@ export function ReportProvider({ children }) {
     }
   };
 
-  const blockUser = (username) => setBlockedUsers((previous) => [...new Set([...previous, username])]);
+  // Sync blocked users list with backend API on mount / login
+  const refreshBlockedUsers = useCallback(async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!currentUser || !token || token.startsWith('mock')) return;
 
-  const unblockUser = (username) => setBlockedUsers((previous) => previous.filter((item) => item !== username));
+    try {
+      const res = await apiUserService.getBlockedUsers();
+      const list = res?.data || res || [];
+      if (Array.isArray(list)) {
+        const formatted = [];
+        list.forEach(u => {
+          const raw = u.replace(/^@/, '');
+          formatted.push(raw, `@${raw}`);
+        });
+        const unique = [...new Set(formatted)];
+        setBlockedUsers(unique);
+        try { localStorage.setItem('mka_blocked_users', JSON.stringify(unique)); } catch {}
+      }
+    } catch (err) {
+      console.warn('[ReportContext] Backend blocked users sync notice:', err?.message || err);
+    }
+  }, [currentUser]);
+
+  const blockUser = useCallback(async (username) => {
+    if (!username) return;
+    const rawClean = String(username).replace(/^@/, '').trim();
+    if (!rawClean) return;
+    const cleanHandle = `@${rawClean}`;
+
+    setBlockedUsers((prev = []) => {
+      const current = Array.isArray(prev) ? prev : [];
+      const map = new Map();
+      [...current, cleanHandle].forEach((u) => {
+        if (!u) return;
+        const key = String(u).toLowerCase().replace(/^@/, '').trim();
+        if (key && !map.has(key)) {
+          map.set(key, `@${key}`);
+        }
+      });
+      const next = Array.from(map.values());
+      try { localStorage.setItem('mka_blocked_users', JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    addToast(`Blocked @${rawClean}. Their thoughts and comments are now hidden.`, 'info');
+
+    try {
+      if (apiUserService?.blockUser) await apiUserService.blockUser(rawClean);
+    } catch (err) {
+      console.warn('[ReportContext] Block user API notice:', err?.message || err);
+    }
+  }, [addToast]);
+
+  const unblockUser = useCallback(async (username) => {
+    if (!username) return;
+    const rawClean = String(username).replace(/^@/, '').toLowerCase().trim();
+
+    setBlockedUsers((prev = []) => {
+      const current = Array.isArray(prev) ? prev : [];
+      const next = current.filter((item) => String(item).toLowerCase().replace(/^@/, '').trim() !== rawClean);
+      try { localStorage.setItem('mka_blocked_users', JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    addToast(`Unblocked @${rawClean}. Their thoughts and comments are visible again.`, 'success');
+
+    try {
+      if (apiUserService?.unblockUser) await apiUserService.unblockUser(rawClean);
+    } catch (err) {
+      console.warn('[ReportContext] Unblock user API notice:', err?.message || err);
+    }
+  }, [addToast]);
 
   const muteUser = useCallback(async (username) => {
     if (!username) return;
@@ -184,8 +253,9 @@ export function ReportProvider({ children }) {
   useEffect(() => {
     refreshReports();
     refreshMutedUsers();
+    refreshBlockedUsers();
     refreshHiddenPosts();
-  }, [refreshReports, refreshMutedUsers, refreshHiddenPosts]);
+  }, [refreshReports, refreshMutedUsers, refreshBlockedUsers, refreshHiddenPosts]);
 
   const hidePost = useCallback(async (postId, postData = {}) => {
     if (!postId) return;

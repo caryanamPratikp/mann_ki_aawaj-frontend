@@ -44,7 +44,7 @@ export function ProfilePage({ username, onNavigate }) {
   const { currentUser, updateProfile, deleteAccount, logout } = useAuth();
   const { posts, createPost } = usePosts();
   const { addToast } = useToast();
-  const { mutedUsers = [], unmuteUser, hiddenPosts = [], unhidePost } = useReports();
+  const { mutedUsers = [], unmuteUser, blockedUsers = [], unblockUser, hiddenPosts = [], unhidePost } = useReports();
   const { t } = useLanguage();
   const [spokenLanguage] = useSpokenLanguage();
 
@@ -104,6 +104,18 @@ export function ProfilePage({ username, onNavigate }) {
     });
     return Array.from(map.values());
   }, [mutedUsers]);
+
+  const uniqueBlockedHandles = useMemo(() => {
+    const map = new Map();
+    (blockedUsers || []).forEach((u) => {
+      if (!u) return;
+      const clean = String(u).toLowerCase().replace(/^@/, '').trim();
+      if (clean && !map.has(clean)) {
+        map.set(clean, `@${clean}`);
+      }
+    });
+    return Array.from(map.values());
+  }, [blockedUsers]);
 
 
 
@@ -515,6 +527,26 @@ export function ProfilePage({ username, onNavigate }) {
 
                   <button
                     type="button"
+                    onClick={() => setActiveTab('Blocked')}
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '14px',
+                      fontWeight: activeTab === 'Blocked' ? 700 : 500,
+                      color: activeTab === 'Blocked' ? '#6F405F' : '#6E625F',
+                      borderTop: 'none',
+                      borderLeft: 'none',
+                      borderRight: 'none',
+                      borderBottom: activeTab === 'Blocked' ? '2.5px solid #6F405F' : '2.5px solid transparent',
+                      background: 'none',
+                      outline: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {t('blockedUsers', 'Blocked Users')} ({uniqueBlockedHandles.length})
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => setActiveTab('Hidden')}
                     style={{
                       padding: '8px 16px',
@@ -605,6 +637,56 @@ export function ProfilePage({ username, onNavigate }) {
                       >
                         <Volume2 size={13} />
                         <span>Unmute</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'Blocked' && isSelf && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+              {uniqueBlockedHandles.length === 0 ? (
+                <EmptyState title="No blocked users" description="Users you block will appear here so you can unblock them anytime." icon={ShieldOff} />
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '10px' }}>
+                  {uniqueBlockedHandles.map((handle) => (
+                    <div
+                      key={handle}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        backgroundColor: '#FFFFFF',
+                        border: '1.5px solid #EAE4E4',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                      }}
+                    >
+                      <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#2D1D15' }}>
+                        {handle}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => unblockUser(handle)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '4px 10px',
+                          borderRadius: '8px',
+                          background: 'rgba(198,40,40,0.1)',
+                          color: '#C62828',
+                          border: '1px solid rgba(198,40,40,0.2)',
+                          fontSize: '11.5px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <ShieldOff size={13} />
+                        <span>Unblock</span>
                       </button>
                     </div>
                   ))}
