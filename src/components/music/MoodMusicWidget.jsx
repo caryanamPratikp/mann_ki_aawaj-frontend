@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { LoaderCircle, Music2, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Volume2, VolumeX, X } from 'lucide-react';
 import { useMoodMusic } from '../../context/MoodMusicContext.jsx';
 import defaultCover from '../../assets/music-cover.jpg';
+import { apiMusicService } from '../../services/apiMusicService.js';
 import '../../styles/music.css';
 import { getListeningMoodOption } from '../../config/musicMoods.js';
 
@@ -61,9 +62,27 @@ export function MoodMusicWidget() {
     };
   }, [isWidgetOpen, setIsWidgetOpen]);
 
-  if (!music.currentTrack) return null;
-
   const currentSeconds = music.duration * (music.progress / 100);
+
+  const handleBubblePlayToggle = async () => {
+    if (music.currentTrack) {
+      music.togglePlay();
+      return;
+    }
+    if (music.queue && music.queue.length > 0) {
+      music.playTrack(music.queue[0], music.queue);
+      return;
+    }
+    try {
+      const res = await apiMusicService.getPublicTracks({ page: 0, size: 10 });
+      const tracks = res?.content || [];
+      if (tracks.length > 0) {
+        music.playTrack(tracks[0], tracks);
+      }
+    } catch (err) {
+      console.warn('Could not fetch music for bubble play:', err);
+    }
+  };
 
   // Drag start handler for mouse & touch
   const handleDragStart = (e) => {
@@ -149,24 +168,96 @@ export function MoodMusicWidget() {
         onMouseDown={handleDragStart}
         onTouchStart={handleDragStart}
       >
-        <button
+        <div
           className="music-player-bubble"
-          type="button"
-          onClick={(e) => {
-            if (hasMovedRef.current) {
-              e.preventDefault();
-              e.stopPropagation();
-              return;
-            }
-            music.setIsWidgetOpen(true);
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '4px 8px 4px 5px',
+            borderRadius: '22px',
+            background: 'linear-gradient(135deg, #6F405F 0%, #3D2334 100%)',
+            color: '#FFFFFF',
+            boxShadow: '0 6px 18px rgba(61, 35, 52, 0.4)',
+            border: '1.5px solid rgba(255, 255, 255, 0.2)',
+            cursor: isDraggingRef.current ? 'grabbing' : 'grab',
+            userSelect: 'none',
+            maxWidth: '210px',
+            position: 'relative',
           }}
-          aria-label="Open music player"
-          style={{ position: 'relative', bottom: 'auto', right: 'auto' }}
         >
-          <img src={music.currentTrack.coverUrl || defaultCover} alt="" onError={(e) => { e.currentTarget.src = defaultCover; }} />
-          <span>{music.currentTrack.title}</span>
-          {music.isPlaying ? <Pause size={16} /> : <Play size={16} />}
-        </button>
+          <img
+            src={music.currentTrack?.coverUrl || defaultCover}
+            alt=""
+            onError={(e) => { e.currentTarget.src = defaultCover; }}
+            style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+          />
+
+          <div
+            onClick={(e) => {
+              if (hasMovedRef.current) return;
+              music.setIsWidgetOpen(true);
+            }}
+            style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, cursor: 'pointer' }}
+          >
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#FFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.1 }}>
+              {music.currentTrack?.title || 'Aawaj Man Ki'}
+            </span>
+            <span style={{ fontSize: '9.5px', color: 'rgba(255,255,255,0.75)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.1, marginTop: '1px' }}>
+              {music.currentTrack?.artist || 'Click to play'}
+            </span>
+          </div>
+
+          {/* Basic Controls Row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={music.prevTrack}
+              disabled={!music.currentTrack}
+              style={{ background: 'none', border: 'none', color: '#FFF', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', opacity: !music.currentTrack ? 0.5 : 1 }}
+              title="Previous"
+            >
+              <SkipBack size={13} fill="currentColor" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleBubblePlayToggle}
+              style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.25)',
+                border: 'none',
+                color: '#FFF',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+              }}
+              title={music.isPlaying ? 'Pause' : 'Play'}
+            >
+              {music.isBuffering ? (
+                <LoaderCircle size={12} className="music-spin" />
+              ) : music.isPlaying ? (
+                <Pause size={12} fill="currentColor" />
+              ) : (
+                <Play size={12} fill="currentColor" style={{ marginLeft: '1px' }} />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={music.nextTrack}
+              disabled={!music.currentTrack}
+              style={{ background: 'none', border: 'none', color: '#FFF', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', opacity: !music.currentTrack ? 0.5 : 1 }}
+              title="Next"
+            >
+              <SkipForward size={13} fill="currentColor" />
+            </button>
+          </div>
+        </div>
       </div>,
       document.body
     );

@@ -125,16 +125,16 @@ function FeedPostCard({ post, currentUserId, onPostDeleted, onReportPost }) {
       </div>
 
       {/* Waveform Player for Audio Attachment (Voice Note or Music Track) */}
-      {audio && audio.audioUrl && (
+      {(post.audioUrl || (audio && audio.audioUrl)) && (
         <div className="post-audio-attachment">
           <WaveformPlayer
-            audioUrl={audio.audioUrl}
-            durationSeconds={audio.durationSeconds || 0}
-            waveform={audio.waveform || audio.waveformData || []}
-            title={audio.title || (audio.kind === 'VOICE_NOTE' ? 'Voice Note' : 'Community Song')}
-            artistName={audio.artistName || post.username}
-            trackId={audio.musicTrackId || post.id}
-            coverUrl={audio.coverUrl}
+            audioUrl={post.audioUrl || audio?.audioUrl}
+            durationSeconds={audio?.durationSeconds || 0}
+            waveform={audio?.waveform || audio?.waveformData || []}
+            title={post.title || audio?.title || (post.type === 'VOICE_NOTE' ? 'Voice Note' : 'Community Song')}
+            artistName={audio?.artistName || post.username}
+            trackId={post.id}
+            coverUrl={audio?.coverUrl}
           />
         </div>
       )}
@@ -146,7 +146,7 @@ function FeedPostCard({ post, currentUserId, onPostDeleted, onReportPost }) {
         </div>
       )}
 
-      {/* Action Row */}
+      {/* Action Row - Like Only */}
       <footer className="post-action-bar">
         <div className="action-buttons-group">
           <button
@@ -158,41 +158,8 @@ function FeedPostCard({ post, currentUserId, onPostDeleted, onReportPost }) {
             <Heart size={18} fill={isLiked ? 'currentColor' : 'none'} />
             <span>{likeCount}</span>
           </button>
-
-          <button
-            className="action-btn"
-            type="button"
-            onClick={() => setShowComments(!showComments)}
-            aria-label="Comments"
-          >
-            <MessageCircle size={18} />
-            <span>{commentCount}</span>
-          </button>
-
-          <button className="action-btn" type="button" onClick={handleShare} aria-label="Share post">
-            <Share2 size={18} />
-          </button>
         </div>
-
-        <button
-          className={`action-btn ${isSaved ? 'active-save' : ''}`}
-          type="button"
-          onClick={handleToggleSave}
-          aria-label="Save post"
-        >
-          <Bookmark size={18} fill={isSaved ? 'currentColor' : 'none'} />
-        </button>
       </footer>
-
-      {shareToast && <div className="post-share-toast">Link copied to clipboard!</div>}
-
-      {/* Expanded Comments Section */}
-      {showComments && (
-        <section className="post-comments-section">
-          <CommentComposer postId={post.id} onCommentAdded={() => setCommentCount((prev) => prev + 1)} />
-          <CommentList postId={post.id} />
-        </section>
-      )}
     </article>
   );
 }

@@ -2,6 +2,8 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { useAuth } from './AuthContext.jsx';
 import { clearMusicSession, getMusicSessionUserId, readMusicSession, saveMusicSession } from '../utils/musicSession.js';
 import { dedupeTracksById, locateCurrentTrack } from '../utils/musicQueue.js';
+import { getMediaUrl } from '../config/env.js';
+import defaultCoverAsset from '../assets/music-cover.jpg';
 import {
   cycleRepeatMode,
   DEFAULT_PLAYBACK_MODES,
@@ -91,7 +93,16 @@ export function MoodMusicProvider({ children }) {
     }
 
     const safeIndex = ((index % tracks.length) + tracks.length) % tracks.length;
-    const track = tracks[safeIndex];
+    const targetTrack = tracks[safeIndex];
+    const resolvedUrl = getMediaUrl(targetTrack.audioUrl || targetTrack.publicAudioUrl || targetTrack.privateAudioUrl);
+    const resolvedCover = targetTrack.coverUrl ? getMediaUrl(targetTrack.coverUrl) : defaultCoverAsset;
+    
+    const track = {
+      ...targetTrack,
+      audioUrl: resolvedUrl,
+      coverUrl: resolvedCover,
+    };
+
     const audio = audioRef.current;
     if (!audio) return;
 
@@ -107,7 +118,7 @@ export function MoodMusicProvider({ children }) {
     setIsBuffering(true);
     setIsWidgetOpen(true);
 
-    audio.src = track.audioUrl;
+    audio.src = resolvedUrl;
     audio.load();
     try {
       await audio.play();

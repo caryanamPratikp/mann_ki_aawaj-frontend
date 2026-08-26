@@ -3,6 +3,7 @@ import { LogIn, Home, Menu, X } from 'lucide-react';
 import { Footer } from './Footer.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
+import { MoodMusicWidget } from '../music/MoodMusicWidget.jsx';
 import logoMKA from '../../assets/logo_MKA.png';
 
 export function PublicLayout({ children, activeRoute, onNavigate }) {
@@ -242,6 +243,7 @@ export function PublicLayout({ children, activeRoute, onNavigate }) {
 
       <main style={{ flex: 1, overflowX: 'hidden' }}>{children}</main>
       <Footer onNavigate={onNavigate} />
+      {activeRoute !== '/music' && <MoodMusicWidget />}
     </div>
   );
 }
