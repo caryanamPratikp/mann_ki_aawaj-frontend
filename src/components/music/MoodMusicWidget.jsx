@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { LoaderCircle, Music2, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX, X } from 'lucide-react';
+import { LoaderCircle, Music2, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Volume2, VolumeX, X } from 'lucide-react';
 import { useMoodMusic } from '../../context/MoodMusicContext.jsx';
 import defaultCover from '../../assets/music-cover.jpg';
 import '../../styles/music.css';
+import { getListeningMoodOption } from '../../config/musicMoods.js';
 
 const formatTime = (seconds) => {
   if (!Number.isFinite(seconds)) return '0:00';
@@ -12,6 +13,8 @@ const formatTime = (seconds) => {
 
 export function MoodMusicWidget() {
   const music = useMoodMusic();
+  const musicTheme = getListeningMoodOption(music.selectedMood).theme;
+  const { isWidgetOpen, setIsWidgetOpen } = music;
   const widgetRef = useRef(null);
 
   // Position state (null = default CSS bottom/right)
@@ -38,11 +41,11 @@ export function MoodMusicWidget() {
 
   // Collapse player on click outside when expanded
   useEffect(() => {
-    if (!music.isWidgetOpen) return;
+    if (!isWidgetOpen) return;
 
     function handleOutsideClick(event) {
       if (widgetRef.current && !widgetRef.current.contains(event.target)) {
-        music.setIsWidgetOpen(false);
+        setIsWidgetOpen(false);
       }
     }
 
@@ -56,7 +59,7 @@ export function MoodMusicWidget() {
       document.removeEventListener('mousedown', handleOutsideClick);
       document.removeEventListener('touchstart', handleOutsideClick);
     };
-  }, [music.isWidgetOpen, music.setIsWidgetOpen]);
+  }, [isWidgetOpen, setIsWidgetOpen]);
 
   if (!music.currentTrack) return null;
 
@@ -141,6 +144,7 @@ export function MoodMusicWidget() {
     return createPortal(
       <div
         ref={widgetRef}
+        data-music-theme={musicTheme}
         style={dynamicStyle}
         onMouseDown={handleDragStart}
         onTouchStart={handleDragStart}
@@ -172,6 +176,7 @@ export function MoodMusicWidget() {
     <section
       ref={widgetRef}
       className="music-player"
+      data-music-theme={musicTheme}
       aria-label="Music player"
       style={{
         ...dynamicStyle,
@@ -209,11 +214,26 @@ export function MoodMusicWidget() {
       </label>
 
       <div className="music-player-controls">
+        <button
+          className={`music-icon-button music-mode-button${music.shuffleEnabled ? ' active' : ''}`}
+          type="button"
+          onClick={music.toggleShuffle}
+          aria-label={music.shuffleEnabled ? 'Shuffle on' : 'Shuffle off'}
+          aria-pressed={music.shuffleEnabled}
+          title={music.shuffleEnabled ? 'Shuffle on' : 'Shuffle off'}
+        ><Shuffle size={19} /></button>
         <button className="music-icon-button" type="button" onClick={music.prevTrack} aria-label="Previous track"><SkipBack size={20} /></button>
         <button className="music-play-button" type="button" onClick={music.togglePlay} aria-label={music.isPlaying ? 'Pause' : 'Play'}>
           {music.isBuffering ? <LoaderCircle className="music-spin" size={22} /> : music.isPlaying ? <Pause size={22} /> : <Play size={22} />}
         </button>
         <button className="music-icon-button" type="button" onClick={music.nextTrack} aria-label="Next track"><SkipForward size={20} /></button>
+        <button
+          className={`music-icon-button music-mode-button${music.repeatMode !== 'OFF' ? ' active' : ''}`}
+          type="button"
+          onClick={music.cycleRepeatMode}
+          aria-label={`Repeat ${music.repeatMode.toLowerCase()}`}
+          title={`Repeat ${music.repeatMode.toLowerCase()}`}
+        >{music.repeatMode === 'ONE' ? <Repeat1 size={19} /> : <Repeat size={19} />}</button>
         <button className="music-icon-button" type="button" onClick={music.toggleMute} aria-label={music.isMuted ? 'Unmute' : 'Mute'}>
           {music.isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
         </button>

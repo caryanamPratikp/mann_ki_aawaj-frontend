@@ -42,24 +42,29 @@ export const apiPostService = {
         return response.data;
       }
       
-      const mockPosts = mockPostService.getPosts();
-      return {
-        success: true,
-        data: { content: mockPosts, totalElements: mockPosts.length, totalPages: 1, number: 0, size: mockPosts.length },
-      };
+      if (isMockMode()) {
+        const mockPosts = mockPostService.getPosts();
+        return {
+          success: true,
+          data: { content: mockPosts, totalElements: mockPosts.length, totalPages: 1, number: 0, size: mockPosts.length },
+        };
+      }
+      return response.data;
     } catch (err) {
-      console.warn('[apiPostService] getPosts error fallback triggered:', err?.message || err);
-      const mockPosts = mockPostService.getPosts();
-      return {
-        success: true,
-        data: {
-          content: mockPosts,
-          totalElements: mockPosts.length,
-          totalPages: 1,
-          number: 0,
-          size: mockPosts.length,
-        },
-      };
+      if (isMockMode()) {
+        const mockPosts = mockPostService.getPosts();
+        return {
+          success: true,
+          data: {
+            content: mockPosts,
+            totalElements: mockPosts.length,
+            totalPages: 1,
+            number: 0,
+            size: mockPosts.length,
+          },
+        };
+      }
+      throw err;
     }
   },
 
@@ -226,6 +231,19 @@ export const apiPostService = {
     } catch (err) {
       if (err.response?.data) throw err.response.data;
       return { success: true };
+    }
+  },
+
+  // POST /api/posts/voice-note
+  async publishVoiceNote(formData) {
+    try {
+      const response = await apiClient.post('/api/posts/voice-note', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      throw err;
     }
   },
 };

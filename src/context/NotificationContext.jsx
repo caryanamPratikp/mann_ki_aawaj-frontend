@@ -96,8 +96,12 @@ export function NotificationProvider({ children }) {
   useEffect(() => {
     if (!currentUser || !currentUser.id || window.location.pathname.startsWith('/admin')) return;
 
+    const token = localStorage.getItem('auth_token') || currentUser.token;
+    if (!token) return;
+
     const socket = io(SOCKET_URL, {
       transports: ['polling', 'websocket'],
+      query: { token },
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: 10,

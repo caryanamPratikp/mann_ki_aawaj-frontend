@@ -3,6 +3,7 @@ import { authService } from '../services/authService.js';
 import { apiProfileService } from '../services/apiProfileService.js';
 import { apiUserService } from '../services/apiUserService.js';
 import { useToast } from './ToastContext.jsx';
+import { clearMusicSession } from '../utils/musicSession.js';
 
 const AuthContext = createContext(null);
 
@@ -84,6 +85,7 @@ export function AuthProvider({ children }) {
     try {
       const result = await authService.login(email, password, options);
       const user = result.user || result;
+      clearMusicSession(user.id);
 
       // Admins live in admin scope and have no user profile
       if (user.role === 'ADMIN') {
@@ -164,6 +166,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    clearMusicSession(currentUser?.id);
     authService.logout();
     setCurrentUser(null);
     setIsAdminLoggedIn(false);
@@ -183,6 +186,7 @@ export function AuthProvider({ children }) {
   };
 
   const adminLogout = () => {
+    clearMusicSession(currentUser?.id);
     authService.logout();
     setCurrentUser(null);
     setIsAdminLoggedIn(false);

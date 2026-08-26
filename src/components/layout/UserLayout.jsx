@@ -31,6 +31,8 @@ export function UserLayout({ children, activeRoute, onNavigate, wide = true }) {
 
 
 
+  const isMusicPage = currentPath === '/music' || currentPath === '/music/';
+
   return (
     <div className={`app-container user-layout ${wide ? 'user-layout-wide' : ''}`}>
       <TopNavbar activeRoute={activeRoute} onNavigate={onNavigate} />
@@ -53,7 +55,7 @@ export function UserLayout({ children, activeRoute, onNavigate, wide = true }) {
         <main className={wide ? "main-content-wide" : "main-content"}>{children}</main>
       </div>
       <MobileNavigation activeRoute={activeRoute} onNavigate={onNavigate} />
-      <MoodMusicWidget />
+      {!isMusicPage && <MoodMusicWidget />}
     </div>
   );
 }

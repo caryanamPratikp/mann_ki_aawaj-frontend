@@ -5,33 +5,40 @@ import { AdminLayout } from '../../components/layout/AdminLayout.jsx';
 import { apiMusicService } from '../../services/apiMusicService.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import defaultCover from '../../assets/music-cover.jpg';
+import { MusicMoodSelector } from '../../components/music/MusicMoodSelector.jsx';
+import { MUSIC_MOOD_OPTIONS, appendMusicMoods, getMusicMoodLabel, normalizeMusicMoods } from '../../config/musicMoods.js';
 import '../../styles/music.css';
 
 const LANGUAGES = ['EN', 'HI', 'BN', 'MR', 'TE', 'TA', 'GU', 'UR', 'KN', 'OR', 'ML', 'PA', 'AS', 'SAT', 'KS', 'MNI', 'DOI', 'BHO'];
-const MOODS = ['ROMANTIC', 'CALM', 'ENERGETIC', 'CONFUSED', 'MELANCHOLY', 'FOCUS'];
 const STATUSES = ['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'UNPUBLISHED', 'REJECTED'];
 
 function PrivateCover({ track }) {
   const isPlatformTrack = track.source === 'PLATFORM' || !track.source;
-  const [url, setUrl] = useState(isPlatformTrack ? defaultCover : (track.coverUrl || ''));
+  const [url, setUrl] = useState(defaultCover);
+
   useEffect(() => {
-    if (isPlatformTrack) return undefined;
+    if (isPlatformTrack || !track.id || !track.coverUrl) {
+      setUrl(defaultCover);
+      return undefined;
+    }
     let objectUrl = '';
     let active = true;
-    if (!track.id || !track.coverUrl) return undefined;
+
     apiMusicService.getAdminCoverBlob(track.id).then((blob) => {
       if (!active) return;
       objectUrl = URL.createObjectURL(blob);
       setUrl(objectUrl);
     }).catch(() => {
-      if (active) setUrl('');
+      if (active) setUrl(defaultCover);
     });
+
     return () => {
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [track.id, track.coverUrl, isPlatformTrack]);
-  return <img src={isPlatformTrack ? defaultCover : (url || defaultCover)} alt={`${track.title} cover`} onError={(e) => { e.currentTarget.src = defaultCover; }} />;
+
+  return <img src={url || defaultCover} alt={`${track.title} cover`} onError={(e) => { e.currentTarget.src = defaultCover; }} />;
 }
 
 function BulkTrackUploadModal({ saving, progressStatus, onClose, onSaveBulk }) {
@@ -39,6 +46,7 @@ function BulkTrackUploadModal({ saving, progressStatus, onClose, onSaveBulk }) {
     { id: 1, title: '', audio: null },
   ]);
   const [formError, setFormError] = useState('');
+  const [moods, setMoods] = useState([]);
 
   const addRow = () => {
     setRows((prev) => [...prev, { id: Date.now(), title: '', audio: null }]);
@@ -101,7 +109,8 @@ function BulkTrackUploadModal({ saving, progressStatus, onClose, onSaveBulk }) {
       }
     }
 
-    onSaveBulk(rows);
+    if (!moods.length) return setFormError('Choose at least one mood for this batch.');
+    onSaveBulk(rows, moods);
   };
 
   return (
@@ -117,6 +126,8 @@ function BulkTrackUploadModal({ saving, progressStatus, onClose, onSaveBulk }) {
         <p style={{ fontSize: '13px', color: '#756966', margin: '0 0 16px 0' }}>
           Accepts Title & Music File (MP3, M4A, AAC, WAV, FLAC, OGG, OPUS). Cover image defaults to logo automatically.
         </p>
+
+        <MusicMoodSelector value={moods} onChange={(nextMoods) => { setMoods(nextMoods); setFormError(''); }} label="Batch moods *" helperText="These explicit moods will be assigned to every track in this batch." disabled={saving} />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
           {rows.map((row, index) => (
@@ -252,7 +263,7 @@ function TrackEditModal({ track, saving, onClose, onSave }) {
     title: track?.title || '',
     artistName: track?.artist || '',
     language: track?.language || 'HI',
-    mood: track?.mood || 'CALM',
+    moods: normalizeMusicMoods(track?.moods),
     genre: track?.genre || '',
     description: track?.description || '',
     featured: Boolean(track?.featured),
@@ -260,9 +271,11 @@ function TrackEditModal({ track, saving, onClose, onSave }) {
   });
 
   const change = (name, value) => setForm((current) => ({ ...current, [name]: value }));
+  const [formError, setFormError] = useState('');
 
   const submit = (e) => {
     e.preventDefault();
+    if (!form.moods.length) return setFormError('Choose at least one mood.');
     onSave(form);
   };
 
@@ -277,12 +290,13 @@ function TrackEditModal({ track, saving, onClose, onSave }) {
           <label className="music-field"><span>Title *</span><input required maxLength="150" value={form.title} onChange={(e) => change('title', e.target.value)} /></label>
           <label className="music-field"><span>Artist *</span><input required maxLength="150" value={form.artistName} onChange={(e) => change('artistName', e.target.value)} /></label>
           <label className="music-field"><span>Language *</span><select required value={form.language} onChange={(e) => change('language', e.target.value)}>{LANGUAGES.map((value) => <option key={value}>{value}</option>)}</select></label>
-          <label className="music-field"><span>Mood *</span><select required value={form.mood} onChange={(e) => change('mood', e.target.value)}>{MOODS.map((value) => <option key={value}>{value}</option>)}</select></label>
+          <MusicMoodSelector value={form.moods} onChange={(moods) => { change('moods', moods); setFormError(''); }} label="Moods *" disabled={saving} />
           <label className="music-field"><span>Genre</span><input maxLength="80" value={form.genre} onChange={(e) => change('genre', e.target.value)} /></label>
           <label className="music-field"><span>Sort order</span><input type="number" min="0" value={form.sortOrder} onChange={(e) => change('sortOrder', Number(e.target.value))} /></label>
           <label className="music-field full"><span>Description</span><textarea rows="4" maxLength="1000" value={form.description} onChange={(e) => change('description', e.target.value)} /></label>
           <label className="music-checkbox"><input type="checkbox" checked={form.featured} onChange={(e) => change('featured', e.target.checked)} /> Featured track</label>
         </div>
+        {formError && <p className="music-player-error" role="alert">{formError}</p>}
         <div className="music-form-actions" style={{ marginTop: '20px' }}>
           <button className="music-secondary" type="button" onClick={onClose} disabled={saving}>Cancel</button>
           <button className="music-primary" type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save changes'}</button>
@@ -308,6 +322,17 @@ function PreviewModal({ track, onClose }) {
   return <div className="music-modal-backdrop" role="presentation"><section className="music-modal" role="dialog" aria-modal="true" aria-labelledby="preview-title"><div className="music-modal-header"><h2 id="preview-title">Preview: {track.title}</h2><button className="music-icon-button" type="button" onClick={onClose} aria-label="Close preview"><X /></button></div>{error ? <p className="music-player-error" role="alert">{error}</p> : audioUrl ? <audio className="music-preview-audio" src={audioUrl} controls autoPlay={false}>Your browser does not support audio.</audio> : <div className="music-loading"><LoaderCircle className="music-spin" /></div>}</section></div>;
 }
 
+function ApproveTrackModal({ track, busy, onClose, onApprove }) {
+  const [moods, setMoods] = useState(() => normalizeMusicMoods(track.moods));
+  const [error, setError] = useState('');
+  const submit = (event) => {
+    event.preventDefault();
+    if (!moods.length) return setError('Choose at least one final mood before approval.');
+    onApprove(moods);
+  };
+  return <div className="music-modal-backdrop"><form className="music-modal" onSubmit={submit} aria-labelledby="approve-track-title"><div className="music-modal-header"><div><h2 id="approve-track-title">Approve {track.title}</h2><p className="music-file-note">Review the user suggestions and confirm the final published classification.</p></div><button className="music-icon-button" type="button" onClick={onClose} aria-label="Close" disabled={busy}><X /></button></div><MusicMoodSelector value={moods} onChange={(nextMoods) => { setMoods(nextMoods); setError(''); }} label="Final moods *" helperText="Approval will atomically replace the suggested moods and publish this track." error={error} disabled={busy} /><div className="music-form-actions"><button className="music-secondary" type="button" onClick={onClose} disabled={busy}>Cancel</button><button className="music-primary" type="submit" disabled={busy}>{busy ? 'Approving…' : 'Confirm moods & approve'}</button></div></form></div>;
+}
+
 function RejectModal({ track, busy, onClose, onReject }) {
   const [reason, setReason] = useState('');
   return <div className="music-modal-backdrop"><form className="music-modal" onSubmit={(event) => { event.preventDefault(); onReject(reason.trim()); }} aria-labelledby="reject-track-title"><div className="music-modal-header"><h2 id="reject-track-title">Reject {track.title}</h2><button className="music-icon-button" type="button" onClick={onClose} aria-label="Close"><X /></button></div><label className="music-field"><span>Reason *</span><textarea required maxLength="500" rows="5" value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Explain why this track was not approved" /></label><p className="music-file-note">This reason will be visible to the uploader. The private media will be retained until they delete it.</p><div className="music-form-actions"><button className="music-secondary" type="button" onClick={onClose}>Cancel</button><button className="music-danger" type="submit" disabled={busy || !reason.trim()}>{busy ? 'Rejecting…' : 'Reject track'}</button></div></form></div>;
@@ -323,6 +348,7 @@ export function AdminMusicPage({ onNavigate }) {
   const [modal, setModal] = useState(null);
   const [previewTrack, setPreviewTrack] = useState(null);
   const [rejectTrack, setRejectTrack] = useState(null);
+  const [approveTrack, setApproveTrack] = useState(null);
   const [uploadStatusText, setUploadStatusText] = useState('');
 
   useEffect(() => { const timer = setTimeout(() => setDebouncedQuery(query.trim()), 350); return () => clearTimeout(timer); }, [query]);
@@ -340,10 +366,12 @@ export function AdminMusicPage({ onNavigate }) {
     queryClient.invalidateQueries({ queryKey: ['admin-music-detail'] }),
     queryClient.invalidateQueries({ queryKey: ['public-music'] }),
     queryClient.invalidateQueries({ queryKey: ['featured-music'] }),
+    queryClient.invalidateQueries({ queryKey: ['music-source-queue'] }),
+    queryClient.invalidateQueries({ queryKey: ['community-library-tracks'] }),
   ]);
 
   const mutation = useMutation({
-    mutationFn: async ({ action, track, form, bulkRows }) => {
+    mutationFn: async ({ action, track, form, bulkRows, bulkMoods }) => {
       if (action === 'uploadBulk') {
         const total = bulkRows.length;
         for (let i = 0; i < total; i++) {
@@ -353,7 +381,7 @@ export function AdminMusicPage({ onNavigate }) {
           data.append('title', row.title.trim());
           data.append('artistName', 'Man Ki Aavaj');
           data.append('language', 'HI');
-          data.append('mood', 'CALM');
+          appendMusicMoods(data, bulkMoods);
           data.append('genre', 'BGM');
           data.append('description', '');
           data.append('featured', 'false');
@@ -368,10 +396,10 @@ export function AdminMusicPage({ onNavigate }) {
         }
         return { count: total };
       }
-      if (action === 'edit') return apiMusicService.updateTrack(track.id, { title: form.title, artistName: form.artistName, language: form.language, mood: form.mood, genre: form.genre, description: form.description, featured: form.featured, sortOrder: form.sortOrder });
+      if (action === 'edit') return apiMusicService.updateTrack(track.id, { title: form.title, artistName: form.artistName, language: form.language, moods: form.moods, genre: form.genre, description: form.description, featured: form.featured, sortOrder: form.sortOrder });
       if (action === 'publish') return apiMusicService.publishTrack(track.id);
       if (action === 'unpublish') return apiMusicService.unpublishTrack(track.id);
-      if (action === 'approve') return apiMusicService.approveTrack(track.id);
+      if (action === 'approve') return apiMusicService.approveTrack(track.id, form.moods);
       if (action === 'reject') return apiMusicService.rejectTrack(track.id, form.reason);
       if (action === 'delete') return apiMusicService.deleteTrack(track.id);
       return null;
@@ -387,6 +415,7 @@ export function AdminMusicPage({ onNavigate }) {
       setModal(null);
       setUploadStatusText('');
       setRejectTrack(null);
+      setApproveTrack(null);
       if (variables.action === 'delete' && previewTrack?.id === variables.track.id) setPreviewTrack(null);
     },
     onError: (error) => {
@@ -410,19 +439,20 @@ export function AdminMusicPage({ onNavigate }) {
           <label className="music-field"><span>Search</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Title or artist" /></label>
           <label className="music-field"><span>Status</span><select value={filters.status} onChange={(e) => setFilter('status', e.target.value)}><option value="">All</option>{STATUSES.map((value) => <option key={value}>{value}</option>)}</select></label>
           <label className="music-field"><span>Language</span><select value={filters.language} onChange={(e) => setFilter('language', e.target.value)}><option value="">All</option>{LANGUAGES.map((value) => <option key={value}>{value}</option>)}</select></label>
-          <label className="music-field"><span>Mood</span><select value={filters.mood} onChange={(e) => setFilter('mood', e.target.value)}><option value="">All</option>{MOODS.map((value) => <option key={value}>{value}</option>)}</select></label>
+          <label className="music-field"><span>Mood</span><select value={filters.mood} onChange={(e) => setFilter('mood', e.target.value)}><option value="">All</option>{MUSIC_MOOD_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label className="music-field"><span>Genre</span><input value={filters.genre} onChange={(e) => setFilter('genre', e.target.value)} placeholder="Any" /></label>
           <label className="music-field"><span>Featured</span><select value={filters.featured} onChange={(e) => setFilter('featured', e.target.value)}><option value="">All</option><option value="true">Featured</option><option value="false">Not featured</option></select></label>
         </div>
-        {tracksQuery.isLoading ? <div className="music-loading"><LoaderCircle className="music-spin" /></div> : tracksQuery.isError ? <div className="music-error"><div><p>{tracksQuery.error.message || 'Unable to load music.'}</p><button className="music-secondary" onClick={() => tracksQuery.refetch()}><RefreshCw size={15} /> Retry</button></div></div> : tracks.length === 0 ? <div className="music-empty"><p>No tracks match the current filters.</p></div> : <div className="admin-music-table-wrap"><table className="admin-music-table"><thead><tr><th>Track</th><th>Uploader</th><th>Language</th><th>Mood / Genre</th><th>Status</th><th>Featured</th><th>Created</th><th>Actions</th></tr></thead><tbody>{tracks.map((track) => <tr key={track.id}><td><div className="admin-track-cell"><PrivateCover track={track} /><div><strong>{track.title}</strong><span>{track.artist}</span></div></div></td><td><strong>{track.uploader?.displayName || 'Platform'}</strong><br /><small>{track.source === 'COMMUNITY' ? 'Community' : 'Platform'}</small></td><td>{track.language}</td><td>{track.mood}<br /><small>{track.genre || '—'}</small></td><td><span className={`music-status ${track.status?.toLowerCase()}`}>{track.status === 'PENDING_REVIEW' ? 'Pending Review' : track.status}</span></td><td>{track.featured ? 'Yes' : 'No'}</td><td>{track.createdAt ? new Date(track.createdAt).toLocaleDateString() : '—'}</td><td><div className="admin-music-actions"><button onClick={() => setPreviewTrack(track)}>Preview</button><button onClick={() => setModal({ mode: 'edit', track })}>Edit</button>{track.source === 'COMMUNITY' && track.status === 'PENDING_REVIEW' && <><button onClick={() => confirmAction('approve', track)}>Approve</button><button onClick={() => setRejectTrack(track)}>Reject</button></>}{track.source !== 'COMMUNITY' && ['DRAFT','UNPUBLISHED'].includes(track.status) && <button onClick={() => confirmAction('publish', track)}>Publish</button>}{track.status === 'PUBLISHED' && <button onClick={() => confirmAction('unpublish', track)}>Unpublish</button>}<button onClick={() => confirmAction('delete', track)}>Delete</button></div></td></tr>)}</tbody></table></div>}
+        {tracksQuery.isLoading ? <div className="music-loading"><LoaderCircle className="music-spin" /></div> : tracksQuery.isError ? <div className="music-error"><div><p>{tracksQuery.error.message || 'Unable to load music.'}</p><button className="music-secondary" onClick={() => tracksQuery.refetch()}><RefreshCw size={15} /> Retry</button></div></div> : tracks.length === 0 ? <div className="music-empty"><p>No tracks match the current filters.</p></div> : <div className="admin-music-table-wrap"><table className="admin-music-table"><thead><tr><th>Track</th><th>Uploader</th><th>Language</th><th>Mood / Genre</th><th>Status</th><th>Featured</th><th>Created</th><th>Actions</th></tr></thead><tbody>{tracks.map((track) => <tr key={track.id}><td><div className="admin-track-cell"><PrivateCover track={track} /><div><strong>{track.title}</strong><span>{track.artist}</span></div></div></td><td><strong>{track.uploader?.displayName || 'Platform'}</strong><br /><small>{track.source === 'COMMUNITY' ? 'Community' : 'Platform'}</small></td><td>{track.language}</td><td><div className="music-tags">{(track.moods || []).map((trackMood) => <span className="music-tag" key={trackMood}>{getMusicMoodLabel(trackMood)}</span>)}</div><small>{track.genre || '—'}</small></td><td><span className={`music-status ${track.status?.toLowerCase()}`}>{track.status === 'PENDING_REVIEW' ? 'Pending Review' : track.status}</span></td><td>{track.featured ? 'Yes' : 'No'}</td><td>{track.createdAt ? new Date(track.createdAt).toLocaleDateString() : '—'}</td><td><div className="admin-music-actions"><button onClick={() => setPreviewTrack(track)}>Preview</button><button onClick={() => setModal({ mode: 'edit', track })}>Edit</button>{track.source === 'COMMUNITY' && track.status === 'PENDING_REVIEW' && <><button onClick={() => setApproveTrack(track)}>Approve</button><button onClick={() => setRejectTrack(track)}>Reject</button></>}{track.source !== 'COMMUNITY' && ['DRAFT','UNPUBLISHED'].includes(track.status) && <button onClick={() => confirmAction('publish', track)}>Publish</button>}{track.status === 'PUBLISHED' && <button onClick={() => confirmAction('unpublish', track)}>Unpublish</button>}<button onClick={() => confirmAction('delete', track)}>Delete</button></div></td></tr>)}</tbody></table></div>}
         <div className="music-pagination"><button className="music-secondary" disabled={page === 0} onClick={() => setPage((value) => value - 1)}>Previous</button><span>Page {page + 1} of {Math.max(1, tracksQuery.data?.totalPages || 1)}</span><button className="music-secondary" disabled={page + 1 >= (tracksQuery.data?.totalPages || 1)} onClick={() => setPage((value) => value + 1)}>Next</button></div>
       </section>
     </div>
-    {modal?.mode === 'upload' && <BulkTrackUploadModal saving={mutation.isPending} progressStatus={uploadStatusText} onClose={() => setModal(null)} onSaveBulk={(rows) => mutation.mutate({ action: 'uploadBulk', bulkRows: rows })} />}
+    {modal?.mode === 'upload' && <BulkTrackUploadModal saving={mutation.isPending} progressStatus={uploadStatusText} onClose={() => setModal(null)} onSaveBulk={(rows, moods) => mutation.mutate({ action: 'uploadBulk', bulkRows: rows, bulkMoods: moods })} />}
     {modal?.mode === 'edit' && detailQuery.isLoading && <div className="music-modal-backdrop"><div className="music-modal music-loading"><LoaderCircle className="music-spin" aria-label="Loading track details" /></div></div>}
     {modal?.mode === 'edit' && detailQuery.isError && <div className="music-modal-backdrop"><div className="music-modal music-error"><div><p>{detailQuery.error.message}</p><button className="music-secondary" type="button" onClick={() => detailQuery.refetch()}>Retry</button> <button className="music-secondary" type="button" onClick={() => setModal(null)}>Close</button></div></div></div>}
     {modal?.mode === 'edit' && detailQuery.data && <TrackEditModal track={detailQuery.data} saving={mutation.isPending} onClose={() => setModal(null)} onSave={(form) => mutation.mutate({ action: 'edit', track: detailQuery.data, form })} />}
     {previewTrack && <PreviewModal track={previewTrack} onClose={() => setPreviewTrack(null)} />}
     {rejectTrack && <RejectModal track={rejectTrack} busy={mutation.isPending} onClose={() => setRejectTrack(null)} onReject={(reason) => mutation.mutate({ action: 'reject', track: rejectTrack, form: { reason } })} />}
+    {approveTrack && <ApproveTrackModal track={approveTrack} busy={mutation.isPending} onClose={() => setApproveTrack(null)} onApprove={(moods) => mutation.mutate({ action: 'approve', track: approveTrack, form: { moods } })} />}
   </AdminLayout>;
 }

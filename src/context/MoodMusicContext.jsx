@@ -1,9 +1,23 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { apiMusicService } from '../services/apiMusicService.js';
+import { useAuth } from './AuthContext.jsx';
+import { clearMusicSession, getMusicSessionUserId, readMusicSession, saveMusicSession } from '../utils/musicSession.js';
+import { dedupeTracksById, locateCurrentTrack } from '../utils/musicQueue.js';
+import {
+  cycleRepeatMode,
+  DEFAULT_PLAYBACK_MODES,
+  derivePlaybackQueue,
+  REPEAT_MODES,
+  reshuffleForNextCycle,
+  resolveNextAction,
+  resolvePreviousAction,
+} from '../utils/musicPlayback.js';
 
 const MoodMusicContext = createContext(null);
 
 export function MoodMusicProvider({ children }) {
+  const { currentUser, loading: authLoading } = useAuth();
+  const userId = getMusicSessionUserId(currentUser);
+  const [sourceQueue, setSourceQueue] = useState([]);
   const [queue, setQueue] = useState([]);
   const [trackIndex, setTrackIndex] = useState(-1);
   const [currentTrack, setCurrentTrack] = useState(null);
@@ -15,40 +29,59 @@ export function MoodMusicProvider({ children }) {
   const [isMuted, setIsMuted] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [playbackError, setPlaybackError] = useState('');
+  const [selectedMood, setSelectedMood] = useState(null);
+  const [musicMode, setMusicMode] = useState('ALL');
+  const [selectorCompleted, setSelectorCompleted] = useState(false);
+  const [musicSessionReady, setMusicSessionReady] = useState(false);
+  const [shuffleEnabled, setShuffleEnabled] = useState(DEFAULT_PLAYBACK_MODES.shuffleEnabled);
+  const [repeatMode, setRepeatMode] = useState(DEFAULT_PLAYBACK_MODES.repeatMode);
 
   const audioRef = useRef(null);
+  const sourceQueueRef = useRef([]);
   const queueRef = useRef([]);
   const trackIndexRef = useRef(-1);
+  const currentTrackRef = useRef(null);
   const playAtRef = useRef(() => {});
   const nextRef = useRef(() => {});
+  const identityRef = useRef(null);
+  const shuffleEnabledRef = useRef(false);
+  const repeatModeRef = useRef(REPEAT_MODES.OFF);
 
-  // Pre-load public catalog on startup if no active track is selected yet
-  useEffect(() => {
-    let active = true;
-    const loadCatalog = async () => {
-      try {
-        const response = await apiMusicService.getPublicTracks({ page: 0, size: 20 });
-        const tracks = response?.content || response?.data?.content || [];
-        if (active && Array.isArray(tracks) && tracks.length > 0 && !currentTrack) {
-          const playable = tracks.filter((t) => t?.audioUrl);
-          if (playable.length > 0) {
-            queueRef.current = playable;
-            trackIndexRef.current = 0;
-            setQueue(playable);
-            setTrackIndex(0);
-            setCurrentTrack(playable[0]);
-            if (audioRef.current && !audioRef.current.src) {
-              audioRef.current.src = playable[0].audioUrl;
-            }
-          }
-        }
-      } catch (e) {
-        // Silently ignore offline catalog load
-      }
-    };
-    loadCatalog();
-    return () => { active = false; };
+  const resetPlayer = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio) { audio.pause(); audio.removeAttribute('src'); audio.load(); }
+    sourceQueueRef.current = [];
+    queueRef.current = [];
+    trackIndexRef.current = -1;
+    currentTrackRef.current = null;
+    setSourceQueue([]); setQueue([]); setTrackIndex(-1); setCurrentTrack(null); setIsPlaying(false); setIsWidgetOpen(false);
+    setProgress(0); setDuration(0); setIsBuffering(false); setPlaybackError('');
+    shuffleEnabledRef.current = false; repeatModeRef.current = REPEAT_MODES.OFF;
+    setShuffleEnabled(DEFAULT_PLAYBACK_MODES.shuffleEnabled); setRepeatMode(DEFAULT_PLAYBACK_MODES.repeatMode);
   }, []);
+
+  useEffect(() => {
+    if (authLoading) return;
+    const previousId = identityRef.current;
+    if (previousId !== null && previousId !== userId) {
+      clearMusicSession(previousId);
+      resetPlayer();
+    }
+    identityRef.current = userId;
+    const session = readMusicSession(userId);
+    setSelectedMood(session.selectedMood);
+    setMusicMode(session.mode);
+    setSelectorCompleted(session.selectorCompleted);
+    setMusicSessionReady(true);
+    if (userId === null) resetPlayer();
+  }, [authLoading, resetPlayer, userId]);
+
+  const completeMoodSelection = useCallback((mood) => {
+    const session = saveMusicSession(userId, mood);
+    setSelectedMood(session.selectedMood);
+    setMusicMode(session.mode);
+    setSelectorCompleted(session.selectorCompleted);
+  }, [userId]);
 
   const playAt = useCallback(async (index, nextQueue = queueRef.current) => {
     const tracks = Array.isArray(nextQueue) ? nextQueue.filter((track) => track?.audioUrl) : [];
@@ -66,6 +99,7 @@ export function MoodMusicProvider({ children }) {
     trackIndexRef.current = safeIndex;
     setQueue(tracks);
     setTrackIndex(safeIndex);
+    currentTrackRef.current = track;
     setCurrentTrack(track);
     setPlaybackError('');
     setProgress(0);
@@ -88,18 +122,67 @@ export function MoodMusicProvider({ children }) {
 
   playAtRef.current = playAt;
 
-  const nextTrack = useCallback(() => {
-    const tracks = queueRef.current;
-    if (!tracks.length) return;
-    playAtRef.current(trackIndexRef.current + 1, tracks);
+  const replayCurrent = useCallback(async () => {
+    const audio = audioRef.current;
+    if (!audio || !currentTrackRef.current) return;
+    audio.currentTime = 0;
+    setProgress(0);
+    setPlaybackError('');
+    setIsBuffering(true);
+    try {
+      await audio.play();
+    } catch {
+      setIsPlaying(false);
+      setIsBuffering(false);
+      setPlaybackError('Unable to replay this track. Please try another track.');
+    }
   }, []);
 
-  nextRef.current = nextTrack;
+  const advanceTrack = useCallback((naturalEnd = false) => {
+    const tracks = queueRef.current;
+    if (!tracks.length) return;
+    const action = resolveNextAction({
+      index: trackIndexRef.current,
+      queueLength: tracks.length,
+      repeatMode: repeatModeRef.current,
+      naturalEnd,
+    });
+    if (action.type === 'REPLAY') {
+      replayCurrent();
+      return;
+    }
+    if (action.type === 'WRAP' && shuffleEnabledRef.current) {
+      const reshuffled = reshuffleForNextCycle(sourceQueueRef.current, currentTrackRef.current);
+      queueRef.current = reshuffled;
+      setQueue(reshuffled);
+      trackIndexRef.current = 0;
+      setTrackIndex(0);
+      playAtRef.current(0, reshuffled);
+      return;
+    }
+    if (action.type === 'PLAY' || action.type === 'WRAP') {
+      playAtRef.current(action.index, tracks);
+      return;
+    }
+    if (naturalEnd) {
+      setIsPlaying(false);
+      setIsBuffering(false);
+    }
+  }, [replayCurrent]);
+
+  const nextTrack = useCallback(() => advanceTrack(false), [advanceTrack]);
+
+  nextRef.current = advanceTrack;
 
   const prevTrack = useCallback(() => {
     const tracks = queueRef.current;
     if (!tracks.length) return;
-    playAtRef.current(trackIndexRef.current - 1, tracks);
+    const action = resolvePreviousAction({
+      index: trackIndexRef.current,
+      queueLength: tracks.length,
+      repeatMode: repeatModeRef.current,
+    });
+    if (action.type === 'PLAY' || action.type === 'WRAP') playAtRef.current(action.index, tracks);
   }, []);
 
   useEffect(() => {
@@ -127,7 +210,7 @@ export function MoodMusicProvider({ children }) {
       setIsBuffering(false);
       setPlaybackError('Unable to play this track. The audio may be unavailable.');
     };
-    const handleEnded = () => nextRef.current();
+    const handleEnded = () => nextRef.current(true);
 
     audio.addEventListener('timeupdate', updateTime);
     audio.addEventListener('loadedmetadata', updateMetadata);
@@ -148,10 +231,65 @@ export function MoodMusicProvider({ children }) {
   }, []);
 
   const playTrack = useCallback((track, visibleQueue = []) => {
-    const tracks = visibleQueue.some((item) => item.id === track.id) ? visibleQueue : [track, ...visibleQueue];
+    const playbackIndex = queueRef.current.findIndex((item) => item.id === track.id);
+    if (playbackIndex >= 0) return playAt(playbackIndex, queueRef.current);
+
+    const browsingQueue = dedupeTracksById(
+      visibleQueue.some((item) => item.id === track.id) ? visibleQueue : [track, ...visibleQueue],
+    ).filter((item) => item?.audioUrl);
+    sourceQueueRef.current = browsingQueue;
+    setSourceQueue(browsingQueue);
+    const tracks = derivePlaybackQueue({
+      sourceQueue: browsingQueue,
+      shuffleEnabled: shuffleEnabledRef.current,
+      currentTrack: track,
+    });
     const index = tracks.findIndex((item) => item.id === track.id);
     return playAt(index < 0 ? 0 : index, tracks);
   }, [playAt]);
+
+  const replaceQueuePreservingCurrentTrack = useCallback((newQueue) => {
+    const source = dedupeTracksById(newQueue).filter((track) => track?.audioUrl);
+    const current = currentTrackRef.current;
+    const tracks = derivePlaybackQueue({
+      sourceQueue: source,
+      shuffleEnabled: shuffleEnabledRef.current,
+      currentTrack: current,
+    });
+    const nextIndex = locateCurrentTrack(tracks, current);
+    sourceQueueRef.current = source;
+    queueRef.current = tracks;
+    trackIndexRef.current = nextIndex;
+    setSourceQueue(source);
+    setQueue(tracks);
+    setTrackIndex(nextIndex);
+    if (!tracks.length && !current) {
+      currentTrackRef.current = null;
+      setCurrentTrack(null);
+    }
+  }, []);
+
+  const toggleShuffle = useCallback(() => {
+    const enabled = !shuffleEnabledRef.current;
+    const tracks = derivePlaybackQueue({
+      sourceQueue: sourceQueueRef.current,
+      shuffleEnabled: enabled,
+      currentTrack: currentTrackRef.current,
+    });
+    const nextIndex = locateCurrentTrack(tracks, currentTrackRef.current);
+    shuffleEnabledRef.current = enabled;
+    queueRef.current = tracks;
+    trackIndexRef.current = nextIndex;
+    setShuffleEnabled(enabled);
+    setQueue(tracks);
+    setTrackIndex(nextIndex);
+  }, []);
+
+  const changeRepeatMode = useCallback(() => {
+    const nextMode = cycleRepeatMode(repeatModeRef.current);
+    repeatModeRef.current = nextMode;
+    setRepeatMode(nextMode);
+  }, []);
 
   const togglePlay = useCallback(async () => {
     const audio = audioRef.current;
@@ -196,27 +334,47 @@ export function MoodMusicProvider({ children }) {
     setIsMuted(audio.muted);
   }, []);
 
+  const accountStateReady = identityRef.current === userId;
+
   return (
     <MoodMusicContext.Provider value={{
-      queue,
-      trackIndex,
-      currentTrack,
-      isPlaying,
-      isWidgetOpen,
+      sourceQueue: accountStateReady ? sourceQueue : [],
+      playbackQueue: accountStateReady ? queue : [],
+      queue: accountStateReady ? queue : [],
+      trackIndex: accountStateReady ? trackIndex : -1,
+      currentTrack: accountStateReady ? currentTrack : null,
+      isPlaying: accountStateReady ? isPlaying : false,
+      isWidgetOpen: accountStateReady ? isWidgetOpen : false,
       progress,
       duration,
       volume,
       isMuted,
       isBuffering,
       playbackError,
+      selectedMood: accountStateReady ? selectedMood : null,
+      musicMode: accountStateReady ? musicMode : 'ALL',
+      selectorCompleted: accountStateReady ? selectorCompleted : false,
+      musicSessionReady: accountStateReady ? musicSessionReady : false,
+      musicSessionUserId: accountStateReady ? userId : null,
+      shuffleEnabled: accountStateReady ? shuffleEnabled : false,
+      repeatMode: accountStateReady ? repeatMode : REPEAT_MODES.OFF,
       setIsWidgetOpen,
       playTrack,
+      replaceQueuePreservingCurrentTrack,
+      toggleShuffle,
+      cycleRepeatMode: changeRepeatMode,
       togglePlay,
       nextTrack,
       prevTrack,
+      playNext: nextTrack,
+      playPrevious: prevTrack,
       handleSeek,
+      currentTime: duration > 0 ? (progress / 100) * duration : 0,
+      seekTo: (seconds) => handleSeek(duration > 0 ? (seconds / duration) * 100 : 0),
       setVolume,
       toggleMute,
+      completeMoodSelection,
+      resetPlayer,
     }}>
       {children}
     </MoodMusicContext.Provider>

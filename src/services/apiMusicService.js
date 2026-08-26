@@ -33,6 +33,7 @@ export const mapMusicTrack = (track) => {
 
   return {
     ...track,
+    moods: Array.isArray(track.moods) ? [...new Set(track.moods)] : [],
     audioUrl: getMediaUrl(track.audioUrl),
     coverUrl,
   };
@@ -40,6 +41,7 @@ export const mapMusicTrack = (track) => {
 
 const mapMyTrack = (track) => track ? ({
   ...track,
+  moods: Array.isArray(track.moods) ? [...new Set(track.moods)] : [],
   privateAudioUrl: getMediaUrl(track.privateAudioUrl),
   privateCoverUrl: track.privateCoverUrl ? getMediaUrl(track.privateCoverUrl) : null,
   publicAudioUrl: track.publicAudioUrl ? getMediaUrl(track.publicAudioUrl) : null,
@@ -49,7 +51,7 @@ const mapMyTrack = (track) => track ? ({
 const mapPage = (page = {}) => ({
   ...page,
   content: (page.content || []).map(mapMusicTrack),
-  number: page.number ?? 0,
+  number: page.number ?? page.page ?? 0,
   size: page.size ?? 20,
   totalElements: page.totalElements ?? 0,
   totalPages: page.totalPages ?? 0,
@@ -58,7 +60,7 @@ const mapPage = (page = {}) => ({
 const mapMyPage = (page = {}) => ({
   ...page,
   content: (page.content || []).map(mapMyTrack),
-  number: page.number ?? 0,
+  number: page.number ?? page.page ?? 0,
   size: page.size ?? 20,
   totalElements: page.totalElements ?? 0,
   totalPages: page.totalPages ?? 0,
@@ -75,7 +77,8 @@ const readableError = (error) => {
   const message = ERROR_MESSAGES[code] || validationMessage || payload?.message || error?.message || 'Music request failed.';
   const wrapped = new Error(typeof message === 'string' ? message : 'Music request failed.');
   wrapped.status = error?.response?.status;
-  wrapped.code = code;
+  wrapped.code = code || error?.code;
+  if (error?.name === 'AbortError' || error?.code === 'ERR_CANCELED') wrapped.name = error.name;
   return wrapped;
 };
 
@@ -88,8 +91,8 @@ const request = async (operation) => {
 };
 
 export const apiMusicService = {
-  getPublicTracks: (params) => request(async () => mapPage(unwrap(
-    await apiClient.get('/api/music/tracks', { params: cleanMusicParams(params) }),
+  getPublicTracks: (params, options = {}) => request(async () => mapPage(unwrap(
+    await apiClient.get('/api/music/tracks', { params: cleanMusicParams(params), signal: options.signal }),
   ))),
 
   getPublicTrack: (id) => request(async () => mapMusicTrack(unwrap(
@@ -107,6 +110,7 @@ export const apiMusicService = {
   uploadTrack: (formData, onUploadProgress) => request(async () => unwrap(
     await apiClient.post('/api/admin/music/tracks', formData, {
       onUploadProgress,
+      timeout: 120000,
     }),
   )),
 
@@ -122,8 +126,8 @@ export const apiMusicService = {
     await apiClient.post(`/api/admin/music/tracks/${id}/unpublish`),
   )),
 
-  approveTrack: (id) => request(async () => unwrap(
-    await apiClient.post(`/api/admin/music/tracks/${id}/approve`),
+  approveTrack: (id, moods) => request(async () => unwrap(
+    await apiClient.post(`/api/admin/music/tracks/${id}/approve`, { moods }),
   )),
 
   rejectTrack: (id, reason) => request(async () => unwrap(
@@ -153,6 +157,7 @@ export const apiMusicService = {
   uploadMyTrack: (formData, onUploadProgress) => request(async () => mapMyTrack(unwrap(
     await apiClient.post('/api/music/my-tracks', formData, {
       onUploadProgress,
+      timeout: 120000,
     }),
   ))),
 

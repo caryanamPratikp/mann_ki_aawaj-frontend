@@ -8,6 +8,7 @@ import { Button } from '../../components/common/Button.jsx';
 import { EmptyState } from '../../components/common/EmptyState.jsx';
 import { Bell, Check, CheckCheck, Trash2, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext.jsx';
+import { resolveNotificationPath } from '../../utils/notificationNavigation.js';
 
 function NotificationItemText({ message, currentLanguage, translateTextAsync, t }) {
   const [text, setText] = useState(message);
@@ -87,7 +88,9 @@ export function NotificationsPage({ onNavigate }) {
           />
         ) : (
           <div className="flex-col gap-sm">
-            {displayList.map((item) => (
+            {displayList.map((item) => {
+              const targetPath = resolveNotificationPath(item);
+              return (
               <div
                 key={item.id}
                 className="mka-card flex-row items-center justify-between gap-md animate-fade-in"
@@ -109,27 +112,15 @@ export function NotificationsPage({ onNavigate }) {
                 </div>
 
                 <div className="flex-row items-center gap-xs">
-                  {(item.targetPostId || item.targetId) ? (
+                  {targetPath ? (
                     <button
                       onClick={() => {
                         markAsRead(item.id);
-                        onNavigate(`/post/${item.targetPostId || item.targetId}`);
+                        onNavigate(targetPath);
                       }}
                       className="flex-row items-center gap-xs secondary-text"
                       style={{ fontSize: '13px', color: 'var(--deep-plum)', fontWeight: 500 }}
-                      title="View Post"
-                    >
-                      <ArrowRight size={16} />
-                    </button>
-                  ) : item.type === 'CHAT_MESSAGE' || item.type === 'CHAT_REQUEST' ? (
-                    <button
-                      onClick={() => {
-                        markAsRead(item.id);
-                        onNavigate('/chat');
-                      }}
-                      className="flex-row items-center gap-xs secondary-text"
-                      style={{ fontSize: '13px', color: 'var(--deep-plum)', fontWeight: 500 }}
-                      title="Open Chat"
+                      title={item.targetType === 'MUSIC_TRACK' ? 'View Track' : 'View Post'}
                     >
                       <ArrowRight size={16} />
                     </button>
@@ -146,7 +137,8 @@ export function NotificationsPage({ onNavigate }) {
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

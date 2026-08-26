@@ -14,7 +14,14 @@ import { ToastContainer } from './components/common/Toast.jsx';
 import { GlobalTranslationOverlay } from './components/common/GlobalTranslationOverlay.jsx';
 import './styles/global.css';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 3,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 export default function App() {
   return (

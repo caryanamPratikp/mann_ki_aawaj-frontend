@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
+    "test": "node --test src/config/musicMoods.test.js src/utils/musicSession.test.js src/utils/musicQueue.test.js src/utils/musicPlayback.test.js src/utils/notificationNavigation.test.js",
     "preview": "vite preview"
   },
   "dependencies": {

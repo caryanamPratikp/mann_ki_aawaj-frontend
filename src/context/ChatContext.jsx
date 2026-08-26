@@ -147,8 +147,12 @@ export function ChatProvider({ children }) {
   useEffect(() => {
     if (!currentUser || isMockMode() || window.location.pathname.startsWith('/admin')) return;
 
+    const token = localStorage.getItem('auth_token') || currentUser.token;
+    if (!token) return;
+
     const socket = io(SOCKET_URL, {
       transports: ['polling', 'websocket' ],
+      query: { token },
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: 10,

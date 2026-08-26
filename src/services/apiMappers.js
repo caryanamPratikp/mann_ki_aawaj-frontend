@@ -1,4 +1,5 @@
 import { MOCK_USERS } from '../data/users.js';
+import { getMediaUrl } from '../config/env.js';
 
 // Adapts anonymous backend DTOs to the existing presentational UI fields.
 const anonymousName = '@anonymous';
@@ -104,6 +105,15 @@ export function mapPost(post) {
 
   const finalTopic = (detectedSubtopic || post.topic || 'GENERAL').toUpperCase();
 
+  let audioObj = post.audio || post.audioAttachment || null;
+  if (audioObj) {
+    audioObj = {
+      ...audioObj,
+      audioUrl: audioObj.audioUrl ? getMediaUrl(audioObj.audioUrl) : null,
+      coverUrl: audioObj.coverUrl ? getMediaUrl(audioObj.coverUrl) : null,
+    };
+  }
+
   return {
     ...post,
     id: postId || `post_${Date.now()}`,
@@ -122,6 +132,7 @@ export function mapPost(post) {
     avatarConfig: post.authorAvatar || post.avatarConfig || null,
     reactions: reactionsMap,
     userReaction: post.userReaction || null,
+    audio: audioObj,
     status: post.status || 'PUBLISHED',
     createdAt: post.createdAt || new Date().toISOString(),
   };
