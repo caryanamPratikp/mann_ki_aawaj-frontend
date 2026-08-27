@@ -9,6 +9,7 @@ import { CommunityGuidelinesPage } from '../pages/public/CommunityGuidelinesPage
 import { ContactPage } from '../pages/public/ContactPage.jsx';
 import { FaqPage } from '../pages/public/FaqPage.jsx';
 import { DeleteAccountPage } from '../pages/public/DeleteAccountPage.jsx';
+import { ChildSafetyPage } from '../pages/public/ChildSafetyPage.jsx';
 
 import { LoginPage } from '../pages/auth/LoginPage.jsx';
 import { RegisterPage } from '../pages/auth/RegisterPage.jsx';
@@ -36,16 +37,19 @@ import { SafetyModerationPage } from '../pages/user/SafetyModerationPage.jsx';
 import { HelpSupportPage } from '../pages/user/HelpSupportPage.jsx';
 import { MusicPage } from '../pages/user/MusicPage.jsx';
 
-import { AdminLoginPage } from '../pages/admin/AdminLoginPage.jsx';
-import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage.jsx';
-import { AdminReportsPage } from '../pages/admin/AdminReportsPage.jsx';
-import { AdminReportDetailsPage } from '../pages/admin/AdminReportDetailsPage.jsx';
-import { AdminContentReviewPage } from '../pages/admin/AdminContentReviewPage.jsx';
-import { AdminBlockedContentPage } from '../pages/admin/AdminBlockedContentPage.jsx';
-import { AdminUsersPage } from '../pages/admin/AdminUsersPage.jsx';
-import { AdminAnalyticsPage } from '../pages/admin/AdminAnalyticsPage.jsx';
-import { AdminEnquiriesPage } from '../pages/admin/AdminEnquiriesPage.jsx';
-import { AdminMusicPage } from '../pages/admin/AdminMusicPage.jsx';
+import { Loader } from '../components/common/Loader.jsx';
+
+// Admin Pages (Lazy Loaded)
+const AdminLoginPage = React.lazy(() => import('../pages/admin/AdminLoginPage.jsx').then(m => ({ default: m.AdminLoginPage })));
+const AdminDashboardPage = React.lazy(() => import('../pages/admin/AdminDashboardPage.jsx').then(m => ({ default: m.AdminDashboardPage })));
+const AdminReportsPage = React.lazy(() => import('../pages/admin/AdminReportsPage.jsx').then(m => ({ default: m.AdminReportsPage })));
+const AdminReportDetailsPage = React.lazy(() => import('../pages/admin/AdminReportDetailsPage.jsx').then(m => ({ default: m.AdminReportDetailsPage })));
+const AdminContentReviewPage = React.lazy(() => import('../pages/admin/AdminContentReviewPage.jsx').then(m => ({ default: m.AdminContentReviewPage })));
+const AdminBlockedContentPage = React.lazy(() => import('../pages/admin/AdminBlockedContentPage.jsx').then(m => ({ default: m.AdminBlockedContentPage })));
+const AdminUsersPage = React.lazy(() => import('../pages/admin/AdminUsersPage.jsx').then(m => ({ default: m.AdminUsersPage })));
+const AdminAnalyticsPage = React.lazy(() => import('../pages/admin/AdminAnalyticsPage.jsx').then(m => ({ default: m.AdminAnalyticsPage })));
+const AdminEnquiriesPage = React.lazy(() => import('../pages/admin/AdminEnquiriesPage.jsx').then(m => ({ default: m.AdminEnquiriesPage })));
+const AdminMusicPage = React.lazy(() => import('../pages/admin/AdminMusicPage.jsx').then(m => ({ default: m.AdminMusicPage })));
 
 export function AppRoutes() {
 
@@ -108,6 +112,9 @@ export function AppRoutes() {
   if (normalizedPath === '/delete-account') {
     return <DeleteAccountPage onNavigate={navigate} />;
   }
+  if (normalizedPath === '/child-safety' || normalizedPath === '/child-safety-standards') {
+    return <ChildSafetyPage onNavigate={navigate} />;
+  }
 
   // 3. Auth Routes: /login, /register, /forgot-password, /onboarding, /setup-profile
   if (normalizedPath === '/login') {
@@ -127,49 +134,62 @@ export function AppRoutes() {
   }
 
   // 4. Admin Routes
-  if (normalizedPath === '/admin/login') {
-    return <AdminLoginPage onNavigate={navigate} />;
+  if (normalizedPath.startsWith('/admin')) {
+    return (
+      <React.Suspense fallback={<Loader />}>
+        {(() => {
+          if (normalizedPath === '/admin/login') {
+            return <AdminLoginPage onNavigate={navigate} />;
+          }
+          if (!isAdminLoggedIn || currentUser?.role !== 'ADMIN') {
+            return <AdminLoginPage onNavigate={navigate} />;
+          }
+          if (normalizedPath === '/admin/dashboard') {
+            return <AdminDashboardPage onNavigate={navigate} />;
+          }
+          if (normalizedPath === '/admin/reports') {
+            return <AdminReportsPage onNavigate={navigate} />;
+          }
+          if (normalizedPath.startsWith('/admin/reports/')) {
+            const reportId = normalizedPath.split('/admin/reports/')[1];
+            return <AdminReportDetailsPage reportId={reportId} onNavigate={navigate} />;
+          }
+          if (normalizedPath === '/admin/content-review') {
+            return <AdminContentReviewPage onNavigate={navigate} />;
+          }
+          if (normalizedPath === '/admin/blocked-content') {
+            return <AdminBlockedContentPage onNavigate={navigate} />;
+          }
+          if (normalizedPath === '/admin/enquiries') {
+            return <AdminEnquiriesPage onNavigate={navigate} />;
+          }
+          if (normalizedPath === '/admin/users') {
+            return <AdminUsersPage onNavigate={navigate} />;
+          }
+          if (normalizedPath === '/admin/analytics') {
+            return <AdminAnalyticsPage onNavigate={navigate} />;
+          }
+          if (normalizedPath === '/admin/music') {
+            return <AdminMusicPage onNavigate={navigate} />;
+          }
+          if (normalizedPath === '/admin/settings') {
+            return <AdminDashboardPage onNavigate={navigate} />;
+          }
+          if (normalizedPath === '/admin/system-logs') {
+            return <AdminBlockedContentPage onNavigate={navigate} />;
+          }
+          return <AdminDashboardPage onNavigate={navigate} />;
+        })()}
+      </React.Suspense>
+    );
   }
-  if (normalizedPath.startsWith('/admin/') && (!isAdminLoggedIn || currentUser?.role !== 'ADMIN')) {
-    return <AdminLoginPage onNavigate={navigate} />;
-  }
-  if (normalizedPath === '/admin/dashboard') {
-    return <AdminDashboardPage onNavigate={navigate} />;
-  }
-  if (normalizedPath === '/admin/reports') {
-    return <AdminReportsPage onNavigate={navigate} />;
-  }
-  if (normalizedPath.startsWith('/admin/reports/')) {
-    const reportId = normalizedPath.split('/admin/reports/')[1];
-    return <AdminReportDetailsPage reportId={reportId} onNavigate={navigate} />;
-  }
-  if (normalizedPath === '/admin/content-review') {
-    return <AdminContentReviewPage onNavigate={navigate} />;
-  }
-  if (normalizedPath === '/admin/blocked-content') {
-    return <AdminBlockedContentPage onNavigate={navigate} />;
-  }
-  if (normalizedPath === '/admin/enquiries') {
-    return <AdminEnquiriesPage onNavigate={navigate} />;
-  }
-  if (normalizedPath === '/admin/users') {
 
-    return <AdminUsersPage onNavigate={navigate} />;
-  }
-  if (normalizedPath === '/admin/analytics') {
-    return <AdminAnalyticsPage onNavigate={navigate} />;
-  }
-  if (normalizedPath === '/admin/music') {
-    return <AdminMusicPage onNavigate={navigate} />;
-  }
-  if (normalizedPath === '/admin/settings') {
-    return <AdminDashboardPage onNavigate={navigate} />;
-  }
-  if (normalizedPath === '/admin/system-logs') {
-    return <AdminBlockedContentPage onNavigate={navigate} />;
+  // 5. Public / Guest Accessible Discovery Routes
+  if (normalizedPath.startsWith('/explore')) {
+    return <ExplorePage onNavigate={navigate} />;
   }
 
-  // 5. User App Protected Routes (redirect to /login if not logged in)
+  // 6. User App Protected Routes (redirect to /login if not logged in)
   if (!currentUser) {
     return <LoginPage onNavigate={navigate} />;
   }
@@ -179,9 +199,6 @@ export function AppRoutes() {
   }
   if (normalizedPath === '/home') {
     return <HomePage onNavigate={navigate} />;
-  }
-  if (normalizedPath.startsWith('/explore')) {
-    return <ExplorePage onNavigate={navigate} />;
   }
   if (normalizedPath === '/music') {
     return <MusicPage onNavigate={navigate} />;

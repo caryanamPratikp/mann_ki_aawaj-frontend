@@ -362,6 +362,10 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
                 <img
                   src={getMediaUrl(post.imageUrl)}
                   alt="Post attachment"
+                  loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
                   style={{ width: '100%', maxHeight: '320px', objectFit: 'cover', display: 'block' }}
                 />
               </div>

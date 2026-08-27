@@ -8,8 +8,7 @@ import { FloatingChatToast } from '../components/common/FloatingChatToast.jsx';
 import { formatLastSeen } from '../utils/formatLastSeen.js';
 import { playNotificationSound } from '../utils/soundUtil.js';
 
-import { io } from 'socket.io-client';
-import { SOCKET_URL } from '../config/env.js';
+import { getSharedSocket } from '../services/socketClient.js';
 
 const ChatContext = createContext(null);
 
@@ -147,17 +146,8 @@ export function ChatProvider({ children }) {
   useEffect(() => {
     if (!currentUser || isMockMode() || window.location.pathname.startsWith('/admin')) return;
 
-    const token = localStorage.getItem('auth_token') || currentUser.token;
-    if (!token) return;
-
-    const socket = io(SOCKET_URL, {
-      transports: ['polling', 'websocket' ],
-      query: { token },
-      autoConnect: true,
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
-    });
+    const socket = getSharedSocket();
+    if (!socket) return;
 
     socketRef.current = socket;
 
@@ -170,19 +160,19 @@ export function ChatProvider({ children }) {
       }
     };
 
-    socket.on('connect', () => {
+    const handleConnect = () => {
       console.log('[Socket] Connected as', currentUser.username, 'ID:', currentUser.id);
       if (currentUser?.id) {
         socket.emit('join_user_room', String(currentUser.id));
         sendHeartbeat();
       }
-    });
+    };
 
-    socket.on('connect_error', (err) => {
+    const handleConnectError = (err) => {
       // Graceful fallback when local/remote socket server is offline
-    });
+    };
 
-    socket.on('receive_message', (msg) => {
+    const handleReceiveMessage = (msg) => {
       console.log('[Socket] Received message:', msg);
 
       queryClient.invalidateQueries({ queryKey: ['messages', msg.roomId] });
@@ -209,9 +199,9 @@ export function ChatProvider({ children }) {
         const dedupeKey = msg.id ? `socket_${msg.id}` : `socket_${msg.roomId}_${msgText}`;
         notifyNewMessage(dedupeKey, msg.roomId, senderHandle, previewText);
       }
-    });
+    };
 
-    socket.on('user_presence_changed', (presence) => {
+    const handlePresenceChanged = (presence) => {
       console.log('[Socket] Presence changed:', presence);
       if (presence) {
         const isOnline = Boolean(presence.isOnline || presence.status === 'ONLINE');
@@ -236,12 +226,22 @@ export function ChatProvider({ children }) {
           return next;
         });
       }
-    });
+    };
 
-    socket.on('room_status_change', (updatedRoom) => {
+    const handleRoomStatusChange = (updatedRoom) => {
       queryClient.invalidateQueries({ queryKey: ['messages', updatedRoom.id] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
-    });
+    };
+
+    if (socket.connected) {
+      handleConnect();
+    }
+
+    socket.on('connect', handleConnect);
+    socket.on('connect_error', handleConnectError);
+    socket.on('receive_message', handleReceiveMessage);
+    socket.on('user_presence_changed', handlePresenceChanged);
+    socket.on('room_status_change', handleRoomStatusChange);
 
     const heartbeatInterval = setInterval(sendHeartbeat, 25000);
 
@@ -255,10 +255,11 @@ export function ChatProvider({ children }) {
     return () => {
       clearInterval(heartbeatInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (socket) {
-        socket.off();
-        socket.disconnect();
-      }
+      socket.off('connect', handleConnect);
+      socket.off('connect_error', handleConnectError);
+      socket.off('receive_message', handleReceiveMessage);
+      socket.off('user_presence_changed', handlePresenceChanged);
+      socket.off('room_status_change', handleRoomStatusChange);
       socketRef.current = null;
     };
   }, [currentUser, queryClient, notifyNewMessage]);

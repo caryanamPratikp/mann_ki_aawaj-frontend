@@ -201,6 +201,8 @@ export function MoodMusicProvider({ children }) {
     if (action.type === 'PLAY' || action.type === 'WRAP') playAtRef.current(action.index, tracks);
   }, []);
 
+  const lastProgressRef = useRef(-1);
+
   useEffect(() => {
     const audio = new Audio();
     audio.preload = 'metadata';
@@ -209,8 +211,12 @@ export function MoodMusicProvider({ children }) {
 
     const updateTime = () => {
       const actualDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
-      setDuration(actualDuration);
-      setProgress(actualDuration ? (audio.currentTime / actualDuration) * 100 : 0);
+      const newProgress = actualDuration ? Math.floor((audio.currentTime / actualDuration) * 100) : 0;
+      if (newProgress !== lastProgressRef.current) {
+        lastProgressRef.current = newProgress;
+        setDuration(actualDuration);
+        setProgress(newProgress);
+      }
     };
     const updateMetadata = () => setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
     const markBuffering = () => setIsBuffering(true);

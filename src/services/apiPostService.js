@@ -10,7 +10,7 @@ const isMockMode = () => {
 
 export const apiPostService = {
   // GET /api/posts?page=0&size=50&sortBy=createdAt&direction=desc
-  async getPosts(params = {}) {
+  async getPosts(params = {}, options = {}) {
     if (isMockMode()) {
       const mockPosts = mockPostService.getPosts();
       return {
@@ -36,7 +36,12 @@ export const apiPostService = {
         queryParams.topic = params.topic;
       }
 
-      const response = await apiClient.get('/api/posts', { params: queryParams, timeout: 30000 });
+      const requestConfig = { params: queryParams, timeout: 30000 };
+      if (options.signal) {
+        requestConfig.signal = options.signal;
+      }
+
+      const response = await apiClient.get('/api/posts', requestConfig);
 
       if (response.data && (response.data.data || response.data.content || Array.isArray(response.data))) {
         return response.data;

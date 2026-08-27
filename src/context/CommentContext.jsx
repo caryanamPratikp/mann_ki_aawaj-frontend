@@ -42,7 +42,8 @@ export function CommentProvider({ children }) {
   // Automatic real-time background sync via TanStack Query standards (3-second interval)
   React.useEffect(() => {
     const interval = setInterval(async () => {
-      const activeIds = Array.from(activePostIdsRef.current);
+      if (typeof document !== 'undefined' && document.hidden) return;
+      const activeIds = Array.from(activePostIdsRef.current).slice(-3);
       if (activeIds.length === 0) return;
 
       for (const pId of activeIds) {

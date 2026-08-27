@@ -4,9 +4,7 @@ import { mapNotification } from '../services/apiMappers.js';
 import { useAuth } from './AuthContext.jsx';
 import { useToast } from './ToastContext.jsx';
 import { playNotificationSound } from '../utils/soundUtil.js';
-
-import { io } from 'socket.io-client';
-import { SOCKET_URL } from '../config/env.js';
+import { getSharedSocket } from '../services/socketClient.js';
 
 const NotificationContext = createContext(null);
 
@@ -30,7 +28,7 @@ export function NotificationProvider({ children }) {
   const isInitialLoadRef = React.useRef(true);
 
   const refreshNotifications = useCallback(async () => {
-    if (!currentUser) { setNotifications([]); return; }
+    if (!currentUser || (typeof document !== 'undefined' && document.hidden)) return;
     try {
       const response = await apiNotificationService.getNotifications();
       const fetched = (response.data?.content || []).map(mapNotification);
@@ -96,23 +94,14 @@ export function NotificationProvider({ children }) {
   useEffect(() => {
     if (!currentUser || !currentUser.id || window.location.pathname.startsWith('/admin')) return;
 
-    const token = localStorage.getItem('auth_token') || currentUser.token;
-    if (!token) return;
+    const socket = getSharedSocket();
+    if (!socket) return;
 
-    const socket = io(SOCKET_URL, {
-      transports: ['polling', 'websocket'],
-      query: { token },
-      autoConnect: true,
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
-    });
-
-    socket.on('connect', () => {
+    const handleConnect = () => {
       socket.emit('join_user_room', String(currentUser.id));
-    });
+    };
 
-    socket.on('new_notification', (newNotif) => {
+    const handleNotification = (newNotif) => {
       const type = (newNotif?.type || '').toUpperCase();
 
       // Skip chat messages from Bell notification processing
@@ -157,10 +146,18 @@ export function NotificationProvider({ children }) {
       if (prefs.soundAlerts !== false) {
         playNotificationSound();
       }
-    });
+    };
+
+    if (socket.connected) {
+      handleConnect();
+    }
+
+    socket.on('connect', handleConnect);
+    socket.on('new_notification', handleNotification);
 
     return () => {
-      socket.disconnect();
+      socket.off('connect', handleConnect);
+      socket.off('new_notification', handleNotification);
     };
   }, [currentUser, refreshNotifications, addToast, getUserNotifPrefs]);
 
