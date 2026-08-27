@@ -190,9 +190,10 @@
 
 .community-music-layout {
   display: grid;
-  grid-template-columns: minmax(290px, 380px) minmax(0, 1fr);
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
   gap: 20px;
   align-items: start;
+  min-width: 0;
 }
 
 .music-view-community .music-page-header {
@@ -219,6 +220,7 @@
 .community-main-column {
   display: grid;
   gap: 20px;
+  min-width: 0;
 }
 
 .community-sidebar-column {
@@ -226,6 +228,8 @@
   gap: 12px;
   position: sticky;
   top: 20px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* --- COMMUNITY COMPOSER --- */
@@ -741,6 +745,11 @@
 /* --- SIDEBAR PANELS --- */
 .now-playing-panel-card,
 .community-library-card {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
   background: #ffffff;
   border: 1px solid #e1dcdb;
   border-radius: 20px;
@@ -750,19 +759,25 @@
 
 .now-playing-panel-card {
   display: grid;
-  grid-template-columns: 132px minmax(0, 1fr);
+  grid-template-columns: 112px minmax(0, 1fr);
   column-gap: 16px;
   padding: 18px;
 }
 
 .now-playing-panel-card .panel-heading { grid-column: 1 / -1; margin-bottom: 12px; }
-.now-playing-panel-card .vinyl-cover-wrapper { width: 132px; height: 132px; margin: 0; }
+.now-playing-panel-card .vinyl-cover-wrapper { width: 112px; height: 112px; margin: 0; }
 .now-playing-panel-card .vinyl-record { display: none; }
 .now-playing-panel-card .vinyl-album-art {
-  width: 132px;
-  height: 132px;
+  width: 112px;
+  height: 112px;
   border-radius: 14px;
   box-shadow: 0 8px 22px rgba(87, 44, 72, .18);
+}
+.now-playing-panel-card .track-details-row,
+.now-playing-panel-card .track-details-row > div {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 .now-playing-panel-card .track-details-row { align-self: center; text-align: left; margin: 0; }
 .now-playing-panel-card .now-playing-progress-group,
@@ -832,8 +847,12 @@
   font-weight: 800;
   color: #2d1d15;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
 }
 
 .track-artist-label {
@@ -853,6 +872,7 @@
 
 .progress-slider {
   width: 100%;
+  min-width: 0;
   accent-color: #6f405f;
   cursor: pointer;
 }
@@ -928,6 +948,7 @@
 
 .volume-slider {
   flex: 1;
+  min-width: 0;
   accent-color: #6f405f;
   cursor: pointer;
 }
@@ -943,6 +964,7 @@
 
 .library-tab-btn {
   flex: 1;
+  min-width: 0;
   background: transparent;
   border: none;
   font-size: 12px;
@@ -979,6 +1001,8 @@
   padding: 8px 10px;
   border-radius: 10px;
   background: #faf7f9;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .library-item:hover {
@@ -990,6 +1014,9 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
+  width: 0;
+  flex: 1 1 0;
+  overflow: hidden;
 }
 
 .item-thumb {
@@ -997,6 +1024,7 @@
   height: 36px;
   border-radius: 8px;
   object-fit: cover;
+  flex-shrink: 0;
 }
 
 .item-icon {
@@ -1006,6 +1034,8 @@
 
 .item-text {
   min-width: 0;
+  width: 100%;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -1022,6 +1052,9 @@
 .item-sub {
   font-size: 11px;
   color: #756966;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .library-play-btn {
@@ -1033,6 +1066,8 @@
   border: none;
   display: grid;
   place-items: center;
+  flex: 0 0 28px;
+  margin-left: 8px;
   cursor: pointer;
   flex-shrink: 0;
 }
