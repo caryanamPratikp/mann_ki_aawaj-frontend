@@ -134,13 +134,6 @@ export function CommentComposer({
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
-    }
-  };
-
   const handleEmojiClick = (emoji) => {
     setText((prev) => prev + emoji);
   };
@@ -178,7 +171,7 @@ export function CommentComposer({
         </div>
       )}
 
-      {/* ── Single-Line Pill Capsule Comment Input Box (Matches User Hand-Drawn Diagram) ── */}
+      {/* Multiline comment composer. Posting is intentionally limited to the send button. */}
       <div
         style={{
           position: 'relative',
@@ -214,25 +207,29 @@ export function CommentComposer({
           <Smile size={18} />
         </button>
 
-        {/* Middle: Input Text Field */}
-        <input
+        {/* Middle: Multiline Text Field */}
+        <textarea
           ref={inputRef}
-          type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
           placeholder={t('writeCommentPlaceholder', placeholder)}
           maxLength={maxLength}
+          rows={1}
           disabled={submitting || currentUser?.status === 'COMMENT_RESTRICTED'}
           style={{
             flex: 1,
             minWidth: 0,
+            minHeight: '24px',
+            maxHeight: '120px',
             border: 'none',
             background: 'transparent',
             fontSize: '13.5px',
             color: '#2D1D15',
             outline: 'none',
             fontFamily: 'var(--font-sans)',
+            lineHeight: 1.45,
+            resize: 'vertical',
+            padding: '3px 0',
           }}
         />
 
@@ -267,7 +264,7 @@ export function CommentComposer({
           <button
             type="submit"
             disabled={!isValid || isBlocked || submitting || uploadingImage || currentUser?.status === 'COMMENT_RESTRICTED'}
-            title="Send Comment (Enter)"
+            title="Post comment"
             style={{
               width: '32px',
               height: '32px',

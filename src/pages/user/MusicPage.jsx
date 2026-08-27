@@ -25,7 +25,14 @@ function TrackCard({ track, queue }) {
   return (
     <article className="music-card">
       <div className="music-card-cover">
-        <img src={track.coverUrl || defaultCover} alt={`${track.title} cover`} />
+        <img
+          src={track.coverUrl || defaultCover}
+          alt={`${track.title} cover`}
+          onError={(event) => {
+            event.currentTarget.onerror = null;
+            event.currentTarget.src = defaultCover;
+          }}
+        />
         <button
           className="music-card-play"
           type="button"

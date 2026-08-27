@@ -95,7 +95,12 @@ export function MoodMusicProvider({ children }) {
     const safeIndex = ((index % tracks.length) + tracks.length) % tracks.length;
     const targetTrack = tracks[safeIndex];
     const resolvedUrl = getMediaUrl(targetTrack.audioUrl || targetTrack.publicAudioUrl || targetTrack.privateAudioUrl);
-    const resolvedCover = targetTrack.coverUrl ? getMediaUrl(targetTrack.coverUrl) : defaultCoverAsset;
+    const coverSource = targetTrack.coverUrl
+      || targetTrack.publicCoverUrl
+      || targetTrack.privateCoverUrl
+      || targetTrack.artworkUrl
+      || targetTrack.albumImage;
+    const resolvedCover = coverSource ? getMediaUrl(coverSource) : defaultCoverAsset;
     
     const track = {
       ...targetTrack,

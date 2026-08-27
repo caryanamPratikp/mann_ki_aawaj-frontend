@@ -128,6 +128,18 @@ export const authService = {
     }
   },
 
+  // POST /api/auth/delete-account { email, password }
+  async deleteAccount(email, password) {
+    try {
+      const response = await apiClient.post('/api/auth/delete-account', { email, password });
+      return response.data;
+    } catch (err) {
+      const payload = err.response?.data;
+      if (payload) throw new Error(payload.message || 'Unable to delete account.');
+      throw new Error('Unable to reach the server. Please try again.');
+    }
+  },
+
   // POST /api/auth/verify-email { email, otp }
   async verifyEmail(email, otp) {
     try {

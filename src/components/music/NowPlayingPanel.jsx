@@ -52,6 +52,10 @@ export function NowPlayingPanel() {
           className="vinyl-album-art"
           src={currentTrack?.coverUrl || defaultCover}
           alt={currentTrack?.title || 'Album cover'}
+          onError={(event) => {
+            event.currentTarget.onerror = null;
+            event.currentTarget.src = defaultCover;
+          }}
         />
       </div>
 

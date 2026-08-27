@@ -8,6 +8,7 @@ import { PrivacyPolicyPage } from '../pages/public/PrivacyPolicyPage.jsx';
 import { CommunityGuidelinesPage } from '../pages/public/CommunityGuidelinesPage.jsx';
 import { ContactPage } from '../pages/public/ContactPage.jsx';
 import { FaqPage } from '../pages/public/FaqPage.jsx';
+import { DeleteAccountPage } from '../pages/public/DeleteAccountPage.jsx';
 
 import { LoginPage } from '../pages/auth/LoginPage.jsx';
 import { RegisterPage } from '../pages/auth/RegisterPage.jsx';
@@ -103,6 +104,9 @@ export function AppRoutes() {
   }
   if (normalizedPath === '/faq') {
     return <FaqPage onNavigate={navigate} />;
+  }
+  if (normalizedPath === '/delete-account') {
+    return <DeleteAccountPage onNavigate={navigate} />;
   }
 
   // 3. Auth Routes: /login, /register, /forgot-password, /onboarding, /setup-profile

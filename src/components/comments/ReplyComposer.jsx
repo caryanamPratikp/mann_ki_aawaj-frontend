@@ -102,13 +102,6 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
-    }
-  };
-
   const handleEmojiClick = (emoji) => {
     setText((prev) => prev + emoji);
   };
@@ -150,25 +143,29 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
           <Smile size={18} />
         </button>
 
-        {/* Input Text Field */}
-        <input
+        {/* Multiline Text Field */}
+        <textarea
           ref={inputRef}
-          type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
           placeholder={t('writeReplyPlaceholder', 'Write a reply...')}
           maxLength={maxLength}
+          rows={1}
           disabled={submitting}
           style={{
             flex: 1,
             minWidth: 0,
+            minHeight: '24px',
+            maxHeight: '120px',
             border: 'none',
             background: 'transparent',
             fontSize: '13.5px',
             color: '#2D1D15',
             outline: 'none',
             fontFamily: 'var(--font-sans)',
+            lineHeight: 1.45,
+            resize: 'vertical',
+            padding: '3px 0',
           }}
         />
 
@@ -197,7 +194,7 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
           <button
             type="submit"
             disabled={!isValid || isBlocked || submitting}
-            title="Send Reply (Enter)"
+            title="Post reply"
             style={{
               width: '32px',
               height: '32px',

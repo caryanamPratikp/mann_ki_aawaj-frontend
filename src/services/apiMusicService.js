@@ -26,10 +26,7 @@ const unwrap = (response) => response?.data?.data ?? response?.data;
 
 export const mapMusicTrack = (track) => {
   if (!track) return track;
-  const isPlatformTrack = track.source === 'PLATFORM' || !track.source;
-  const coverUrl = isPlatformTrack
-    ? defaultCoverAsset
-    : (track.coverUrl ? getMediaUrl(track.coverUrl) : defaultCoverAsset);
+  const coverUrl = track.coverUrl ? getMediaUrl(track.coverUrl) : defaultCoverAsset;
 
   return {
     ...track,
