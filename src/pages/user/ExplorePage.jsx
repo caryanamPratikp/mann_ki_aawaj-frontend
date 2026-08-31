@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { PostCard } from '../../components/posts/PostCard.jsx';
-import { useAuth } from '../../context/AuthContext.jsx';
 import { usePosts } from '../../context/PostContext.jsx';
 import { useReports } from '../../context/ReportContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
@@ -10,32 +9,43 @@ import { apiPostService } from '../../services/apiPostService.js';
 import { mapPost } from '../../services/apiMappers.js';
 import { TOPIC_CATEGORIES } from '../../utils/topicUtils.js';
 import { formatDate } from '../../utils/formatDate.js';
+import {
+  boundaryPageCount,
+  combineExplorePages,
+  EXPLORE_PAGE_SIZE,
+  hasVisiblePostStatus,
+} from '../../utils/exploreFeed.js';
 import { 
   Compass, Search, Sparkles, Loader2, CheckCircle2, Filter, X
 } from 'lucide-react';
 
-const PAGE_SIZE = 10;
-
 export function ExplorePage({ onNavigate }) {
-  const { posts: contextPosts = [], refreshPosts } = usePosts();
-  const { currentUser } = useAuth();
+  const {
+    posts: contextPosts = [],
+    totalPosts = 0,
+    feedUpdatedAt = 0,
+    loading,
+    refreshPosts,
+  } = usePosts();
   const { blockedUsers = [], mutedUsers = [] } = useReports();
-  const { t } = useLanguage();
+  const { t, currentLanguage } = useLanguage();
 
   const searchParams = new URLSearchParams(window.location.search);
   const [searchInput, setSearchInput] = useState(searchParams.get('q') || '');
   const [debouncedQuery, setDebouncedQuery] = useState(searchParams.get('q') || '');
   const [activeTopic, setActiveTopic] = useState('All');
 
-  const [paginatedPosts, setPaginatedPosts] = useState([]);
+  const [loadedPages, setLoadedPages] = useState(() => new Map());
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [loadingInitial, setLoadingInitial] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
 
   const abortControllerRef = useRef(null);
+  const loadingMoreRef = useRef(false);
+  const previousPageZeroRef = useRef(null);
   const sensorRef = useRef(null);
+  const loadingInitial = loading && contextPosts.length === 0;
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
@@ -70,7 +80,7 @@ export function ExplorePage({ onNavigate }) {
 
   // Filter blocked and muted users & deleted/hidden posts
   const isPostVisible = useCallback((p) => {
-    if (!p || p.status === 'HIDDEN' || p.status === 'DELETED') return false;
+    if (!hasVisiblePostStatus(p)) return false;
     const authorHandle = (p.username || p.authorUsername || '').toLowerCase().replace(/^@/, '').trim();
     if (!authorHandle) return true;
 
@@ -79,38 +89,10 @@ export function ExplorePage({ onNavigate }) {
     return !isBlocked && !isMuted;
   }, [blockedUsers, mutedUsers]);
 
-  // Stable post sorter: primary createdAt DESC, secondary id DESC
-  const sortPostsStable = useCallback((items) => {
-    return [...items].sort((a, b) => {
-      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      if (timeB !== timeA) return timeB - timeA;
-      const idA = typeof a.id === 'number' ? a.id : Number(String(a.id).replace(/\D/g, '')) || 0;
-      const idB = typeof b.id === 'number' ? b.id : Number(String(b.id).replace(/\D/g, '')) || 0;
-      return idB - idA;
-    });
-  }, []);
-
-  // Merge contextPosts (Page 0 + optimistic real-time posts) with paginatedPosts (Pages 1, 2...)
+  // Page 0 stays authoritative in PostContext; Explore owns all additional pages.
   const allMergedPosts = useMemo(() => {
-    const map = new Map();
-
-    // 1. Add contextPosts (real-time, optimistic, and fresh Page 0 posts)
-    (contextPosts || []).forEach((p) => {
-      if (isPostVisible(p)) {
-        map.set(String(p.id), p);
-      }
-    });
-
-    // 2. Add paginatedPosts (loaded from infinite scroll pages 1, 2...)
-    (paginatedPosts || []).forEach((p) => {
-      if (isPostVisible(p) && !map.has(String(p.id))) {
-        map.set(String(p.id), p);
-      }
-    });
-
-    return sortPostsStable(Array.from(map.values()));
-  }, [contextPosts, paginatedPosts, isPostVisible, sortPostsStable]);
+    return combineExplorePages(contextPosts, loadedPages, isPostVisible);
+  }, [contextPosts, loadedPages, isPostVisible]);
 
   // Dynamic calculation of topic statistics from merged posts
   const topicStats = useMemo(() => {
@@ -165,7 +147,7 @@ export function ExplorePage({ onNavigate }) {
 
   // Infinite Scroll Paginated Fetch (Pages 1, 2, 3...)
   const fetchNextPage = useCallback(async (targetPage) => {
-    if (loadingMore) return;
+    if (loadingMoreRef.current) return;
 
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -173,44 +155,90 @@ export function ExplorePage({ onNavigate }) {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
+    loadingMoreRef.current = true;
     setLoadingMore(true);
+    setError(null);
 
     try {
       const params = {
         page: targetPage,
-        size: PAGE_SIZE,
+        size: EXPLORE_PAGE_SIZE,
         sortBy: 'createdAt',
         direction: 'desc',
       };
-      if (activeTopic && activeTopic !== 'All' && activeTopic !== 'ALL') {
-        params.topic = activeTopic;
-      }
 
       const response = await apiPostService.getPosts(params, { signal: controller.signal });
       const rawContent = response?.data?.content || response?.content || response?.data || [];
       const freshRaw = Array.isArray(rawContent) ? rawContent : [];
 
-      const mappedPosts = freshRaw.map(mapPost).filter(isPostVisible);
+      const mappedPosts = freshRaw.map(mapPost).filter(Boolean);
 
-      setPaginatedPosts((prev) => {
-        const map = new Map(prev.map((p) => [String(p.id), p]));
-        mappedPosts.forEach((p) => map.set(String(p.id), p));
-        return sortPostsStable(Array.from(map.values()));
+      setLoadedPages((prev) => {
+        const next = new Map(prev);
+        next.set(targetPage, mappedPosts);
+        return next;
       });
 
-      setHasMore(freshRaw.length >= PAGE_SIZE);
+      setHasMore(freshRaw.length >= EXPLORE_PAGE_SIZE);
       setPage(targetPage);
     } catch (err) {
       if (err.name === 'CanceledError' || err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
         return;
       }
       console.error('[ExplorePage] Failed to fetch next explore page:', err);
+      setError('Could not load more thoughts. Please try again.');
     } finally {
-      setLoadingMore(false);
+      if (abortControllerRef.current === controller) {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      }
     }
-  }, [activeTopic, isPostVisible, sortPostsStable, loadingMore]);
+  }, []);
 
-  // Revalidate Page 0 & Focus/Visibility Change
+  const revalidateLoadedPages = useCallback(async (highestLoadedPage, extraBoundaryPages) => {
+    if (highestLoadedPage < 1) return;
+
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    setError(null);
+
+    const lastPageToFetch = highestLoadedPage + extraBoundaryPages;
+    const pageNumbers = Array.from({ length: lastPageToFetch }, (_, index) => index + 1);
+
+    try {
+      const responses = await Promise.all(pageNumbers.map(async (pageNumber) => {
+        const response = await apiPostService.getPosts({
+          page: pageNumber,
+          size: EXPLORE_PAGE_SIZE,
+          sortBy: 'createdAt',
+          direction: 'desc',
+        }, { signal: controller.signal });
+        const rawContent = response?.data?.content || response?.content || response?.data || [];
+        return [pageNumber, (Array.isArray(rawContent) ? rawContent : []).map(mapPost).filter(Boolean)];
+      }));
+
+      if (controller.signal.aborted) return;
+      const refreshedPages = new Map(responses);
+      setLoadedPages(refreshedPages);
+      setPage(lastPageToFetch);
+      const finalPagePosts = refreshedPages.get(lastPageToFetch) || [];
+      setHasMore(finalPagePosts.length >= EXPLORE_PAGE_SIZE);
+    } catch (err) {
+      if (err.name === 'CanceledError' || err.name === 'AbortError' || err.code === 'ERR_CANCELED') return;
+      console.error('[ExplorePage] Failed to revalidate loaded explore pages:', err);
+      setError('Could not refresh the loaded thoughts. Your current feed has been preserved.');
+    } finally {
+      if (abortControllerRef.current === controller) {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      }
+    }
+  }, []);
+
+  // Revalidate page 0 on route entry and when the tab becomes active.
   useEffect(() => {
     const handleFocus = () => {
       if (document.visibilityState === 'visible' && refreshPosts) {
@@ -231,15 +259,43 @@ export function ExplorePage({ onNavigate }) {
     };
   }, [refreshPosts]);
 
-  // Reset pagination when topic or query changes
+  // When authoritative page 0 changes, replace every loaded offset page and fetch
+  // enough extra boundary pages to retain posts shifted by newly inserted rows.
   useEffect(() => {
-    setPaginatedPosts([]);
+    const signature = contextPosts.map((post) => String(post.id)).join('|');
+    const nextSnapshot = { signature, posts: contextPosts, totalPosts, feedUpdatedAt };
+    const previousSnapshot = previousPageZeroRef.current;
+    previousPageZeroRef.current = nextSnapshot;
+
+    if (!previousSnapshot || previousSnapshot.feedUpdatedAt === feedUpdatedAt || page < 1) return;
+
+    const pageZeroChanged = previousSnapshot.signature !== signature
+      || previousSnapshot.totalPosts !== totalPosts;
+    const extraBoundaryPages = pageZeroChanged
+      ? boundaryPageCount(
+        previousSnapshot.totalPosts,
+        totalPosts,
+        previousSnapshot.posts,
+        contextPosts,
+      )
+      : 0;
+    revalidateLoadedPages(page, extraBoundaryPages);
+  }, [contextPosts, totalPosts, feedUpdatedAt, page, revalidateLoadedPages]);
+
+  // Filter and language changes start a new bounded Explore pagination session.
+  useEffect(() => {
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    loadingMoreRef.current = false;
+    setLoadingMore(false);
+    setLoadedPages(new Map());
     setPage(0);
     setHasMore(true);
-    if (refreshPosts) {
-      refreshPosts();
-    }
-  }, [activeTopic, debouncedQuery, refreshPosts]);
+    setError(null);
+  }, [activeTopic, debouncedQuery, currentLanguage]);
+
+  useEffect(() => () => {
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+  }, []);
 
   // Infinite Scroll Observer Trigger
   useEffect(() => {
@@ -433,9 +489,9 @@ export function ExplorePage({ onNavigate }) {
               </div>
             ) : (
               <>
-                {displayPosts.map((post) => (
+                {displayPosts.map((post, idx) => (
                   <PostCard
-                    key={post.id}
+                    key={post.id || post.postId || post.feedItemId || `explore_post_${idx}`}
                     post={post}
                     onNavigate={onNavigate}
                   />

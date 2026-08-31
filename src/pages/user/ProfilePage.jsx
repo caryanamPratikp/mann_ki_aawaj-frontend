@@ -579,9 +579,9 @@ export function ProfilePage({ username, onNavigate }) {
                   icon={Calendar}
                 />
               ) : (
-                userPosts.map((post) => (
+                userPosts.map((post, idx) => (
                   <PostCard
-                    key={post.id}
+                    key={post.id || post.postId || post.feedItemId || `profile_post_${idx}`}
                     post={post}
                     onNavigate={onNavigate}
                     onToggleComments={() => {

@@ -5,6 +5,7 @@ import { apiPostService } from '../../services/apiPostService.js';
 import { WaveformPlayer } from './WaveformPlayer.jsx';
 import { InitialAvatar } from './InitialAvatar.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { usePosts } from '../../context/PostContext.jsx';
 
 function formatTimer(seconds) {
   const m = Math.floor(seconds / 60);
@@ -14,6 +15,7 @@ function formatTimer(seconds) {
 
 export function CommunityComposer({ onPostPublished, onOpenSongUpload }) {
   const { currentUser } = useAuth();
+  const { createPost, refreshPosts } = usePosts();
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -33,7 +35,9 @@ export function CommunityComposer({ onPostPublished, onOpenSongUpload }) {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       if (voiceUrl) URL.revokeObjectURL(voiceUrl);
-      if (audioContextRef.current) audioContextRef.current.close();
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close().catch(() => {});
+      }
     };
   }, [voiceUrl]);
 
@@ -129,14 +133,16 @@ export function CommunityComposer({ onPostPublished, onOpenSongUpload }) {
         const file = new File([voiceBlob], 'recording.wav', { type: 'audio/wav' });
         formData.append('file', file);
         if (title.trim()) formData.append('title', title.trim());
-        if (content.trim()) formData.append('topic', 'GENERAL');
+        if (content.trim()) formData.append('caption', content.trim());
+        formData.append('topic', 'GENERAL');
         formData.append('mood', 'NEUTRAL');
 
         await apiPostService.publishVoiceNote(formData);
+        await refreshPosts();
         setSuccessMessage('Voice note published successfully!');
       } else {
         // Publish Text Post
-        await apiPostService.createPost({
+        await createPost({
           content: content.trim(),
           title: title.trim() || undefined,
           topic: 'GENERAL',

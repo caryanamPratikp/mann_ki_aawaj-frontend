@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Clock, Flame } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { apiTopicService } from '../../services/apiTopicService.js';
@@ -13,10 +13,12 @@ import { CommentComposer } from '../../components/comments/CommentComposer.jsx';
 import { CommentCard } from '../../components/comments/CommentCard.jsx';
 
 export function TopicDiscussionPage({ topicId, onNavigate }) {
+  const queryClient = useQueryClient();
   const { addToast } = useToast();
   const { t, currentLanguage, translateTextAsync } = useLanguage();
   const [topic, setTopic] = useState(null);
   const [translatedTopic, setTranslatedTopic] = useState('');
+  const [activeReplyCommentId, setActiveReplyCommentId] = useState(null);
   const commentStreamRef = useRef(null);
 
   // TanStack Query for Topic Discussion Comments with 3-second refetchInterval
@@ -64,7 +66,10 @@ export function TopicDiscussionPage({ topicId, onNavigate }) {
     }
     try {
       await apiCommentService.createTopicComment(targetNumericId, content, getLanguageCode(currentLanguage), attachedImageUrl);
-      await commentsQuery.refetch();
+      await Promise.all([
+        commentsQuery.refetch(),
+        queryClient.invalidateQueries({ queryKey: ['posts'] }),
+      ]);
     } catch (error) {
       addToast(error?.response?.data?.message || 'Unable to add your opinion.', 'error');
     }
@@ -74,42 +79,58 @@ export function TopicDiscussionPage({ topicId, onNavigate }) {
     try {
       await apiCommentService.replyToComment(commentId, content, getLanguageCode(currentLanguage));
       await commentsQuery.refetch();
-    } catch (error) { addToast(error?.response?.data?.message || t('replyFailed', 'Unable to add your reply.'), 'error'); }
+    } catch (error) {
+      addToast(error?.response?.data?.message || t('replyFailed', 'Unable to add your reply.'), 'error');
+    }
   };
 
   const normalizeComment = (comment) => mapComment(comment);
 
-  return <UserLayout activeRoute="/home" onNavigate={onNavigate} wide>
-    <TopicBackgroundRotator topicName={topic?.name || 'GENERAL'}>
-    <div style={{ width: '100%', maxWidth: 1200, height: 'calc(100vh - 92px)', margin: '0 auto', padding: '8px 0 16px', display: 'flex', flexDirection: 'column' }}>
-      <section style={{ background: 'linear-gradient(135deg, #432E27 0%, #34231E 100%)', borderRadius: '18px 18px 0 0', padding: '18px 26px', color: '#fff', boxShadow: '0 8px 24px rgba(45,29,21,.18)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-          <InitialAvatar username={translatedTopic || topic?.name || 'TOPIC'} size={68} />
-          <div className="flex-col gap-xs">
-            <div className="flex-row gap-sm" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
-              <h1 style={{ color: '#fff', fontSize: 28, margin: 0 }}>#{translatedTopic || t('topicDiscussion', 'Topic discussion')}</h1>
-              <span style={{ background: '#D96C3D', padding: '4px 12px', borderRadius: 14, fontSize: 12, fontWeight: 800 }}>{t('trendingTopic', 'Trending Topic')}</span>
+  return (
+    <UserLayout activeRoute="/home" onNavigate={onNavigate} wide>
+      <TopicBackgroundRotator topicName={topic?.name || 'GENERAL'}>
+        <div style={{ width: '100%', maxWidth: 1200, height: 'calc(100vh - 92px)', margin: '0 auto', padding: '8px 0 16px', display: 'flex', flexDirection: 'column' }}>
+          <section style={{ background: 'linear-gradient(135deg, #432E27 0%, #34231E 100%)', borderRadius: '18px 18px 0 0', padding: '18px 26px', color: '#fff', boxShadow: '0 8px 24px rgba(45,29,21,.18)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+              <InitialAvatar username={translatedTopic || topic?.name || 'TOPIC'} size={68} />
+              <div className="flex-col gap-xs">
+                <div className="flex-row gap-sm" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                  <h1 style={{ color: '#fff', fontSize: 28, margin: 0 }}>#{translatedTopic || t('topicDiscussion', 'Topic discussion')}</h1>
+                  <span style={{ background: '#D96C3D', padding: '4px 12px', borderRadius: 14, fontSize: 12, fontWeight: 800 }}>{t('trendingTopic', 'Trending Topic')}</span>
+                </div>
+                <div className="flex-row gap-md" style={{ color: 'rgba(255,255,255,.9)', flexWrap: 'wrap' }}>
+                  <span className="flex-row gap-xs" style={{ alignItems: 'center' }}><Clock size={15} />{t('recentlyUpdated', 'Recently updated')}</span>
+                  <span className="flex-row gap-xs" style={{ alignItems: 'center' }}><Flame size={15} />{comments.length} {t('opinionsShared', 'Opinions shared')}</span>
+                </div>
+              </div>
             </div>
-            <div className="flex-row gap-md" style={{ color: 'rgba(255,255,255,.9)', flexWrap: 'wrap' }}>
-              <span className="flex-row gap-xs" style={{ alignItems: 'center' }}><Clock size={15} />{t('recentlyUpdated', 'Recently updated')}</span>
-              <span className="flex-row gap-xs" style={{ alignItems: 'center' }}><Flame size={15} />{comments.length} {t('opinionsShared', 'Opinions shared')}</span>
-            </div>
-          </div>
-        </div>
-      </section>
+          </section>
 
-      <section style={{ minHeight: 0, flex: 1, display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,.96)', border: '1px solid rgba(111,64,95,.12)', borderTop: 0, borderRadius: '0 0 18px 18px', overflow: 'hidden' }}>
-        <div style={{ padding: '10px 20px', color: '#6F405F', fontWeight: 800, borderBottom: '1px solid #EAE2E0', flexShrink: 0 }}>{t('comments', 'Comments')} ({comments.length})</div>
-        <div ref={commentStreamRef} className="hide-scrollbar" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px 22px' }}>
-          {loading ? <div>{t('loadingOpinions', 'Loading opinions...')}</div> : comments.map((comment) =>
-            <div key={comment.id} style={{ padding: '10px 0', borderBottom: '1px solid #EEE8E6' }}><CommentCard comment={normalizeComment(comment)} postId={null} onNavigate={onNavigate} onReplySubmit={submitReply} /></div>)}
-          {!loading && comments.length === 0 && <div style={{ textAlign: 'center', color: '#8C8385', padding: 30 }}>{t('noOpinionsYet', 'No opinions yet. Start the discussion.')}</div>}
+          <section style={{ minHeight: 0, flex: 1, display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,.96)', border: '1px solid rgba(111,64,95,.12)', borderTop: 0, borderRadius: '0 0 18px 18px', overflow: 'hidden' }}>
+            <div style={{ padding: '10px 20px', color: '#6F405F', fontWeight: 800, borderBottom: '1px solid #EAE2E0', flexShrink: 0 }}>{t('comments', 'Comments')} ({comments.length})</div>
+            <div ref={commentStreamRef} className="hide-scrollbar" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px 22px' }}>
+              {loading ? <div>{t('loadingOpinions', 'Loading opinions...')}</div> : comments.map((comment) =>
+                <div key={comment.id} style={{ padding: '10px 0', borderBottom: '1px solid #EEE8E6' }}>
+                  <CommentCard
+                    comment={normalizeComment(comment)}
+                    postId={null}
+                    onNavigate={onNavigate}
+                    onReplySubmit={submitReply}
+                    activeReplyCommentId={activeReplyCommentId}
+                    setActiveReplyCommentId={setActiveReplyCommentId}
+                  />
+                </div>
+              )}
+              {!loading && comments.length === 0 && <div style={{ textAlign: 'center', color: '#8C8385', padding: 30 }}>{t('noOpinionsYet', 'No opinions yet. Start the discussion.')}</div>}
+            </div>
+            {!activeReplyCommentId && (
+              <div style={{ padding: '10px 16px', borderTop: '1px solid #E5DFDE', background: '#fff', flexShrink: 0 }}>
+                <CommentComposer onSubmit={submit} enableImage placeholder={t('writeCommentPlaceholder', 'Write a comment...')} onNavigate={onNavigate} />
+              </div>
+            )}
+          </section>
         </div>
-        <div style={{ padding: '10px 16px', borderTop: '1px solid #E5DFDE', background: '#fff', flexShrink: 0 }}>
-          <CommentComposer onSubmit={submit} enableImage placeholder={t('writeCommentPlaceholder', 'Write a comment...')} onNavigate={onNavigate} />
-        </div>
-      </section>
-    </div>
-    </TopicBackgroundRotator>
-  </UserLayout>;
+      </TopicBackgroundRotator>
+    </UserLayout>
+  );
 }

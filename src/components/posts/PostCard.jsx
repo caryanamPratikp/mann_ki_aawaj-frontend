@@ -16,9 +16,11 @@ import { getMediaUrl } from '../../config/env.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ReportModal } from '../reports/ReportModal.jsx';
 import { apiClient } from '../../services/apiClient.js';
+import { apiCommentService } from '../../services/apiCommentService.js';
+
 
 export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false, onToggleComments, activeCommentsPostId }) {
-  const { reactToPost, toggleSavePost, savedPostIds, deletePost, updatePost } = usePosts();
+  const { reactToPost, toggleSavePost, savedPostIds, deletePost, updatePost, refreshPosts } = usePosts();
 
   const { commentsByPost, createComment, fetchComments } = useComments();
   const { currentUser } = useAuth();
@@ -31,6 +33,7 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
   const [hidden, setHidden] = useState(false);
   const [manualToggle, setManualToggle] = useState(false);
   const [showInlineComments, setShowInlineComments] = useState(true);
+  const [activeReplyCommentId, setActiveReplyCommentId] = useState(null);
   const [isSpoilerRevealed, setIsSpoilerRevealed] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -38,14 +41,12 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
   const [editContent, setEditContent] = useState(post.originalContent || post.content || '');
   const [editImageUrl, setEditImageUrl] = useState(post.imageUrl || '');
   const [updatingPost, setUpdatingPost] = useState(false);
-
-
-
+  const isTopicOpinion = post.feedItemType === 'TOPIC_OPINION';
   useEffect(() => {
-    if (post?.id && fetchComments) {
+    if (post?.id && fetchComments && !isTopicOpinion) {
       fetchComments(post.id);
     }
-  }, [post?.id, fetchComments]);
+  }, [post?.id, fetchComments, isTopicOpinion]);
 
   const [dynamicTitleTranslation, setDynamicTitleTranslation] = useState(null);
   const [dynamicContentTranslation, setDynamicContentTranslation] = useState(null);
@@ -99,7 +100,7 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
     hiddenPosts && (hiddenPosts.includes(String(post?.id)) || hiddenPosts.includes(Number(post?.id)))
   );
 
-  const isSaved = savedPostIds.includes(post.id);
+  const isSaved = !isTopicOpinion && savedPostIds.includes(post.id);
   const isOwner = Boolean(
     post.isOwnPost ||
     (currentUser?.id && (post.userId === currentUser?.id || post.authorId === currentUser?.id))
@@ -234,7 +235,7 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
 
         {/* ── ACTION BUTTONS: Options Menu ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-          <PostMenu
+          {!isTopicOpinion && <PostMenu
             isSaved={isSaved}
             isOwner={isOwner}
             onEdit={() => {
@@ -265,7 +266,7 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
             }}
             onBlock={() => blockUser(post.username)}
             onReport={() => setReportModalOpen(true)}
-          />
+          />}
         </div>
       </div>
 
@@ -380,13 +381,24 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
         <ReactionsBar
           reactions={post.reactions}
           userReaction={post.userReaction}
-          onReact={(type) => reactToPost(post.id, type)}
+          onReact={async (type) => {
+            if (isTopicOpinion) {
+              await apiCommentService.reactToComment(post.sourceId, type);
+              await refreshPosts();
+              return;
+            }
+            await reactToPost(post.id, type);
+          }}
         />
 
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
+            if (isTopicOpinion) {
+              onNavigate(`/topic/${post.topicId}`);
+              return;
+            }
             setShowInlineComments(!showInlineComments);
             if (onToggleComments) {
               onToggleComments(post);
@@ -408,12 +420,12 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
           }}
         >
           <MessageSquare size={14} style={{ color: showInlineComments ? '#6F405F' : '#7A6E6B' }} />
-          <span>{t('comments') || 'Comments'} ({matchedCommentCount})</span>
+          <span>{isTopicOpinion ? (t('openDiscussion') || 'Open discussion') : `${t('comments') || 'Comments'} (${matchedCommentCount})`}</span>
         </button>
       </div>
 
       {/* ── EXPANDABLE INLINE COMMENT SECTION DIRECTLY BELOW THE POST ── */}
-      {showInlineComments && (
+      {showInlineComments && !isTopicOpinion && (
         <div
           style={{
             display: 'flex',
@@ -426,41 +438,30 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Chat-style Comments Stream (Oldest at top, Newest at bottom) */}
+          {/* Chat-style Comments Stream */}
           <CommentList
             postId={post.id}
             postAuthorUsername={post.username}
             onNavigate={onNavigate}
+            activeReplyCommentId={activeReplyCommentId}
+            setActiveReplyCommentId={setActiveReplyCommentId}
           />
 
-          {/* Comment Composer Input Box AT THE VERY BOTTOM */}
-          <CommentComposer
-            postId={post.id}
-            postAuthorUsername={post.username}
-            onSubmit={async (text) => {
-              await createComment(post.id, text, post.username);
-            }}
-            onNavigate={onNavigate}
-            placeholder="Write a comment..."
-          />
-
+          {/* Comment Composer Input Box (Hidden while replying inline under a specific comment) */}
+          {!activeReplyCommentId && (
+            <CommentComposer
+              postId={post.id}
+              postAuthorUsername={post.username}
+              onSubmit={async (text) => {
+                await createComment(post.id, text, post.username);
+              }}
+              onNavigate={onNavigate}
+              placeholder="Write a comment..."
+            />
+          )}
         </div>
       )}
 
-
-
-      {/* Report Modal */}
-      {reportModalOpen && (
-        <ReportModal
-          isOpen={reportModalOpen}
-          onClose={() => setReportModalOpen(false)}
-          targetType="POST"
-          targetId={post.id}
-          targetUsername={post.username}
-        />
-      )}
-
-      {/* Full-Screen Enlarged Image Lightbox Overlay */}
       {isImageModalOpen && (
         <div
           onClick={(e) => {

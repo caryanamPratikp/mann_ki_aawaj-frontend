@@ -47,8 +47,7 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
   const { currentLanguage, t } = useLanguage();
   const { currentUser } = useAuth();
   const [spokenLanguage] = useSpokenLanguage();
-  const initialTag = targetUsername ? (targetUsername.startsWith('@') ? `${targetUsername} ` : `@${targetUsername} `) : '';
-  const [text, setText] = useState(initialTag);
+  const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
   const [activeCategory, setActiveCategory] = useState(0);
@@ -57,8 +56,6 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.focus();
-      const len = inputRef.current.value.length;
-      inputRef.current.setSelectionRange(len, len);
     }
   }, []);
 
@@ -80,11 +77,13 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
     }
   }, [isRecording, isTranscribing]);
 
-  const minLength = 2;
+  const minLength = 1;
   const maxLength = 1000;
   const isValid = text.trim().length >= minLength && text.length <= maxLength;
   const modCheck = moderationCheck(text);
   const isBlocked = modCheck.status === 'BLOCKED';
+
+  const tagPrefix = targetUsername ? (targetUsername.startsWith('@') ? `${targetUsername.trim()} ` : `@${targetUsername.trim()} `) : '';
 
   const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -92,7 +91,8 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
 
     setSubmitting(true);
     try {
-      await onSubmit(text.trim());
+      const payloadText = tagPrefix && !text.trim().startsWith('@') ? `${tagPrefix}${text.trim()}` : text.trim();
+      await onSubmit(payloadText);
       setText('');
       setShowEmojis(false);
     } catch (err) {
@@ -106,8 +106,43 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
     setText((prev) => prev + emoji);
   };
 
+  const formattedTarget = targetUsername ? (targetUsername.startsWith('@') ? targetUsername : `@${targetUsername}`) : '';
+
   return (
-    <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px', position: 'relative' }}>
+    <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px', position: 'relative' }}>
+      
+      {/* Replying To Header Badge */}
+      {formattedTarget && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', fontSize: '11.5px', color: '#6F405F', fontWeight: 700 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span>↩️ Replying to</span>
+            <span style={{ color: '#8E527A', textDecoration: 'underline' }}>{formattedTarget}</span>
+          </span>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#8C8385',
+                cursor: 'pointer',
+                padding: '2px',
+                display: 'flex',
+                alignItems: 'center',
+                fontSize: '11px',
+                gap: '2px',
+              }}
+              title="Cancel Reply"
+            >
+              <X size={14} />
+              <span>Cancel</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Visually Distinct Sub-Reply Container */}
       <div
         style={{
           position: 'relative',
@@ -115,11 +150,11 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          backgroundColor: '#FFFFFF',
-          borderRadius: '24px',
-          border: isBlocked ? '1.5px solid var(--error)' : '1.5px solid #6F405F',
+          backgroundColor: '#FAF5F8',
+          borderRadius: '16px',
+          border: isBlocked ? '1.5px solid var(--error)' : '1.5px solid #8E527A',
           padding: '4px 6px 4px 12px',
-          boxShadow: '0 2px 10px rgba(111, 64, 95, 0.08)',
+          boxShadow: '0 2px 8px rgba(111, 64, 95, 0.06)',
           transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
         }}
       >
@@ -148,7 +183,7 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
           ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={t('writeReplyPlaceholder', 'Write a reply...')}
+          placeholder={formattedTarget ? `Write a reply to ${formattedTarget}...` : t('writeReplyPlaceholder', 'Write a reply...')}
           maxLength={maxLength}
           rows={1}
           disabled={submitting}
@@ -169,7 +204,7 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
           }}
         />
 
-        {/* Right Icons: Mic (Press & Hold) + Send Arrow */}
+        {/* Right Icons: Mic + Send Arrow */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
           <button
             type="button"

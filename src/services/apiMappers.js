@@ -82,7 +82,9 @@ export function mapPost(post) {
     reactionsMap = { RELATE: post.likeCount || 0 };
   }
 
-  const postId = post.id || post.postId;
+  const postId = post.feedItemType === 'TOPIC_OPINION'
+    ? post.feedItemId
+    : (post.id || post.postId || post.feedItemId);
   let detectedSubtopic = post.subtopic || post.topic || post.category;
 
   if (postId) {
@@ -106,23 +108,34 @@ export function mapPost(post) {
   const finalTopic = (detectedSubtopic || post.topic || 'GENERAL').toUpperCase();
 
   let audioObj = post.audio || post.audioAttachment || null;
+  const rawAudioUrl = post.audioUrl || audioObj?.audioUrl || null;
+  const mappedAudioUrl = rawAudioUrl ? getMediaUrl(rawAudioUrl) : null;
+
   if (audioObj) {
     audioObj = {
       ...audioObj,
-      audioUrl: audioObj.audioUrl ? getMediaUrl(audioObj.audioUrl) : null,
+      audioUrl: audioObj.audioUrl ? getMediaUrl(audioObj.audioUrl) : mappedAudioUrl,
       coverUrl: audioObj.coverUrl ? getMediaUrl(audioObj.coverUrl) : null,
+    };
+  } else if (mappedAudioUrl) {
+    audioObj = {
+      audioUrl: mappedAudioUrl,
+      title: post.title || (post.type === 'VOICE_NOTE' || post.postType === 'VOICE_NOTE' ? 'Voice Note' : 'Audio Note'),
     };
   }
 
+  const resolvedId = postId || (post.id != null ? String(post.id) : null) || `post_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
   return {
     ...post,
-    id: postId || `post_${Date.now()}`,
+    id: resolvedId,
+    postId: resolvedId,
     userId: post.userId || post.authorId || post.user?.id || null,
     title: post.translatedTitle || post.title || '',
     originalTitle: post.title || '',
     topic: finalTopic,
     subtopic: finalTopic,
-    postType: post.postType || 'Thought',
+    postType: post.postType || post.type || 'Thought',
 
     originalContent: post.originalContent || post.content || '',
     translatedContent: post.translatedContent || null,
@@ -132,11 +145,11 @@ export function mapPost(post) {
     avatarConfig: post.authorAvatar || post.avatarConfig || null,
     reactions: reactionsMap,
     userReaction: post.userReaction || null,
+    audioUrl: mappedAudioUrl,
     audio: audioObj,
     status: post.status || 'PUBLISHED',
     createdAt: post.createdAt || new Date().toISOString(),
   };
-
 }
 
 export function sanitizeEncodedSymbols(str) {

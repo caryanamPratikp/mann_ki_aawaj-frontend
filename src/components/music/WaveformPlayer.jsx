@@ -97,8 +97,8 @@ export function WaveformPlayer({
             onClick={handleSeek}
             role="slider"
             aria-valuenow={Math.round(progressPercent)}
-            aria-valuemin="0"
-            aria-valuemax="100"
+            aria-valuemin={0}
+            aria-valuemax={100}
             tabIndex={0}
           >
             {peaks.map((height, idx) => {

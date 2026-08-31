@@ -1,12 +1,23 @@
-import React, { createContext, useContext, useState } from 'react';
-import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiPostService } from '../services/apiPostService.js';
 import { mapPost } from '../services/apiMappers.js';
+import { EXPLORE_PAGE_SIZE, hasVisiblePostStatus } from '../utils/exploreFeed.js';
 import { useAuth } from './AuthContext.jsx';
 import { useLanguage, normalizeLanguage } from './LanguageContext.jsx';
 import { useToast } from './ToastContext.jsx';
 
 const PostContext = createContext(null);
+export const POSTS_QUERY_KEY = ['posts'];
+
+const getPostsQueryKey = (language) => [...POSTS_QUERY_KEY, language];
+
+const normalizeFeed = (feed) => {
+  if (Array.isArray(feed)) {
+    return { posts: feed, totalElements: feed.length, page: 0, size: EXPLORE_PAGE_SIZE };
+  }
+  return feed || { posts: [], totalElements: 0, page: 0, size: EXPLORE_PAGE_SIZE };
+};
 
 export function PostProvider({ children }) {
   const { currentUser } = useAuth();
@@ -14,60 +25,63 @@ export function PostProvider({ children }) {
   const { addToast } = useToast();
   const queryClient = useQueryClient();
   const [savedPostIds, setSavedPostIds] = useState([]);
+  const refreshPromiseRef = useRef(null);
 
   const normLang = normalizeLanguage(currentLanguage);
 
-  // TanStack Query: Realtime Posts Feed with preserved data state & seamless background merge
+  // TanStack Query: Bounded Realtime Posts Feed (holds current backend Page 0 result)
   const {
-    data: posts = [],
+    data: feedData,
     isLoading: loading,
     isFetching,
-    refetch: refreshPosts,
+    dataUpdatedAt: feedUpdatedAt,
+    refetch,
   } = useQuery({
-    queryKey: ['posts', normLang],
-    queryFn: async ({ queryKey }) => {
-      const previousCachedPosts = queryClient.getQueryData(queryKey) || [];
+    queryKey: getPostsQueryKey(normLang),
+    queryFn: async ({ signal }) => {
+      const response = await apiPostService.getPosts(
+        { page: 0, size: EXPLORE_PAGE_SIZE, sortBy: 'createdAt', direction: 'desc' },
+        { signal },
+      );
+      const rawContent = response?.data?.content || response?.content || response?.data || [];
+      const posts = Array.isArray(rawContent) ? rawContent.map(mapPost).filter(Boolean) : [];
 
-      try {
-        const response = await apiPostService.getPosts();
-        const rawContent = response.data?.content || response.content || response.data;
-        
-        if (Array.isArray(rawContent) && rawContent.length > 0) {
-          const freshPosts = rawContent.map(mapPost);
-
-          // Seamless merge: keep existing feed on screen, update modified items & prepend new ones
-          if (Array.isArray(previousCachedPosts) && previousCachedPosts.length > 0) {
-            const freshMap = new Map(freshPosts.map((p) => [String(p.id), p]));
-            const merged = [...freshPosts];
-            for (const oldP of previousCachedPosts) {
-              if (!freshMap.has(String(oldP.id))) {
-                merged.push(oldP);
-              }
-            }
-            return merged;
-          }
-          return freshPosts;
-        }
-
-        // If response is empty, preserve previous cached posts so screen never clears!
-        if (Array.isArray(previousCachedPosts) && previousCachedPosts.length > 0) {
-          return previousCachedPosts;
-        }
-
-        return Array.isArray(rawContent) ? rawContent.map(mapPost) : [];
-      } catch (err) {
-        console.error('[PostContext] Feed query error, preserving previous feed:', err);
-        if (Array.isArray(previousCachedPosts) && previousCachedPosts.length > 0) {
-          return previousCachedPosts;
-        }
-        return [];
-      }
+      return {
+        posts,
+        totalElements: response?.data?.totalElements ?? response?.totalElements ?? posts.length,
+        page: response?.data?.number ?? response?.number ?? 0,
+        size: response?.data?.size ?? response?.size ?? EXPLORE_PAGE_SIZE,
+      };
     },
-    placeholderData: keepPreviousData,
     staleTime: 10000,
-    refetchInterval: 15000,
+    refetchOnWindowFocus: false,
     retry: 2,
   });
+
+  const feed = normalizeFeed(feedData);
+  const posts = feed.posts;
+
+  const refreshPosts = useCallback(() => {
+    if (refreshPromiseRef.current) return refreshPromiseRef.current;
+
+    const pendingRefresh = refetch({ cancelRefetch: false }).finally(() => {
+      if (refreshPromiseRef.current === pendingRefresh) refreshPromiseRef.current = null;
+    });
+    refreshPromiseRef.current = pendingRefresh;
+    return pendingRefresh;
+  }, [refetch]);
+
+  const invalidatePostFeeds = useCallback(() => (
+    queryClient.invalidateQueries({ queryKey: POSTS_QUERY_KEY, refetchType: 'active' })
+  ), [queryClient]);
+
+  const updateCachedPosts = useCallback((updater) => {
+    queryClient.setQueriesData({ queryKey: POSTS_QUERY_KEY }, (oldFeed) => {
+      if (!oldFeed) return oldFeed;
+      const normalized = normalizeFeed(oldFeed);
+      return { ...normalized, posts: updater(normalized.posts) };
+    });
+  }, [queryClient]);
 
   const createPost = async (postData) => {
     if (!currentUser) throw new Error('You must be logged in to create a post.');
@@ -75,47 +89,28 @@ export function PostProvider({ children }) {
       throw new Error(`Posting restricted: ${currentUser.restrictionReason || 'Account restricted.'}`);
     }
 
-    // 0ms Instant Optimistic UI Post Creation
-    const tempId = `temp_post_${Date.now()}`;
-    const optimisticPost = mapPost({
-      id: tempId,
-      title: postData.title || '',
-      originalContent: postData.content,
-      content: postData.content,
-      topic: postData.topic || 'GENERAL',
-      type: postData.postType || 'TEXT',
-      imageUrl: postData.imageUrl || null,
-      username: currentUser?.username || '@me',
-      authorAvatar: currentUser?.avatarInitials || 'AN',
-      status: 'ACTIVE',
-      likeCount: 0,
-      commentCount: 0,
-      createdAt: new Date().toISOString(),
-    });
-
-    queryClient.setQueriesData({ queryKey: ['posts'] }, (old = []) => {
-      if (!Array.isArray(old)) return [optimisticPost];
-      return [optimisticPost, ...old];
-    });
-
     try {
       const response = await apiPostService.createPost(postData);
       const rawPostData = response.data || response;
       const newPost = mapPost(rawPostData);
 
-      queryClient.setQueriesData({ queryKey: ['posts'] }, (old = []) => {
-        if (!Array.isArray(old)) return [newPost];
-        return [newPost, ...old.filter((p) => p.id !== tempId && p.id !== newPost.id)];
-      });
+      if (hasVisiblePostStatus(newPost)) {
+        queryClient.setQueryData(getPostsQueryKey(normLang), (oldFeed) => {
+          const normalized = normalizeFeed(oldFeed);
+          const alreadyPresent = normalized.posts.some((post) => String(post.id) === String(newPost.id));
+          return {
+            ...normalized,
+            posts: [newPost, ...normalized.posts.filter((post) => String(post.id) !== String(newPost.id))]
+              .slice(0, normalized.size || EXPLORE_PAGE_SIZE),
+            totalElements: normalized.totalElements + (alreadyPresent ? 0 : 1),
+          };
+        });
+      }
 
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      await invalidatePostFeeds();
       addToast('Thought published successfully!', 'success');
       return newPost;
     } catch (err) {
-      queryClient.setQueriesData({ queryKey: ['posts'] }, (old = []) => {
-        if (!Array.isArray(old)) return [];
-        return old.filter((p) => p.id !== tempId);
-      });
       const errorMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to publish post to database';
       addToast(errorMsg, 'error');
       throw err;
@@ -126,7 +121,7 @@ export function PostProvider({ children }) {
     try {
       const response = await apiPostService.updatePost(postId, updates.content || updates);
       const updated = mapPost(response.data || response);
-      await queryClient.invalidateQueries({ queryKey: ['posts'] });
+      await invalidatePostFeeds();
       addToast('Post updated in database.', 'info');
       return updated;
     } catch (err) {
@@ -142,11 +137,9 @@ export function PostProvider({ children }) {
       console.warn('[PostContext] Backend delete notice:', e);
     }
 
-    queryClient.setQueriesData({ queryKey: ['posts'] }, (oldPosts = []) =>
-      oldPosts.filter((p) => p.id !== postId)
-    );
+    updateCachedPosts((oldPosts) => oldPosts.filter((p) => String(p.id) !== String(postId)));
 
-    await queryClient.invalidateQueries({ queryKey: ['posts'] });
+    await invalidatePostFeeds();
     addToast('Thought permanently deleted from database.', 'info');
   };
 
@@ -159,8 +152,7 @@ export function PostProvider({ children }) {
     const typeKey = (reactionType || 'RELATE').toUpperCase();
 
     // 1. Optimistically update TanStack Query cache instantly for immediate UI feedback
-    queryClient.setQueriesData({ predicate: (query) => query.queryKey[0] === 'posts' }, (oldPosts = []) => {
-      if (!Array.isArray(oldPosts)) return oldPosts;
+    updateCachedPosts((oldPosts) => {
       return oldPosts.map((p) => {
         if (String(p.id) !== String(postId)) return p;
 
@@ -207,7 +199,7 @@ export function PostProvider({ children }) {
     setSavedPostIds((prev) =>
       prev.includes(postId) ? prev.filter((id) => id !== postId) : [...prev, postId]
     );
-    queryClient.invalidateQueries({ queryKey: ['posts'] });
+    invalidatePostFeeds();
     addToast('Post saved state updated.', 'info');
   };
 
@@ -215,6 +207,8 @@ export function PostProvider({ children }) {
     <PostContext.Provider
       value={{
         posts,
+        totalPosts: feed.totalElements,
+        feedUpdatedAt,
         loading,
         isFetching,
         savedPostIds,

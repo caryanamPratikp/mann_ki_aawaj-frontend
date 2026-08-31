@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { apiMusicService } from '../../services/apiMusicService.js';
 import { apiPostService } from '../../services/apiPostService.js';
+import { mapPost } from '../../services/apiMappers.js';
 import { useMoodMusic } from '../../context/MoodMusicContext.jsx';
 import defaultCover from '../../assets/music-cover.jpg';
 import '../../styles/music.css';
@@ -125,7 +126,10 @@ export function MusicPage({ onNavigate }) {
   const activeQuery = shouldFallback ? fallbackQuery : tracksQuery;
   const tracks = activeQuery.data?.content || [];
   const featured = featuredQuery.data?.content || [];
-  const communityPosts = communityPostsQuery.data?.data?.content || communityPostsQuery.data?.content || [];
+  const rawCommunityPosts = communityPostsQuery.data?.data?.content || communityPostsQuery.data?.content || [];
+  const communityPosts = useMemo(() => {
+    return (Array.isArray(rawCommunityPosts) ? rawCommunityPosts : []).map(mapPost).filter(Boolean);
+  }, [rawCommunityPosts]);
   const hasFilters = Boolean(debouncedQuery || language || genre.trim());
 
   const chooseMood = (option) => {

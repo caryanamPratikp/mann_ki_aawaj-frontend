@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Bookmark, Music, Mic, Play, LoaderCircle } from 'lucide-react';
 import { apiPostService } from '../../services/apiPostService.js';
+import { mapPost } from '../../services/apiMappers.js';
 import { apiMusicService } from '../../services/apiMusicService.js';
 import { useMoodMusic } from '../../context/MoodMusicContext.jsx';
 import defaultCover from '../../assets/music-cover.jpg';
@@ -25,7 +26,8 @@ export function CommunityLibraryPanel() {
     }),
   });
 
-  const savedPosts = savedPostsQuery.data?.data?.content || savedPostsQuery.data?.content || [];
+  const rawSavedPosts = savedPostsQuery.data?.data?.content || savedPostsQuery.data?.content || [];
+  const savedPosts = (Array.isArray(rawSavedPosts) ? rawSavedPosts : []).map(mapPost).filter(Boolean);
   const catalogTracks = catalogTracksQuery.data?.content || [];
 
   const handlePlaySavedAudio = (post) => {
@@ -83,8 +85,8 @@ export function CommunityLibraryPanel() {
               </div>
             ) : (
               <ul className="library-item-list">
-                {savedPosts.map((post) => (
-                  <li key={post.id} className="library-item">
+                {savedPosts.map((post, idx) => (
+                  <li key={post.id || post.postId || post.feedItemId || `saved_${idx}`} className="library-item">
                     <div className="library-item-info">
                       {post.audio ? <Mic size={16} className="item-icon" /> : <Bookmark size={16} className="item-icon" />}
                       <div className="item-text">

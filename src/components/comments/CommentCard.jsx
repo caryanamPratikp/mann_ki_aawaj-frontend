@@ -36,7 +36,15 @@ const emojiMap = {
   '😀': 'relate'
 };
 
-export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, onReplySubmit }) {
+export function CommentCard({
+  comment,
+  postId,
+  postAuthorUsername,
+  onNavigate,
+  onReplySubmit,
+  activeReplyCommentId,
+  setActiveReplyCommentId,
+}) {
   const { currentUser } = useAuth();
   const { updateComment, deleteComment, createReply, reactToComment } = useComments();
   const { blockUser, blockedUsers = [], mutedUsers = [] } = useReports();
@@ -47,9 +55,30 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
   const [editText, setEditText] = useState(comment.content);
   const [isHovered, setIsHovered] = useState(false);
   const [showReplyComposer, setShowReplyComposer] = useState(false);
+  const [replyTargetUsername, setReplyTargetUsername] = useState(comment.username);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [manualToggle, setManualToggle] = useState(false);
+
+  const isReplying = activeReplyCommentId !== undefined && activeReplyCommentId !== null
+    ? String(activeReplyCommentId) === String(comment.id)
+    : showReplyComposer;
+
+  const handleReplyToggle = (targetUser) => {
+    setReplyTargetUsername(targetUser || comment.username);
+    if (setActiveReplyCommentId) {
+      setActiveReplyCommentId(isReplying ? null : comment.id);
+    } else {
+      setShowReplyComposer(!isReplying);
+    }
+  };
+
+  const handleCancelReply = () => {
+    if (setActiveReplyCommentId) {
+      setActiveReplyCommentId(null);
+    }
+    setShowReplyComposer(false);
+  };
 
   const isBlockedOrMuted = (() => {
     const author = (comment.username || '').toLowerCase().replace(/^@/, '').trim();
@@ -125,7 +154,7 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
   const handleAddReply = async (replyText) => {
     if (onReplySubmit) await onReplySubmit(comment.id, replyText);
     else await createReply(comment.id, postId, replyText, comment.username);
-    setShowReplyComposer(false);
+    handleCancelReply();
   };
 
   const rawDisplayContent = manualToggle
@@ -334,18 +363,18 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
 
           <button
             type="button"
-            onClick={() => setShowReplyComposer(!showReplyComposer)}
+            onClick={() => handleReplyToggle(comment.username)}
             style={{
               background: 'none',
               border: 'none',
               cursor: 'pointer',
               fontSize: '12px',
               fontWeight: 600,
-              color: 'var(--hurricane)',
+              color: isReplying ? 'var(--deep-plum)' : 'var(--hurricane)',
               padding: 0,
             }}
           >
-            Reply
+            {isReplying ? 'Replying' : 'Reply'}
           </button>
 
 
@@ -353,7 +382,7 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
           <div style={{ display: 'inline-flex', alignItems: 'center' }}>
             <CommentMenu
               isOwner={isOwner}
-              onReply={() => setShowReplyComposer(!showReplyComposer)}
+              onReply={() => handleReplyToggle(comment.username)}
               onCopy={handleCopy}
               onEdit={() => setIsEditing(true)}
               onDelete={handleDelete}
@@ -370,12 +399,12 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
           postId={postId}
           commentId={comment.id}
           onNavigate={onNavigate}
-          showReplyComposer={showReplyComposer}
-          onCancelReplyComposer={() => setShowReplyComposer(false)}
+          showReplyComposer={isReplying}
+          onCancelReplyComposer={handleCancelReply}
           onSubmitReply={handleAddReply}
-          targetUsername={comment.username}
+          targetUsername={replyTargetUsername || comment.username}
           onReplyTrigger={(username) => {
-            setShowReplyComposer(true);
+            handleReplyToggle(username || comment.username);
           }}
         />
       </div>

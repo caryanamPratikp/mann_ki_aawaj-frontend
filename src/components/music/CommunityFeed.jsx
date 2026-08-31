@@ -197,9 +197,9 @@ export function CommunityFeed({ posts = [], isLoading, isError, onRefetch, curre
 
   return (
     <div className="community-feed-list">
-      {posts.map((post) => (
+      {posts.map((post, index) => (
         <FeedPostCard
-          key={post.id}
+          key={post.id || post.postId || post.feedItemId || `feed_post_${post.createdAt || index}_${index}`}
           post={post}
           currentUserId={currentUserId}
           onPostDeleted={onPostDeleted}

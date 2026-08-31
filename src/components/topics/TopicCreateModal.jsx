@@ -9,6 +9,7 @@ import { apiClient } from '../../services/apiClient.js';
 import { apiTopicService } from '../../services/apiTopicService.js';
 import { apiCommentService } from '../../services/apiCommentService.js';
 import { getMediaUrl } from '../../config/env.js';
+import { useQueryClient } from '@tanstack/react-query';
 
 function ParentOption({ topic, currentLanguage, translateTextAsync }) {
   const english = topic === 'GENERAL' ? 'Others' : topic.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
@@ -25,6 +26,7 @@ function ParentOption({ topic, currentLanguage, translateTextAsync }) {
 }
 
 export function TopicCreateModal({ isOpen, onClose, onCreated }) {
+  const queryClient = useQueryClient();
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { t, currentLanguage, translateTextAsync } = useLanguage();
@@ -65,6 +67,7 @@ export function TopicCreateModal({ isOpen, onClose, onCreated }) {
       const topic = await apiTopicService.createTopic({ name: name.trim(), parentTopic, createdByUsername: currentUser?.username || '@anonymous' });
       if (!topic?.id) throw new Error(t('topicCreateFailed', 'Unable to create this topic.'));
       await apiCommentService.createTopicComment(topic.id, opinion.trim(), getLanguageCode(currentLanguage), imageUrl || null);
+      await queryClient.invalidateQueries({ queryKey: ['posts'] });
       addToast(t('topicPublished', 'Topic and opinion published.'), 'success');
       setName(''); setOpinion(''); setImageUrl(''); setParentTopic('');
       onClose();
