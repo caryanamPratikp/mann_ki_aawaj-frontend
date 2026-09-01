@@ -50,6 +50,7 @@ const AdminUsersPage = React.lazy(() => import('../pages/admin/AdminUsersPage.js
 const AdminAnalyticsPage = React.lazy(() => import('../pages/admin/AdminAnalyticsPage.jsx').then(m => ({ default: m.AdminAnalyticsPage })));
 const AdminEnquiriesPage = React.lazy(() => import('../pages/admin/AdminEnquiriesPage.jsx').then(m => ({ default: m.AdminEnquiriesPage })));
 const AdminMusicPage = React.lazy(() => import('../pages/admin/AdminMusicPage.jsx').then(m => ({ default: m.AdminMusicPage })));
+const AdminTopicsPage = React.lazy(() => import('../pages/admin/AdminTopicsPage.jsx').then(m => ({ default: m.AdminTopicsPage })));
 
 export function AppRoutes() {
 
@@ -168,6 +169,9 @@ export function AppRoutes() {
           }
           if (normalizedPath === '/admin/analytics') {
             return <AdminAnalyticsPage onNavigate={navigate} />;
+          }
+          if (normalizedPath === '/admin/topics') {
+            return <AdminTopicsPage onNavigate={navigate} />;
           }
           if (normalizedPath === '/admin/music') {
             return <AdminMusicPage onNavigate={navigate} />;

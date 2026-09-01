@@ -7,7 +7,7 @@ import { useLanguage } from '../../context/LanguageContext.jsx';
 import { TopicBackgroundRotator } from '../../components/topics/TopicBackgroundRotator.jsx';
 import { apiPostService } from '../../services/apiPostService.js';
 import { mapPost } from '../../services/apiMappers.js';
-import { TOPIC_CATEGORIES } from '../../utils/topicUtils.js';
+import { TOPIC_CATEGORIES, isPostMatchingCategory } from '../../utils/topicUtils.js';
 import { formatDate } from '../../utils/formatDate.js';
 import {
   boundaryPageCount,
@@ -127,8 +127,7 @@ export function ExplorePage({ onNavigate }) {
 
       // Topic filter
       if (activeTopic !== 'All' && activeTopic !== 'ALL') {
-        const pTopic = (p.topic || p.subtopic || '').toUpperCase();
-        if (pTopic !== activeTopic.toUpperCase()) return false;
+        if (!isPostMatchingCategory(p, activeTopic)) return false;
       }
 
       // Search query filter

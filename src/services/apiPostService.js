@@ -35,6 +35,9 @@ export const apiPostService = {
       if (params.topic && params.topic !== 'ALL' && params.topic !== 'All') {
         queryParams.topic = params.topic;
       }
+      if (params.community) {
+        queryParams.community = params.community;
+      }
 
       const requestConfig = { params: queryParams, timeout: 30000 };
       if (options.signal) {
@@ -110,6 +113,9 @@ export const apiPostService = {
         topic: toBackendTopic(subtopicTag),
         type: toBackendPostType(postData.postType || postData.type, Boolean(postData.imageUrl)),
         imageUrl: postData.imageUrl || null,
+        audioUrl: postData.audioUrl || null,
+        isMusicCommunity: Boolean(postData.isMusicCommunity),
+        musicTrackId: postData.musicTrackId || null,
         movieName: postData.movieName || null,
         movieRating: postData.movieRating || null,
         isSpoiler: Boolean(postData.isSpoiler),

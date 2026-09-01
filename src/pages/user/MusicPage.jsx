@@ -100,7 +100,7 @@ export function MusicPage({ onNavigate }) {
   // Community Feed Query
   const communityPostsQuery = useQuery({
     queryKey: ['community-posts-feed'],
-    queryFn: () => apiPostService.getPosts({ page: 0, size: 30 }),
+    queryFn: () => apiPostService.getPosts({ page: 0, size: 30, community: 'MUSIC' }),
     enabled: canLoad && view === 'community',
   });
 

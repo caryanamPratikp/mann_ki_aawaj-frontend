@@ -147,6 +147,7 @@ export function mapPost(post) {
     userReaction: post.userReaction || null,
     audioUrl: mappedAudioUrl,
     audio: audioObj,
+    imageUrl: post.imageUrl ? getMediaUrl(post.imageUrl) : null,
     status: post.status || 'PUBLISHED',
     createdAt: post.createdAt || new Date().toISOString(),
   };

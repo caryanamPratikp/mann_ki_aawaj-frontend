@@ -379,5 +379,33 @@ export const apiAdminService = {
       throw err;
     }
   },
+
+  // GET /api/admin/topics
+  async getTopics(params = {}) {
+    try {
+      const response = await apiClient.get('/api/admin/topics', {
+        params: {
+          page: params.page || 0,
+          size: params.size || 20,
+          ...params,
+        },
+      });
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      throw err;
+    }
+  },
+
+  // DELETE /api/admin/topics/{id}
+  async deleteTopic(id) {
+    try {
+      const response = await apiClient.delete(`/api/admin/topics/${id}`);
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      throw err;
+    }
+  },
 };
 

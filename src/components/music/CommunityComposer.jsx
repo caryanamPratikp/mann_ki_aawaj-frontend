@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Trash2, Music, Send, LoaderCircle, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Mic, Square, Trash2, Music, Send, LoaderCircle, CheckCircle2, AlertCircle, Radio } from 'lucide-react';
 import { encodeAudioBufferToWav } from '../../utils/wavEncoder.js';
 import { apiPostService } from '../../services/apiPostService.js';
 import { WaveformPlayer } from './WaveformPlayer.jsx';
@@ -15,7 +15,7 @@ function formatTimer(seconds) {
 
 export function CommunityComposer({ onPostPublished, onOpenSongUpload }) {
   const { currentUser } = useAuth();
-  const { createPost, refreshPosts } = usePosts();
+  const { refreshPosts } = usePosts();
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -117,46 +117,40 @@ export function CommunityComposer({ onPostPublished, onOpenSongUpload }) {
     setRecordSeconds(0);
   };
 
-  // Submit Post or Voice Note
+  // Submit Voice Note Post (Strictly requires audio recording)
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!content.trim() && !voiceBlob) return;
+
+    // ENFORCE: Music Community posts require an audio recording.
+    if (!voiceBlob) {
+      setErrorMessage('Music Community posts require an audio recording. Please record a voice note to post.');
+      return;
+    }
 
     setIsSubmitting(true);
     setErrorMessage(null);
     setSuccessMessage(null);
 
     try {
-      if (voiceBlob) {
-        // Publish Voice Note Post
-        const formData = new FormData();
-        const file = new File([voiceBlob], 'recording.wav', { type: 'audio/wav' });
-        formData.append('file', file);
-        if (title.trim()) formData.append('title', title.trim());
-        if (content.trim()) formData.append('caption', content.trim());
-        formData.append('topic', 'GENERAL');
-        formData.append('mood', 'NEUTRAL');
+      const formData = new FormData();
+      const file = new File([voiceBlob], 'recording.wav', { type: 'audio/wav' });
+      formData.append('file', file);
+      if (title.trim()) formData.append('title', title.trim());
+      if (content.trim()) formData.append('caption', content.trim());
+      formData.append('topic', 'GENERAL');
+      formData.append('mood', 'NEUTRAL');
+      formData.append('isMusicCommunity', 'true');
 
-        await apiPostService.publishVoiceNote(formData);
-        await refreshPosts();
-        setSuccessMessage('Voice note published successfully!');
-      } else {
-        // Publish Text Post
-        await createPost({
-          content: content.trim(),
-          title: title.trim() || undefined,
-          topic: 'GENERAL',
-          postType: 'TEXT',
-        });
-        setSuccessMessage('Post published successfully!');
-      }
+      await apiPostService.publishVoiceNote(formData);
+      await refreshPosts();
+      setSuccessMessage('Voice note published successfully to Music Community feed!');
 
       setContent('');
       setTitle('');
       discardRecording();
       if (onPostPublished) onPostPublished();
     } catch (err) {
-      const message = err?.message || err?.userMessage || 'Failed to publish. Content moderation error or network failure.';
+      const message = err?.message || err?.userMessage || 'Failed to publish voice note. Content moderation error or network failure.';
       setErrorMessage(message);
     } finally {
       setIsSubmitting(false);
@@ -172,14 +166,23 @@ export function CommunityComposer({ onPostPublished, onOpenSongUpload }) {
             name={currentUser?.username || currentUser?.fullName}
             src={currentUser?.avatarUrl || currentUser?.avatar}
           />
-          <textarea
-            className="composer-textarea"
-            rows={2}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Share a song or a voice note with the community..."
-            disabled={isSubmitting}
-          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <textarea
+              className="composer-textarea"
+              rows={2}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Share thoughts on your recording with the Music Community..."
+              disabled={isSubmitting}
+            />
+
+            {!voiceBlob && (
+              <div style={{ fontSize: 12, color: '#888', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Radio size={14} color="#6f405f" />
+                <span>Audio recording required to post in Music Community.</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Live Recording Counter Bar */}
@@ -238,7 +241,7 @@ export function CommunityComposer({ onPostPublished, onOpenSongUpload }) {
               type="button"
               onClick={onOpenSongUpload}
               disabled={isSubmitting || Boolean(voiceBlob)}
-              title={voiceBlob ? 'Cannot attach song upload and voice note simultaneously' : 'Upload community song'}
+              title={voiceBlob ? 'Cannot upload song while recording voice note' : 'Upload community song'}
             >
               <Music size={18} /> Upload Song
             </button>
@@ -247,7 +250,8 @@ export function CommunityComposer({ onPostPublished, onOpenSongUpload }) {
           <button
             className="composer-submit-btn"
             type="submit"
-            disabled={isSubmitting || isRecording || (!content.trim() && !voiceBlob)}
+            disabled={isSubmitting || isRecording || !voiceBlob}
+            title={!voiceBlob ? 'Audio recording required to post' : 'Publish to Music Community'}
           >
             {isSubmitting ? (
               <>

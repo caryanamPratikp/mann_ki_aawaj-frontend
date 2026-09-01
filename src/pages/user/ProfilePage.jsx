@@ -598,7 +598,7 @@ export function ProfilePage({ username, onNavigate }) {
           {activeTab === 'Muted' && isSelf && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
               {uniqueMutedHandles.length === 0 ? (
-                <EmptyState title="No muted handles" description="Handles you mute will appear here." icon={VolumeX} />
+                <EmptyState title={t('noMutedHandles', 'No muted handles')} description={t('noMutedHandlesDesc', 'Handles you mute will appear here.')} icon={VolumeX} />
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '10px' }}>
                   {uniqueMutedHandles.map((handle) => (
@@ -648,7 +648,7 @@ export function ProfilePage({ username, onNavigate }) {
           {activeTab === 'Blocked' && isSelf && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
               {uniqueBlockedHandles.length === 0 ? (
-                <EmptyState title="No blocked users" description="Users you block will appear here so you can unblock them anytime." icon={ShieldOff} />
+                <EmptyState title={t('noBlockedUsers', 'No blocked users')} description={t('noBlockedUsersDesc', 'Users you block will appear here.')} icon={ShieldOff} />
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '10px' }}>
                   {uniqueBlockedHandles.map((handle) => (
@@ -699,7 +699,7 @@ export function ProfilePage({ username, onNavigate }) {
           {activeTab === 'Hidden' && isSelf && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
               {hiddenPosts.length === 0 ? (
-                <EmptyState title="No hidden thoughts" description="Thoughts you hide using post options (...) will appear here so you can unhide them anytime." icon={EyeOff} />
+                <EmptyState title={t('noHiddenThoughts', 'No hidden thoughts')} description={t('noHiddenThoughtsDesc', 'Thoughts you hide using post options (...) will appear here so you can unhide them anytime.')} icon={EyeOff} />
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
                   {hiddenPosts.map((item) => {

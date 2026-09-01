@@ -124,6 +124,41 @@ export const TOPIC_CATEGORIES = [
 
 export const ALL_SUBTOPIC_IDS = TOPIC_CATEGORIES.flatMap(cat => cat.subtopics.map(st => st.id));
 
+export const CATEGORY_TO_SUBTOPICS_MAP = {
+  SPORTS: ['SPORTS', 'CRICKET', 'FOOTBALL', 'OTHER_SPORTS'],
+  ENTERTAINMENT: ['ENTERTAINMENT', 'BOLLYWOOD', 'MOVIE_REVIEW', 'MUSIC', 'WEB_SERIES', 'CELEBRITY_DISCUSSION'],
+  SOCIETY_POLITICS: ['SOCIETY_POLITICS', 'POLITICS', 'GOVERNMENT', 'ELECTIONS', 'LOCAL_ISSUES', 'SOCIAL_ISSUES', 'PUBLIC_PROBLEMS'],
+  GENERAL: ['GENERAL', 'TECHNOLOGY', 'OTHER'],
+  LIFE_WORK: ['LIFE_WORK', 'LIFE', 'JOB', 'BOSS', 'BUSINESS', 'MONEY', 'EDUCATION', 'CAREER'],
+  FEELINGS: ['FEELINGS', 'LOVE', 'BREAKUP', 'MISSING_SOMEONE', 'LONELINESS', 'FRIENDSHIP', 'FAMILY', 'HAPPINESS', 'FRUSTRATION'],
+};
+
+export function isPostMatchingCategory(post, activeCategory) {
+  if (!post || !activeCategory || activeCategory === 'All' || activeCategory === 'ALL') return true;
+
+  const targetCategory = activeCategory.toUpperCase();
+  const validSubtopics = CATEGORY_TO_SUBTOPICS_MAP[targetCategory] || [targetCategory];
+
+  const pTopic = (post.topic || '').toUpperCase();
+  const pSubtopic = (post.subtopic || '').toUpperCase();
+  const pParent = (post.parentTopic || '').toUpperCase();
+
+  if (validSubtopics.includes(pTopic) || validSubtopics.includes(pSubtopic) || pParent === targetCategory) {
+    return true;
+  }
+
+  // Check if topic is a custom topic under this parent
+  const customTopics = getCustomTopics();
+  const matchedCustom = customTopics.find(
+    (c) => (c.name && (c.name.toUpperCase() === pTopic || c.name.toUpperCase() === pSubtopic))
+  );
+  if (matchedCustom && (matchedCustom.parentTopic || '').toUpperCase() === targetCategory) {
+    return true;
+  }
+
+  return false;
+}
+
 export function isTopicName(name) {
   if (!name || typeof name !== 'string') return false;
   const upper = name.trim().toUpperCase().replace(/^#/, '');

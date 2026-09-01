@@ -5,6 +5,7 @@ import { WaveformPlayer } from './WaveformPlayer.jsx';
 import { CommentList } from '../comments/CommentList.jsx';
 import { CommentComposer } from '../comments/CommentComposer.jsx';
 import { InitialAvatar } from './InitialAvatar.jsx';
+import { getMediaUrl } from '../../config/env.js';
 
 function formatRelativeTime(dateString) {
   if (!dateString) return 'Just now';
@@ -142,7 +143,7 @@ function FeedPostCard({ post, currentUserId, onPostDeleted, onReportPost }) {
       {/* Attached Image if any */}
       {post.imageUrl && (
         <div className="post-image-attachment">
-          <img src={post.imageUrl} alt="Post attachment" loading="lazy" />
+          <img src={getMediaUrl(post.imageUrl)} alt="Post attachment" loading="lazy" />
         </div>
       )}
 
