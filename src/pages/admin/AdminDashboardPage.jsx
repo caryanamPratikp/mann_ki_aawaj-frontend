@@ -3,6 +3,7 @@ import { AdminLayout } from '../../components/layout/AdminLayout.jsx';
 import { AdminMetricCard } from '../../components/admin/AdminMetricCard.jsx';
 import { apiAdminService } from '../../services/apiAdminService.js';
 import { Flag, ShieldAlert, FileText, User, ChevronRight, RefreshCw, AlertCircle, FileCheck, BarChart3, Clock, CheckCircle2, UserCheck } from 'lucide-react';
+import { formatDate as getRelativeTime, parseDate } from '../../utils/formatDate.js';
 
 export function AdminDashboardPage({ onNavigate }) {
   const [stats, setStats] = useState(null);
@@ -76,7 +77,7 @@ export function AdminDashboardPage({ onNavigate }) {
       id: `blocked-${b.id}`,
       title: `${typeLabel} auto-blocked by AI (${cleanUser})`,
       time: b.blockedAt ? getRelativeTime(b.blockedAt) : 'Recently',
-      rawTime: b.blockedAt ? new Date(b.blockedAt).getTime() : 0,
+      rawTime: b.blockedAt ? (parseDate(b.blockedAt)?.getTime() || 0) : 0,
       icon: ShieldAlert,
       iconColor: '#ef4444',
       bg: 'rgba(239, 68, 68, 0.1)',
@@ -91,7 +92,7 @@ export function AdminDashboardPage({ onNavigate }) {
       id: `report-${r.id}`,
       title: `Report submitted by ${cleanUser}`,
       time: r.createdAt ? getRelativeTime(r.createdAt) : 'Recently',
-      rawTime: r.createdAt ? new Date(r.createdAt).getTime() : 0,
+      rawTime: r.createdAt ? (parseDate(r.createdAt)?.getTime() || 0) : 0,
       icon: Flag,
       iconColor: '#eab308',
       bg: 'rgba(234, 179, 8, 0.1)',
@@ -100,16 +101,6 @@ export function AdminDashboardPage({ onNavigate }) {
 
   activityList.sort((a, b) => b.rawTime - a.rawTime);
   const displayActivities = activityList.slice(0, 5);
-
-  function getRelativeTime(dateStr) {
-    if (!dateStr) return 'Recently';
-    const diff = Math.floor((new Date().getTime() - new Date(dateStr).getTime()) / 60000);
-    if (diff < 1) return 'Just now';
-    if (diff < 60) return `${diff} min ago`;
-    const hours = Math.floor(diff / 60);
-    if (hours < 24) return `${hours} hr ago`;
-    return `${Math.floor(hours / 24)} d ago`;
-  }
 
   return (
     <AdminLayout

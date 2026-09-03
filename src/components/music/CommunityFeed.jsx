@@ -6,18 +6,7 @@ import { CommentList } from '../comments/CommentList.jsx';
 import { CommentComposer } from '../comments/CommentComposer.jsx';
 import { InitialAvatar } from './InitialAvatar.jsx';
 import { getMediaUrl } from '../../config/env.js';
-
-function formatRelativeTime(dateString) {
-  if (!dateString) return 'Just now';
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffSecs = Math.floor((now - date) / 1000);
-
-  if (diffSecs < 60) return 'Just now';
-  if (diffSecs < 3600) return `${Math.floor(diffSecs / 60)}m ago`;
-  if (diffSecs < 86400) return `${Math.floor(diffSecs / 3600)}h ago`;
-  return `${Math.floor(diffSecs / 86400)}d ago`;
-}
+import { formatDate as formatRelativeTime } from '../../utils/formatDate.js';
 
 function FeedPostCard({ post, currentUserId, onPostDeleted, onReportPost }) {
   const [isLiked, setIsLiked] = useState(Boolean(post.isLikedByCurrentUser));

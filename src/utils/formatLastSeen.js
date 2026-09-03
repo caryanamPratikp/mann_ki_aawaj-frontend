@@ -1,4 +1,4 @@
-import { formatDate } from './formatDate.js';
+import { formatDate, parseDate } from './formatDate.js';
 
 /**
  * Reusable utility for formatting user online / last-seen status in the user's preferred language.
@@ -17,8 +17,8 @@ export function formatLastSeen(userPresence, t) {
     return t ? t('offline', 'Offline') : 'Offline';
   }
 
-  const date = new Date(lastSeenDate);
-  if (isNaN(date.getTime())) {
+  const date = parseDate(lastSeenDate);
+  if (!date) {
     return t ? t('offline', 'Offline') : 'Offline';
   }
 
